@@ -1,0 +1,2086 @@
+/* ============================================================================
+ * components.css — every shared component in the portal.
+ *
+ * House rules, in force throughout this file:
+ *
+ *   - Structure is a 1px hairline. A card, an input, a table and a tab all get
+ *     their edge from --rule. Shadows appear only on layers that genuinely
+ *     float: a dialog, a toast, a popover. Elevation is declared once, never
+ *     both a border and a shadow on the same element.
+ *   - Every spacing value is a 4px multiple from the --space-* scale.
+ *   - State is encoded at least twice: colour plus an icon, a fill, or a rule.
+ *     Every status in the portal must survive greyscale and bright sunlight.
+ *   - Anything tappable is at least 44px on a phone.
+ *   - Logical properties only, so RTL needs no component-level overrides. The
+ *     three exceptions are marked and explained where they appear.
+ * ========================================================================= */
+
+/* ============================================================================
+ * Micro-label
+ *
+ * The small key above or beside a value. In Latin it is uppercase with open
+ * tracking, the way a specimen label is set. Arabic has no uppercase, and
+ * letter-spacing breaks its cursive joins, so Arabic gets a different
+ * treatment of equal standing rather than a broken version of this one: the
+ * bold weight and the muted colour carry the same "this is a key, not a value"
+ * signal, at a size that holds up on a phone.
+ * ========================================================================= */
+
+.u-microlabel {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.u-microlabel:lang(ar),
+[lang='ar'] .u-microlabel {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+/* ============================================================================
+ * Label strip — the signature
+ *
+ * The portal's recurring furniture. Every record opens with the same strip of
+ * key/value pairs: a ticket, a room booking, a colleague and an announcement
+ * are all read the same way, so one reading habit covers the whole product.
+ *
+ * The strip must always carry the record's real fields: its identity, its
+ * state, its dates, its owner. It is never decorative, and never filled with
+ * labels that restate what the body already says. A strip with nothing real to
+ * put in it should not be rendered.
+ *
+ * Values are set in tabular numerals so they align down a list of records.
+ * ========================================================================= */
+
+.labelstrip {
+  --labelstrip-rule: var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-block-end: var(--border-1) solid var(--labelstrip-rule);
+  position: relative;
+}
+
+/* The authored moment. When a record is hovered or holds focus, the strip
+ * registers: its rule takes the accent and strikes in from the centre, and the
+ * values lift by a single pixel. One moment, in one place, on the one element
+ * that defines the design. Reduced motion collapses it to the colour change.
+ */
+.labelstrip::after {
+  content: '';
+  position: absolute;
+  inset-block-end: calc(-1 * var(--border-1));
+  inset-inline: 0;
+  block-size: var(--border-2);
+  background: var(--brand-accent-edge);
+  transform: scaleX(0);
+  transition: transform var(--dur-3) var(--ease-out);
+}
+
+.card:hover .labelstrip::after,
+.card:focus-within .labelstrip::after,
+.labelstrip--registered::after {
+  transform: scaleX(1);
+}
+
+.labelstrip__pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-2) var(--space-3);
+  padding-inline-end: var(--space-5);
+  min-width: 0;
+}
+
+/* Pairs are divided by a hairline rather than by space alone, so the strip
+ * reads as a ruled label even when two values are short. */
+.labelstrip__pair + .labelstrip__pair {
+  padding-inline-start: var(--space-5);
+  border-inline-start: var(--border-1) solid var(--rule-muted);
+}
+
+.labelstrip__key {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.labelstrip__key:lang(ar),
+[lang='ar'] .labelstrip__key {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+.labelstrip__value {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums lining-nums;
+  transition: transform var(--dur-3) var(--ease-out);
+}
+
+.card:hover .labelstrip__value,
+.card:focus-within .labelstrip__value,
+.labelstrip--registered .labelstrip__value {
+  transform: translateY(-1px);
+}
+
+/* The provenance line: who last touched the record and when. Closes a record
+ * the way a specimen label closes with its collector and locality. */
+.provenance {
+  margin: 0;
+  /* A rule that closes the card must span it. The global measure cap on <p> is
+   * for prose, and leaves this one stopping two-thirds of the way across. */
+  max-width: none;
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-1) solid var(--rule-muted);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+ * Buttons
+ * ========================================================================= */
+
+.btn {
+  --btn-height: var(--tap-min);
+  --btn-padding: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: var(--btn-height);
+  min-inline-size: var(--btn-height);
+  padding-inline: var(--btn-padding);
+  padding-block: var(--space-2);
+  border: var(--border-1) solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  transition: background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+/* HQ staff work on a desktop and want density; site staff need the 44px
+ * target. The target wins on a phone, the density wins on a pointer device. */
+@media (min-width: 48rem) {
+  .btn {
+    --btn-height: 2.375rem;
+  }
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.btn[disabled],
+.btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  background: var(--surface-disabled);
+  border-color: var(--rule);
+  color: var(--text-disabled);
+  box-shadow: none;
+}
+
+.btn__icon {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+/* --- Primary: the accent fill -----------------------------------------
+ * The only solid accent in the portal, so it is always the action a visitor is
+ * meant to take. Carries a keyline in --brand-accent-edge, which is derived to
+ * clear 3:1 against the ground: that is what gives a pale company accent a
+ * readable boundary, and what makes hover perceptible when the fill itself has
+ * nowhere to move without hurting the label's contrast.
+ */
+.btn--primary {
+  background: var(--brand-accent-fill);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-on);
+}
+
+.btn--primary:hover:not([disabled]):not([aria-disabled='true']) {
+  background: var(--brand-accent-hover);
+  box-shadow: 0 0 0 var(--border-3) var(--brand-accent-wash-2);
+}
+
+.btn--primary:active:not([disabled]):not([aria-disabled='true']) {
+  background: var(--brand-accent-active);
+  box-shadow: none;
+}
+
+/* --- Secondary: a hairline on the raised surface ---------------------- */
+.btn--secondary {
+  background: var(--surface-raised);
+  border-color: var(--rule-strong);
+  color: var(--text-strong);
+}
+
+.btn--secondary:hover:not([disabled]):not([aria-disabled='true']) {
+  background: var(--surface-hover);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+}
+
+.btn--secondary:active:not([disabled]):not([aria-disabled='true']) {
+  background: var(--surface-active);
+}
+
+/* --- Ghost: no chrome until touched ----------------------------------- */
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-body);
+}
+
+.btn--ghost:hover:not([disabled]):not([aria-disabled='true']) {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.btn--ghost:active:not([disabled]):not([aria-disabled='true']) {
+  background: var(--surface-active);
+}
+
+.btn--ghost[disabled],
+.btn--ghost[aria-disabled='true'] {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* --- Danger: a destructive action ------------------------------------- */
+.btn--danger {
+  background: var(--surface-raised);
+  border-color: var(--danger-edge);
+  color: var(--danger-ink);
+}
+
+.btn--danger:hover:not([disabled]):not([aria-disabled='true']) {
+  background: var(--danger-surface);
+  border-color: var(--danger-ink);
+}
+
+.btn--danger:active:not([disabled]):not([aria-disabled='true']) {
+  background: var(--danger-surface);
+  box-shadow: inset 0 0 0 var(--border-1) var(--danger-ink);
+}
+
+/* --- Sizes and shapes ------------------------------------------------- */
+.btn--sm {
+  --btn-padding: var(--space-3);
+  font-size: var(--text-2xs);
+}
+
+@media (min-width: 48rem) {
+  .btn--sm {
+    --btn-height: 2rem;
+  }
+}
+
+.btn--lg {
+  --btn-padding: var(--space-6);
+  font-size: var(--text-md);
+}
+
+@media (min-width: 48rem) {
+  .btn--lg {
+    --btn-height: 2.75rem;
+  }
+}
+
+/* Icon-only. Always needs an accessible name via aria-label. */
+.btn--icon {
+  --btn-padding: var(--space-2);
+}
+
+.btn--icon .btn__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+}
+
+.btn--block {
+  display: flex;
+  inline-size: 100%;
+}
+
+/* --- Loading ----------------------------------------------------------
+ * The label stays in place and keeps its width, so the control does not jump
+ * and the visitor can still read what they pressed. aria-busy carries the
+ * state to assistive technology; the spinner is decorative.
+ */
+.btn[aria-busy='true'] {
+  cursor: progress;
+  pointer-events: none;
+}
+
+.btn[aria-busy='true'] .btn__label {
+  opacity: 0.55;
+}
+
+.btn__spinner {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  border: var(--border-2) solid currentColor;
+  border-block-start-color: transparent;
+  border-radius: var(--radius-pill);
+  animation: spin 640ms linear infinite;
+  flex: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A button row that keeps the primary action at the inline-end on desktop and
+ * stacks full-width on a phone, where thumbs beat alignment. */
+.btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (min-width: 30rem) {
+  .btn-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-row--end {
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================================================
+ * Links
+ * ========================================================================= */
+
+.link-quiet {
+  color: var(--text-body);
+  text-decoration-color: var(--rule-strong);
+}
+
+.link-quiet:hover {
+  color: var(--brand-accent-ink);
+  text-decoration-color: currentColor;
+}
+
+/* A link that carries an icon: the icon must not be split from its text by a
+ * line break. */
+.link-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.link-icon svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+/* ============================================================================
+ * Form field: label, control, help, error
+ *
+ * Every input has a visible label. Help text is always rendered when present,
+ * not swapped out for the error, so a visitor correcting a mistake can still
+ * see the rule they broke. Both are wired to the control with
+ * aria-describedby, and the error carries role="alert".
+ * ========================================================================= */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  color: var(--text-strong);
+}
+
+/* "Required" is spelled out rather than marked with an asterisk, which screen
+ * readers skip and which nobody has to be taught. */
+.field__required {
+  font-weight: var(--weight-normal);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.field__optional {
+  font-weight: var(--weight-normal);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.field__help {
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-bold);
+  color: var(--danger-ink);
+  max-width: var(--measure);
+}
+
+.field__error svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  margin-block-start: 0.1em;
+}
+
+/* A row of fields that collapses to one column on a phone. */
+.field-row {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  .field-row {
+    grid-template-columns: repeat(var(--field-cols, 2), minmax(0, 1fr));
+  }
+}
+
+/* ============================================================================
+ * Text input, textarea, select
+ * ========================================================================= */
+
+.input,
+.textarea,
+.select {
+  inline-size: 100%;
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  padding-block: var(--space-2);
+  background: var(--surface-raised);
+  color: var(--text-strong);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+  transition: border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 48rem) {
+  .input,
+  .select {
+    min-block-size: 2.375rem;
+    font-size: var(--text-sm);
+  }
+
+  .textarea {
+    font-size: var(--text-sm);
+  }
+}
+
+.input:hover:not([disabled]):not([readonly]),
+.textarea:hover:not([disabled]):not([readonly]),
+.select:hover:not([disabled]) {
+  border-color: var(--stone-400);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  border-color: var(--brand-accent-edge);
+}
+
+.input[disabled],
+.textarea[disabled],
+.select[disabled] {
+  background: var(--surface-disabled);
+  border-color: var(--rule);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.input[readonly],
+.textarea[readonly] {
+  background: var(--surface-sunken);
+  color: var(--text-body);
+}
+
+/* Invalid state: the hairline turns, a tinted ground appears, and the message
+ * below carries an icon. aria-invalid is the hook, so the styling and the
+ * assistive-technology state can never drift apart. */
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'],
+.select[aria-invalid='true'] {
+  border-color: var(--danger-ink);
+  background: var(--danger-surface);
+}
+
+.textarea {
+  min-block-size: calc(var(--space-20) + var(--space-4));
+  line-height: var(--leading-normal);
+  resize: vertical;
+}
+
+/* --- Select ------------------------------------------------------------
+ * The native control, restyled. The chevron is drawn as an inline SVG data URI
+ * so there is no extra request, and it is positioned on the inline-end edge,
+ * which puts it on the left in Arabic without an override.
+ */
+.select {
+  appearance: none;
+  padding-inline-end: var(--space-8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2368635d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: var(--space-4) var(--space-4);
+  cursor: pointer;
+}
+
+[dir='rtl'] .select {
+  background-position: left var(--space-3) center;
+}
+
+/* The chevron is a flat data URI and cannot read a custom property, so the
+ * dark theme supplies its own. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239e9992' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  }
+}
+
+:root[data-theme='dark'] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239e9992' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+/* An input with a leading icon, such as search. */
+.input-group {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.input-group__icon {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-group .input {
+  padding-inline-start: var(--space-8);
+}
+
+/* ============================================================================
+ * Date and time: the native controls, restyled
+ *
+ * Native pickers are kept because they are the ones a site worker already
+ * knows, they need no JavaScript, and on Android they open the platform's own
+ * dialog. color-scheme on :root is what makes the picker panel and the
+ * calendar indicator follow the theme, so there is nothing to recolour by hand
+ * beyond the indicator's hit area.
+ * ========================================================================= */
+
+.input[type='date'],
+.input[type='time'],
+.input[type='datetime-local'],
+.input[type='month'],
+.input[type='week'] {
+  /* Date fields show a fixed-width value, so they should not stretch to fill a
+   * wide row the way a text field does. */
+  inline-size: auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator,
+.input[type='time']::-webkit-calendar-picker-indicator,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.input[type='month']::-webkit-calendar-picker-indicator,
+.input[type='week']::-webkit-calendar-picker-indicator {
+  /* The default indicator is a 10px target. Give it a real one. */
+  padding: var(--space-1);
+  margin-inline-start: var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator:hover,
+.input[type='time']::-webkit-calendar-picker-indicator:hover,
+.input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background: var(--surface-hover);
+}
+
+/* The portal stores UTC and shows Africa/Cairo. A date field therefore always
+ * states its zone, so a booking at a site in another zone is never ambiguous. */
+.input-zone {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.input-zone__note {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+ * Checkbox, radio, switch
+ *
+ * The box and the radio are the native controls with accent-color applied, so
+ * they keep every platform behaviour and need no JavaScript. The switch is
+ * drawn, because no native control exists.
+ * ========================================================================= */
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding-block: var(--space-2);
+  cursor: pointer;
+}
+
+.choice__control {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  margin: 0;
+  margin-block-start: 0.1em;
+  flex: none;
+  accent-color: var(--brand-accent-fill);
+  cursor: pointer;
+}
+
+/* The whole label is the hit area, but on a phone the box itself also has to
+ * be big enough to aim at with a thumb, in gloves, in the sun. */
+@media (max-width: 47.99rem) {
+  .choice__control {
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+  }
+}
+
+.choice__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.choice__label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-strong);
+}
+
+.choice__help {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.choice:has(.choice__control[disabled]) {
+  cursor: not-allowed;
+}
+
+.choice:has(.choice__control[disabled]) .choice__label,
+.choice:has(.choice__control[disabled]) .choice__help {
+  color: var(--text-disabled);
+}
+
+/* --- Switch ----------------------------------------------------------
+ * A checkbox underneath, so it is keyboard-operable and announced correctly.
+ * The knob travels with a logical inset, so it slides the other way in Arabic
+ * without an override.
+ */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding-block: var(--space-2);
+  cursor: pointer;
+}
+
+.switch__input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+}
+
+.switch__track {
+  position: relative;
+  inline-size: var(--space-10);
+  block-size: var(--space-6);
+  flex: none;
+  background: var(--stone-300);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  transition: background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.switch__knob {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: var(--space-1);
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  background: var(--stone-0);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-1);
+  transform: translateY(-50%);
+  transition: inset-inline-start var(--dur-2) var(--ease-out);
+}
+
+.switch__input:checked + .switch__track {
+  background: var(--brand-accent-fill);
+  border-color: var(--brand-accent-edge);
+}
+
+.switch__input:checked + .switch__track .switch__knob {
+  inset-inline-start: calc(var(--space-10) - var(--space-5) - var(--border-2));
+}
+
+.switch__input:focus-visible + .switch__track {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+.switch__input[disabled] + .switch__track {
+  background: var(--surface-disabled);
+  border-color: var(--rule);
+}
+
+.switch__input[disabled] ~ .switch__text {
+  color: var(--text-disabled);
+}
+
+.switch__text {
+  font-size: var(--text-sm);
+  color: var(--text-strong);
+}
+
+/* The on/off state is also spelled out, because a switch's position is the
+ * kind of signal that fails in bright sun and in greyscale. */
+.switch__state {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+ * File upload
+ *
+ * A real <input type="file"> inside a label. The input is visually hidden but
+ * still focusable, and the label is the drop zone, so clicking, tapping,
+ * keyboard activation and drag-and-drop all work without JavaScript.
+ * ========================================================================= */
+
+.upload {
+  display: block;
+}
+
+.upload__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.upload__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  background: var(--surface-sunken);
+  border: var(--border-1) dashed var(--rule-strong);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.upload:hover .upload__zone {
+  border-color: var(--brand-accent-edge);
+  background: var(--brand-accent-wash);
+}
+
+.upload__input:focus-visible + .upload__zone {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+.upload__input[disabled] + .upload__zone {
+  cursor: not-allowed;
+  border-color: var(--rule);
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
+}
+
+.upload__icon {
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  color: var(--text-muted);
+}
+
+.upload__prompt {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.upload__hint {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* The list of chosen files. Each row carries its real size, so a site worker
+ * on a weak connection can see what they are about to send. */
+.upload__list {
+  list-style: none;
+  margin-block-start: var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.upload__file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-md);
+  font-size: var(--text-2xs);
+}
+
+.upload__file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+.upload__file-size {
+  margin-inline-start: auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* ============================================================================
+ * Card
+ *
+ * Flat, hairline-edged, never nested. The guard below flattens a nested card
+ * rather than letting one render, so the rule is enforced by the stylesheet
+ * instead of living only in a document nobody re-reads.
+ * ========================================================================= */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: var(--space-5);
+  }
+}
+
+/* Enforcement, not advice: a card inside a card loses its chrome. */
+.card .card {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  color: var(--text-strong);
+  min-width: 0;
+}
+
+.card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card__title a:hover {
+  color: var(--brand-accent-ink);
+  text-decoration: underline;
+}
+
+.card__aside {
+  margin-inline-start: auto;
+  flex: none;
+}
+
+.card__body {
+  font-size: var(--text-sm);
+  color: var(--text-body);
+  max-width: var(--measure);
+}
+
+.card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-1) solid var(--rule-muted);
+}
+
+/* A link in a card footer is a control, not prose, so on a phone it takes a
+ * real target. A link inside a paragraph stays text and is left alone. */
+@media (max-width: 47.99rem) {
+  .card__footer .link-icon,
+  .card__footer a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+  }
+}
+
+/* A card that is a link to its record. */
+.card--interactive {
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.card--interactive:hover {
+  border-color: var(--brand-accent-edge);
+}
+
+/* ============================================================================
+ * Status badge
+ *
+ * Colour, an icon and a fill, so a status reads in greyscale, in bright sun,
+ * and to anyone who cannot separate the hues.
+ * ========================================================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* A fixed chip height keeps a row of statuses on one optical line and gives
+   * 11px text enough room to stay legible in direct sun. */
+  min-block-size: var(--space-6);
+  padding-inline: var(--space-2);
+  padding-block: var(--space-1);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-body);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.badge__icon {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  flex: none;
+}
+
+.badge--success {
+  background: var(--success-surface);
+  border-color: var(--success-edge);
+  color: var(--success-ink);
+}
+
+.badge--warning {
+  background: var(--warning-surface);
+  border-color: var(--warning-edge);
+  color: var(--warning-ink);
+}
+
+.badge--danger {
+  background: var(--danger-surface);
+  border-color: var(--danger-edge);
+  color: var(--danger-ink);
+}
+
+.badge--info {
+  background: var(--info-surface);
+  border-color: var(--info-edge);
+  color: var(--info-ink);
+}
+
+.badge--accent {
+  background: var(--brand-accent-wash);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+}
+
+/* ============================================================================
+ * Tabs
+ *
+ * Buttons in a tablist. The active tab is marked by a 2px accent rule on its
+ * block-end edge plus the bold weight. The strip scrolls on a phone rather
+ * than wrapping, so the tab order stays readable.
+ * ========================================================================= */
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-block-end: var(--border-1) solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Keep the active tab in view when it is selected by keyboard. */
+  scroll-snap-type: inline proximity;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-4);
+  padding-block: var(--space-2);
+  border: 0;
+  border-block-end: var(--border-2) solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  white-space: nowrap;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.tab:hover {
+  color: var(--text-strong);
+  background: var(--surface-hover);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+  border-block-end-color: var(--brand-accent-edge);
+}
+
+.tab__count {
+  font-size: var(--text-3xs);
+  font-variant-numeric: tabular-nums;
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+
+.tab[aria-selected='true'] .tab__count {
+  background: var(--brand-accent-wash);
+  color: var(--brand-accent-ink);
+}
+
+.tab-panel {
+  padding-block-start: var(--space-5);
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+ * Table, becoming stacked cards under 640px
+ *
+ * Below 40rem the table's rows become label cards: each cell shows its column
+ * name from data-label, so the data keeps its keys when the grid is gone. The
+ * markup carries explicit ARIA roles, because changing display on a table
+ * removes its semantics from the accessibility tree.
+ * ========================================================================= */
+
+.table-wrap {
+  /* On a pointer device a wide table scrolls inside its frame rather than
+   * pushing the page sideways. tabindex="0" in the markup makes that scroll
+   * reachable from the keyboard. */
+  overflow-x: auto;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.table {
+  inline-size: 100%;
+  font-size: var(--text-sm);
+}
+
+.table caption {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  vertical-align: baseline;
+}
+
+.table thead th {
+  background: var(--surface-sunken);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+[lang='ar'] .table thead th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+.table tbody tr + tr th,
+.table tbody tr + tr td {
+  border-block-start: var(--border-1) solid var(--rule-muted);
+}
+
+.table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.table__num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* The sideways-scroll hint is only true in the band where the table is still a
+ * table but no longer fits: below 40rem the rows are stacked cards and nothing
+ * scrolls, above 48rem it fits. Shown outside that band it describes a gesture
+ * that does nothing. */
+.table__scroll-hint {
+  display: none;
+}
+
+@media (min-width: 40rem) and (max-width: 47.99rem) {
+  .table__scroll-hint {
+    display: block;
+  }
+}
+
+/* A sortable column header. The arrow states the direction, so sort order is
+ * never carried by position alone. */
+.table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--tap-min);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.table__sort:hover {
+  color: var(--text-strong);
+}
+
+.table__sort svg {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.table__sort:hover svg {
+  opacity: 0.5;
+}
+
+[aria-sort='ascending'] .table__sort,
+[aria-sort='descending'] .table__sort {
+  color: var(--brand-accent-ink);
+}
+
+[aria-sort='ascending'] .table__sort svg,
+[aria-sort='descending'] .table__sort svg {
+  opacity: 1;
+}
+
+[aria-sort='descending'] .table__sort svg {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 39.99rem) {
+  .table-wrap {
+    overflow-x: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .table,
+  .table caption,
+  .table tbody,
+  .table tr,
+  .table td,
+  .table th {
+    display: block;
+  }
+
+  .table thead {
+    /* The column names move into each cell, so the header row has no job left.
+     * It stays in the markup and in the accessibility tree. */
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table caption {
+    padding-inline: 0;
+    border: 0;
+  }
+
+  .table tbody tr {
+    padding: var(--space-1) var(--space-4);
+    background: var(--surface-raised);
+    border: var(--border-1) solid var(--rule);
+    border-radius: var(--radius-lg);
+  }
+
+  .table tbody tr + tr {
+    margin-block-start: var(--space-3);
+  }
+
+  .table tbody tr:hover {
+    background: var(--surface-raised);
+  }
+
+  .table tbody tr + tr th,
+  .table tbody tr + tr td {
+    border-block-start: 0;
+  }
+
+  /* Each cell becomes a key/value pair, set exactly like a label strip: the
+   * column name as the micro-label, the value in tabular numerals beneath. */
+  .table td,
+  .table tbody th {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+    padding-inline: 0;
+    padding-block: var(--space-3);
+    /* Without this a badge or an avatar row becomes a grid item filling the
+     * whole cell, so a status chip stretches the width of the card. Start
+     * alignment sizes each value to its content, still capped by the track. */
+    justify-items: start;
+  }
+
+  .table td + td,
+  .table tbody th + td {
+    border-block-start: var(--border-1) solid var(--rule-muted);
+  }
+
+  .table td[data-label]::before,
+  .table tbody th[data-label]::before {
+    content: attr(data-label);
+    font-size: var(--text-3xs);
+    font-weight: var(--weight-bold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-caps);
+    color: var(--text-muted);
+  }
+
+  [lang='ar'] .table td[data-label]::before,
+  [lang='ar'] .table tbody th[data-label]::before {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--text-2xs);
+  }
+}
+
+/* ============================================================================
+ * Pagination
+ * ========================================================================= */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pagination__list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pagination__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-inline-size: var(--tap-min);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-2);
+  border: var(--border-1) solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-body);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.pagination__link:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+.pagination__link[aria-current='page'] {
+  background: var(--brand-accent-wash);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+}
+
+.pagination__link[aria-disabled='true'] {
+  color: var(--text-disabled);
+  pointer-events: none;
+}
+
+.pagination__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--space-6);
+  color: var(--text-muted);
+}
+
+.pagination__step {
+  padding-inline: var(--space-3);
+}
+
+.pagination__step svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+/* The count is stated in words as well as arrows, so a visitor always knows
+ * where they are in a long ticket queue. */
+.pagination__status {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 40rem) {
+  .pagination__status {
+    margin-inline-start: auto;
+  }
+}
+
+/* ============================================================================
+ * Breadcrumb
+ * ========================================================================= */
+
+.breadcrumb {
+  font-size: var(--text-2xs);
+}
+
+.breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.breadcrumb__link {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding-block: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.breadcrumb__link:hover {
+  color: var(--brand-accent-ink);
+  text-decoration: underline;
+}
+
+.breadcrumb__item[aria-current='page'] {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+}
+
+/* The separator is decorative and hidden from assistive technology in the
+ * markup. It flips in RTL via .icon--dir. */
+.breadcrumb__sep {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  color: var(--stone-400);
+  flex: none;
+}
+
+/* ============================================================================
+ * Avatar with initials
+ *
+ * Initials on a tinted ground, never a coloured ring from a random palette.
+ * The ground is the accent wash, so a directory page works with any company
+ * colour, and the hairline keeps the shape readable on a tinted row.
+ * ========================================================================= */
+
+.avatar {
+  --avatar-size: var(--space-8);
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--avatar-size);
+  block-size: var(--avatar-size);
+  flex: none;
+  background: var(--brand-accent-wash-2);
+  color: var(--brand-accent-ink);
+  border: var(--border-1) solid var(--brand-accent-edge);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Arabic initials are a single letter and must not be uppercased. */
+.avatar:lang(ar),
+[lang='ar'] .avatar {
+  text-transform: none;
+}
+
+.avatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.avatar--sm {
+  --avatar-size: var(--space-6);
+  font-size: var(--text-3xs);
+}
+
+.avatar--lg {
+  --avatar-size: var(--space-12);
+  font-size: var(--text-md);
+}
+
+.avatar--xl {
+  --avatar-size: var(--space-16);
+  font-size: var(--text-xl);
+}
+
+/* A person, as they appear in a directory row or a ticket's assignee field. */
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.person__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  line-height: var(--leading-snug);
+}
+
+.person__role {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+ * Dialog
+ *
+ * The native <dialog>. showModal() gives the focus trap, the inert background,
+ * Escape to close, and the top layer for free; none of that is reimplemented.
+ * A dialog is used only where a task needs protected focus or interruption.
+ * ========================================================================= */
+
+.dialog {
+  margin: auto;
+  padding: 0;
+  inline-size: min(100% - var(--space-8), 34rem);
+  max-block-size: min(100% - var(--space-8), 44rem);
+  background: var(--surface-raised);
+  color: var(--text-body);
+  /* A floating layer: shadow, not a hairline. Elevation declared once. */
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: var(--scrim);
+}
+
+/* Entrance: one exponential ease-out from an already-visible default, so the
+ * dialog is legible even if the animation never runs. */
+@media (prefers-reduced-motion: no-preference) {
+  .dialog[open] {
+    animation: dialog-in var(--dur-3) var(--ease-out);
+  }
+
+  .dialog[open]::backdrop {
+    animation: backdrop-in var(--dur-3) var(--ease-out);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2)) scale(0.985);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.dialog__form {
+  display: flex;
+  flex-direction: column;
+  max-block-size: inherit;
+  min-block-size: 0;
+}
+
+.dialog__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.dialog__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  min-width: 0;
+}
+
+.dialog__close {
+  margin-inline-start: auto;
+  flex: none;
+}
+
+.dialog__body {
+  padding: var(--space-5);
+  overflow-y: auto;
+  min-block-size: 0;
+}
+
+.dialog__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-sunken);
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+@media (min-width: 30rem) {
+  .dialog__footer {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+
+/* ============================================================================
+ * Toast
+ *
+ * Pinned to the block-end on a phone, where it is in view and clear of the
+ * bottom nav, and to the inline-end on a desktop. The container is a live
+ * region, so a toast is announced without stealing focus.
+ * ========================================================================= */
+
+.toaster {
+  position: fixed;
+  z-index: var(--z-toast);
+  inset-inline: var(--gutter);
+  inset-block-end: calc(
+    var(--bottomnav-height) + var(--space-4) + env(safe-area-inset-bottom, 0px)
+  );
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+@media (min-width: 48rem) {
+  .toaster {
+    inset-inline: auto var(--space-6);
+    inset-block-end: var(--space-6);
+    inline-size: min(100% - var(--space-12), 24rem);
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  pointer-events: auto;
+  /* The state hairline is on the block-start edge, not a thick inline border:
+   * a 4px coloured side-border is the pattern this design does not use. */
+  border-block-start: var(--border-3) solid var(--rule-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast {
+    animation: toast-in var(--dur-3) var(--ease-out);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-3));
+  }
+}
+
+.toast__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  flex: none;
+  margin-block-start: 0.05em;
+}
+
+.toast__content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toast__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  line-height: var(--leading-snug);
+}
+
+.toast__text {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.toast__close {
+  margin-inline-start: auto;
+  flex: none;
+}
+
+.toast--success {
+  border-block-start-color: var(--success-ink);
+}
+.toast--success .toast__icon {
+  color: var(--success-ink);
+}
+
+.toast--warning {
+  border-block-start-color: var(--warning-ink);
+}
+.toast--warning .toast__icon {
+  color: var(--warning-ink);
+}
+
+.toast--danger {
+  border-block-start-color: var(--danger-ink);
+}
+.toast--danger .toast__icon {
+  color: var(--danger-ink);
+}
+
+.toast--info {
+  border-block-start-color: var(--info-ink);
+}
+.toast--info .toast__icon {
+  color: var(--info-ink);
+}
+
+/* ============================================================================
+ * Inline notice
+ *
+ * The non-transient sibling of a toast: a message that belongs to the page,
+ * such as why a form cannot be submitted.
+ * ========================================================================= */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+}
+
+.notice__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  flex: none;
+  margin-block-start: 0.05em;
+}
+
+.notice__content {
+  min-width: 0;
+}
+
+.notice__title {
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.notice--success {
+  background: var(--success-surface);
+  border-color: var(--success-edge);
+  color: var(--success-ink);
+}
+
+.notice--warning {
+  background: var(--warning-surface);
+  border-color: var(--warning-edge);
+  color: var(--warning-ink);
+}
+
+.notice--danger {
+  background: var(--danger-surface);
+  border-color: var(--danger-edge);
+  color: var(--danger-ink);
+}
+
+.notice--info {
+  background: var(--info-surface);
+  border-color: var(--info-edge);
+  color: var(--info-ink);
+}
+
+.notice--success .notice__title,
+.notice--warning .notice__title,
+.notice--danger .notice__title,
+.notice--info .notice__title {
+  color: inherit;
+}
+
+/* ============================================================================
+ * Empty state
+ *
+ * Says what is missing, why, and the one thing to do next. The mark is drawn
+ * geometry from the label-strip idea: a blank label with nothing written on
+ * it. No illustration.
+ * ========================================================================= */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  background: var(--surface-raised);
+  border: var(--border-1) dashed var(--rule-strong);
+  border-radius: var(--radius-lg);
+}
+
+.empty__mark {
+  inline-size: var(--space-12);
+  block-size: var(--space-12);
+  color: var(--stone-400);
+}
+
+.empty__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.empty__text {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 44ch;
+}
+
+.empty__action {
+  margin-block-start: var(--space-2);
+}
+
+/* ============================================================================
+ * Skeleton loading
+ *
+ * Mirrors the shape of a label card, so the page does not reflow when the real
+ * record lands. The sheen stops entirely under reduced motion, leaving a plain
+ * block rather than a flashing one.
+ * ========================================================================= */
+
+.skeleton {
+  display: block;
+  background: var(--skeleton-base);
+  border-radius: var(--radius-sm);
+  block-size: var(--space-4);
+  inline-size: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      var(--skeleton-base) 0%,
+      var(--skeleton-sheen) 50%,
+      var(--skeleton-base) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-sweep 1.4s var(--ease-in-out) infinite;
+  }
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton--text {
+  block-size: var(--space-3);
+  border-radius: var(--radius-pill);
+}
+
+.skeleton--title {
+  block-size: var(--space-5);
+  inline-size: 60%;
+}
+
+.skeleton--value {
+  block-size: var(--space-4);
+  inline-size: var(--space-16);
+}
+
+.skeleton--avatar {
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+.skeleton--line-short {
+  inline-size: 40%;
+}
+
+.skeleton--line-long {
+  inline-size: 85%;
+}
+
+/* The skeleton of a record card: the label strip's keys and values, then the
+ * body. The strip's own hairline stays, so the shape is recognisable. */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-card__strip {
+  display: flex;
+  gap: var(--space-5);
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.skeleton-card__pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ============================================================================
+ * Segmented control
+ *
+ * Used for the language and theme switches in the styleguide, and for any
+ * small set of exclusive options where tabs would overstate the change.
+ * ========================================================================= */
+
+.segmented {
+  display: inline-flex;
+  padding: var(--space-px);
+  background: var(--surface-sunken);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-md);
+}
+
+.segmented__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  border: var(--border-1) solid transparent;
+  border-radius: calc(var(--radius-md) - var(--border-1));
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 48rem) {
+  .segmented__option {
+    min-block-size: 2rem;
+  }
+}
+
+.segmented__option:hover {
+  color: var(--text-strong);
+}
+
+.segmented__option[aria-pressed='true'],
+.segmented__option[aria-selected='true'] {
+  background: var(--surface-raised);
+  border-color: var(--rule-strong);
+  color: var(--text-strong);
+}
+
+/* ============================================================================
+ * Definition list, for a record's remaining fields
+ * ========================================================================= */
+
+.deflist {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+@media (min-width: 30rem) {
+  .deflist {
+    grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+    gap: var(--space-3) var(--space-5);
+    align-items: baseline;
+  }
+}
+
+.deflist dt {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+[lang='ar'] .deflist dt {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+.deflist dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-strong);
+}

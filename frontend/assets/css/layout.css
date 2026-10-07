@@ -1,0 +1,429 @@
+/* ============================================================================
+ * layout.css — the app shell and the layout primitives.
+ *
+ * The shell is a company rail, a top bar, and one work area. Below 48rem the
+ * rail becomes a thumb-reachable bottom nav, because site staff hold the phone
+ * in one hand with the other on a ladder. Every nav target is at least 44px.
+ *
+ * Logical properties only. The shell mirrors in RTL with no overrides.
+ * ========================================================================= */
+
+/* --- App frame ---------------------------------------------------------- */
+
+.app {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-areas:
+    'topbar'
+    'main';
+  grid-template-rows: auto 1fr;
+}
+
+@media (min-width: 48rem) {
+  .app {
+    grid-template-areas:
+      'rail topbar'
+      'rail main';
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+}
+
+/* --- Company rail ------------------------------------------------------
+ * Carries the company's mark and the four jobs. The only place in the shell
+ * that is allowed to show the accent as a surface.
+ */
+/* Placement belongs to the shell, not to the component. Scoping it to a direct
+ * child of .app means dropping a rail into any other grid (a preview, a future
+ * settings layout) cannot resolve "rail" as a named grid line and strand it in
+ * an implicit track. */
+.app > .rail {
+  grid-area: rail;
+}
+
+.rail {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface-raised);
+  border-inline-end: var(--border-1) solid var(--rule);
+  position: sticky;
+  inset-block-start: 0;
+  block-size: 100vh;
+  block-size: 100dvh;
+  overflow-y: auto;
+  z-index: var(--z-nav);
+}
+
+@media (min-width: 48rem) {
+  .rail {
+    display: flex;
+  }
+}
+
+.rail__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  text-decoration: none;
+  color: var(--text-strong);
+  border-radius: var(--radius-md);
+}
+
+/* The company mark. A Company record supplies a logo; until one is loaded the
+ * mark falls back to the company's initials on the accent, so the shell is
+ * never broken by missing evidence. */
+.rail__mark {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  flex: none;
+  background: var(--brand-accent-fill);
+  color: var(--brand-accent-on);
+  border: var(--border-1) solid var(--brand-accent-edge);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  padding-inline-start: var(--tracking-caps);
+  overflow: hidden;
+}
+
+.rail__mark img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.rail__company {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rail__company-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.rail__company-group {
+  font-size: var(--text-3xs);
+  color: var(--text-muted);
+}
+
+.rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rail__section {
+  margin-block-start: var(--space-5);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  padding-block: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-body);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.nav-link:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+/* The current page is marked by the accent wash plus a hairline rule on the
+ * inline-start edge and a bold label: colour is never the only signal. */
+.nav-link[aria-current='page'] {
+  background: var(--brand-accent-wash);
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+  box-shadow: inset var(--border-2) 0 0 0 var(--brand-accent-edge);
+}
+
+[dir='rtl'] .nav-link[aria-current='page'] {
+  box-shadow: inset calc(-1 * var(--border-2)) 0 0 0 var(--brand-accent-edge);
+}
+
+.nav-link__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+}
+
+.nav-link__count {
+  margin-inline-start: auto;
+  font-size: var(--text-3xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.nav-link[aria-current='page'] .nav-link__count {
+  color: var(--brand-accent-ink);
+}
+
+/* --- Top bar ------------------------------------------------------------ */
+
+.app > .topbar {
+  grid-area: topbar;
+}
+
+.topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--topbar-height);
+  padding-inline: var(--gutter);
+  padding-block: var(--space-2);
+  background: var(--surface-raised);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.topbar__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  min-width: 0;
+}
+
+.topbar__spacer {
+  margin-inline-start: auto;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* On a phone the company mark moves into the top bar, since the rail is gone. */
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--text-strong);
+}
+
+@media (min-width: 48rem) {
+  .topbar__brand {
+    display: none;
+  }
+}
+
+/* --- Main work area ---------------------------------------------------- */
+
+.app > .main {
+  grid-area: main;
+}
+
+.main {
+  min-width: 0;
+  padding-inline: var(--gutter);
+  padding-block: var(--space-6) var(--space-12);
+}
+
+/* Clear the bottom nav on a phone, including the home-gesture inset. */
+@media (max-width: 47.99rem) {
+  .main {
+    padding-block-end: calc(
+      var(--bottomnav-height) + var(--space-8) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+}
+
+.page {
+  max-width: var(--page-max);
+  margin-inline: auto;
+}
+
+.page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-block-end: var(--space-6);
+}
+
+.page__heading {
+  min-width: 0;
+}
+
+.page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.page__lead {
+  margin-block-start: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  max-width: var(--measure);
+}
+
+/* --- Bottom nav (phones only) -----------------------------------------
+ * Pinned within thumb reach. Targets are at least 44px and the bar respects
+ * the home-gesture safe area so the last row is never under the handle.
+ */
+.bottomnav {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-raised);
+  border-block-start: var(--border-1) solid var(--rule);
+  padding-block-end: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 48rem) {
+  .bottomnav {
+    display: none;
+  }
+}
+
+.bottomnav__link {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-block-size: var(--bottomnav-height);
+  min-inline-size: var(--tap-min);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--leading-tight);
+  text-align: center;
+  text-decoration: none;
+  position: relative;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.bottomnav__link:hover {
+  color: var(--text-body);
+  text-decoration: none;
+}
+
+/* Current page: the accent ink, a bold label and a rule across the top of the
+ * cell. Three signals, so the state survives greyscale and bright sun. */
+.bottomnav__link[aria-current='page'] {
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+}
+
+.bottomnav__link[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(-1 * var(--border-1));
+  inset-inline: var(--space-3);
+  block-size: var(--border-2);
+  background: var(--brand-accent-edge);
+}
+
+.bottomnav__icon {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+}
+
+.bottomnav__label {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Layout primitives ------------------------------------------------- */
+
+/* Vertical rhythm. --stack-gap lets a caller change the step without new CSS. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap, var(--space-4));
+}
+
+.stack--tight {
+  --stack-gap: var(--space-2);
+}
+
+.stack--loose {
+  --stack-gap: var(--space-8);
+}
+
+/* A row that wraps instead of overflowing. */
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cluster-gap, var(--space-3));
+}
+
+.cluster--tight {
+  --cluster-gap: var(--space-2);
+}
+
+.cluster--between {
+  justify-content: space-between;
+}
+
+/* Reflows by whole cells, never by squeezing one. */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-min, 18rem)), 1fr));
+}
+
+.grid--narrow {
+  --grid-min: 13rem;
+}
+
+/* Work area split: the record and its side panel. Stacks under 64rem. */
+.split {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) var(--split-aside, 20rem);
+  }
+}
+
+.u-hide-sm {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .u-hide-sm {
+    display: revert;
+  }
+}
+
+@media (min-width: 48rem) {
+  .u-only-sm {
+    display: none;
+  }
+}

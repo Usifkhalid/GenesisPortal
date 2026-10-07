@@ -1,0 +1,420 @@
+/* ============================================================================
+ * tokens.css — the only file in the portal that holds raw values.
+ *
+ * Visual world: The Assay Card. Every record in the portal is a labelled
+ * specimen — an identity, measured values with units, and a provenance line.
+ * Warm stone paper, graphite ink, hairline rules, tabular numerals.
+ *
+ * Three rules this file exists to enforce:
+ *
+ *   1. One pitch. Every spacing step is a multiple of 4px. Every separator is
+ *      a 1px hairline. No shadow does structural work; shadows belong only to
+ *      layers that genuinely float above the page.
+ *
+ *   2. One accent, supplied at runtime. A Company record sets --brand-accent
+ *      and nothing else. Every other brand value is derived from it here, with
+ *      WCAG AA guaranteed by construction for any hue and any lightness. See
+ *      "Brand accent" below for the arithmetic and why it is shaped this way.
+ *
+ *   3. No raw values outside this file. Page and component CSS reads tokens.
+ *
+ * Themes: light is the default because site staff work outdoors in bright sun.
+ * Dark follows prefers-color-scheme and can be forced with [data-theme].
+ * ========================================================================= */
+
+:root {
+  /* --- Pitch and spacing -------------------------------------------------
+   * One 4px pitch. --space-px is the hairline; it is the only sub-pitch value.
+   */
+  --space-px: 1px;
+  --space-0: 0;
+  --space-1: 0.25rem; /*  4px */
+  --space-2: 0.5rem; /*   8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /*    16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /*  24px */
+  --space-8: 2rem; /*    32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem; /*   48px */
+  --space-16: 4rem; /*   64px */
+  --space-20: 5rem; /*   80px */
+  --space-24: 6rem; /*   96px */
+
+  /* --- Type --------------------------------------------------------------
+   * One stack serves both languages. IBM Plex Sans is listed first but its
+   * @font-face unicode-ranges exclude Arabic, so Arabic text falls through to
+   * IBM Plex Sans Arabic automatically. Latin digits stay with IBM Plex Sans
+   * in both languages, so tabular numerals in a label strip line up
+   * identically whichever language the portal is in.
+   */
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Arabic', system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+
+  /* Two weights only, so Arabic and Latin have identical coverage. */
+  --weight-normal: 400;
+  --weight-bold: 600;
+
+  --text-3xs: 0.6875rem; /* 11px — label-strip keys, badge text */
+  --text-2xs: 0.75rem; /*   12px — help text, table meta */
+  --text-xs: 0.8125rem; /*  13px — dense table cells, breadcrumb */
+  --text-sm: 0.875rem; /*   14px — secondary body, control labels */
+  --text-md: 1rem; /*       16px — body. The floor for anything read in sun. */
+  --text-lg: 1.125rem; /*   18px — lead paragraph, card title */
+  --text-xl: 1.3125rem; /*  21px — section heading */
+  --text-2xl: 1.5625rem; /* 25px — page heading */
+  --text-3xl: 1.875rem; /*  30px — page heading, desktop */
+  --text-4xl: 2.25rem; /*   36px — the one display size */
+
+  --leading-tight: 1.2; /*  headings */
+  --leading-snug: 1.35; /*  card titles, control labels */
+  --leading-normal: 1.55; /* body */
+  --leading-loose: 1.7; /*  long-form reading */
+
+  /* Tracking never passes -0.03em. Positive tracking is for Latin micro-caps
+   * only and is switched off for Arabic, which has no uppercase and whose
+   * letters must stay joined. See .u-microlabel in components.css. */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-caps: 0.07em;
+
+  --measure: 68ch; /* body measure; 65-75ch */
+
+  /* --- Radii -------------------------------------------------------------
+   * The world is a die-cut paper label, not a soft consumer card, so radii are
+   * crisp. Documented in DESIGN.md as a deliberate choice.
+   */
+  --radius-sm: 3px; /*  badges' corners, swatches, checkbox */
+  --radius-md: 6px; /*  inputs, buttons, tabs */
+  --radius-lg: 10px; /* cards, dialogs, popovers */
+  --radius-pill: 999px; /* switch, small chips */
+
+  /* --- Borders -----------------------------------------------------------
+   * The hairline is the portal's structural device. --border-2 exists only for
+   * focus rings and the active-tab rule.
+   */
+  --border-1: 1px;
+  --border-2: 2px;
+  --border-3: 3px;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --dur-1: 120ms; /* state change on a control */
+  --dur-2: 180ms; /* entrance of a small layer */
+  --dur-3: 280ms; /* dialog, toast, the label-strip register */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* exponential ease-out */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Layering ---------------------------------------------------------- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-nav: 200;
+  --z-dropdown: 300;
+  --z-overlay: 400;
+  --z-dialog: 500;
+  --z-toast: 600;
+
+  /* --- Layout ------------------------------------------------------------ */
+  --rail-width: 15rem;
+  --topbar-height: 3.5rem;
+  --bottomnav-height: 3.75rem; /* 60px: clears the 44px target plus padding */
+  --tap-min: 2.75rem; /* 44px. The minimum hit area for anything tappable. */
+  --page-max: 78rem;
+  --gutter: var(--space-4);
+
+  /* ========================================================================
+   * Brand accent
+   *
+   * A Company record supplies exactly one value, --brand-accent. Everything
+   * else below is derived, and every derivation is contrast-safe for any hue
+   * and any lightness. The defaults here are the neutral shell's own iron
+   * oxide, used when no company is loaded.
+   *
+   * The arithmetic, and why:
+   *
+   * -on / -shade  Whether a label on an accent fill should be black or white
+   *               is decided on WCAG relative luminance Y, not on OKLCH
+   *               lightness. A saturated red sits at OKLCH L 0.52 but has
+   *               Y 0.13, so a lightness threshold picks black and fails.
+   *                 white clears 4.5:1 when Y <= 1.05/4.5 - 0.05 = 0.18333
+   *                 black clears 4.5:1 when Y >= 4.5*0.05 - 0.05 = 0.17500
+   *               Those two ranges overlap, so the single threshold 0.179 is
+   *               always safe. Y is computed in the srgb-linear space, where
+   *               the r/g/b channel keywords are already linear-light.
+   *               -shade is -on inverted.
+   *
+   * -hover/-active  Mix the fill towards -shade, i.e. away from the label
+   *               colour. A dark fill therefore darkens and a light fill
+   *               lightens, so the label's own contrast can only improve as
+   *               the control is pressed. Moving the other way would break it.
+   *
+   * -fill         The accent's lightness is banded to [0.26, 0.88] so a
+   *               near-white or near-black company colour still reads as a
+   *               filled control. The band never crosses the 0.179 luminance
+   *               threshold, so -on stays correct.
+   *
+   * -ink          The accent as text, icon or focus ring on a neutral ground.
+   *               Lightness is capped at 0.46 in light theme and floored at
+   *               0.78 in dark, which clears 4.5:1 for every hue and chroma.
+   *
+   * -edge         The accent as a hairline: a keyline around a filled control
+   *               and the ring that appears on hover. Clamped to clear 3:1
+   *               against both the page ground and a card. This is what makes
+   *               hover perceptible for a near-white or near-black accent,
+   *               where the fill itself has almost nowhere to move.
+   *
+   * -wash/-wash-2  Tinted grounds for a selected row or an accent strip, held
+   *               at a fixed lightness so -ink stays readable on them.
+   *
+   * Verified for blue, green, amber, red, teal, purple, pink, lime, pale
+   * yellow, pale sky, near-black, pure white and mid grey, in both themes, and
+   * swept across all 360 hues at six chroma levels. See docs/DECISIONS.md.
+   * ===================================================================== */
+  --brand-accent: #b4552d;
+
+  /* Fallback chain for engines without relative colour syntax. color-mix has
+   * wider support, so these degrade to an approximation rather than nothing.
+   * The @supports block below replaces them where the real arithmetic runs. */
+  --brand-accent-fill: var(--brand-accent);
+  --brand-accent-on: #ffffff;
+  --brand-accent-shade: #000000;
+  --brand-accent-hover: color-mix(in oklab, var(--brand-accent), #000 16%);
+  --brand-accent-active: color-mix(in oklab, var(--brand-accent), #000 28%);
+  --brand-accent-ink: color-mix(in oklab, var(--brand-accent), #000 26%);
+  --brand-accent-edge: var(--brand-accent);
+  --brand-accent-wash: color-mix(in oklab, var(--brand-accent) 10%, var(--surface-raised));
+  --brand-accent-wash-2: color-mix(in oklab, var(--brand-accent) 20%, var(--surface-raised));
+
+  /* ========================================================================
+   * Warm stone neutrals — light theme
+   *
+   * OKLCH hue 74 at very low chroma: the colour of limestone and specimen
+   * label card stock. Chroma tapers at both ends so near-white and near-black
+   * stay believable. Every text pair below is verified at 4.5:1 or better.
+   * ===================================================================== */
+  --stone-0: #ffffff;
+  --stone-50: #fbf8f5;
+  --stone-100: #f3efea;
+  --stone-150: #eae5e0;
+  --stone-200: #e0dad4;
+  --stone-300: #cfc9c2;
+  --stone-400: #aaa49c;
+  --stone-500: #857f78;
+  --stone-600: #68635d;
+  --stone-700: #4a4641;
+  --stone-800: #312d29;
+  --stone-900: #1f1c18;
+  --stone-950: #110f0c;
+
+  /* --- Semantic surfaces and text --------------------------------------- */
+  --surface-ground: var(--stone-50); /* the page */
+  --surface-raised: var(--stone-0); /*  a card, an input, a dialog */
+  --surface-sunken: var(--stone-100); /* a table head, a well, a skeleton */
+  --surface-hover: var(--stone-100); /*  row hover on a neutral surface */
+  --surface-active: var(--stone-150);
+  --surface-disabled: var(--stone-100);
+
+  --text-strong: var(--stone-900); /* headings, values, ink */
+  --text-body: var(--stone-800); /*   body copy */
+  --text-muted: var(--stone-600); /*  secondary text, help, placeholder */
+  --text-disabled: var(--stone-500); /* exempt from contrast rules */
+
+  --rule: var(--stone-200); /*        the hairline. The structural device. */
+  --rule-strong: var(--stone-300); /* an input's edge, a table's outer frame */
+  --rule-muted: var(--stone-150); /*  a divider inside a group */
+
+  /* --- State colours ---------------------------------------------------- */
+  --success-ink: #076b29;
+  --success-surface: #e9f7ea;
+  --success-edge: #b8dabc;
+  --warning-ink: #7a4b00;
+  --warning-surface: #fcf0e3;
+  --warning-edge: #e6caa9;
+  --danger-ink: #a04038;
+  --danger-surface: #ffedeb;
+  --danger-edge: #f2c2bc;
+  --info-ink: #0b67a9;
+  --info-surface: #e7f4ff;
+  --info-edge: #b4d3f2;
+
+  /* --- Shadows -----------------------------------------------------------
+   * Only for layers that genuinely float. A card never gets one: its edge is a
+   * hairline. Shadow colour is the warm ink, never pure black.
+   */
+  --shadow-color: 31 28 24; /* --stone-900 as an rgb triplet */
+  --shadow-1: 0 1px 2px rgb(var(--shadow-color) / 0.07),
+    0 4px 12px rgb(var(--shadow-color) / 0.09);
+  --shadow-2: 0 2px 4px rgb(var(--shadow-color) / 0.08),
+    0 16px 40px rgb(var(--shadow-color) / 0.14);
+
+  --scrim: rgb(var(--shadow-color) / 0.42);
+
+  /* --- Skeleton loading ------------------------------------------------- */
+  --skeleton-base: var(--stone-150);
+  --skeleton-sheen: var(--stone-100);
+
+  color-scheme: light;
+}
+
+/* ============================================================================
+ * The real accent arithmetic. Gated on relative colour syntax; the fallbacks
+ * above cover engines without it.
+ * ========================================================================= */
+@supports (color: oklch(from white l c h)) {
+  :root {
+    --brand-accent-fill: oklch(from var(--brand-accent) clamp(0.26, l, 0.88) c h);
+
+    /* Y = 0.2126r + 0.7152g + 0.0722b, computed on linear-light channels.
+     * Below the 0.179 threshold the label is white, above it black. */
+    --brand-accent-on: color(
+      from var(--brand-accent) srgb-linear
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * -10000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * -10000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * -10000), 1)
+    );
+    --brand-accent-shade: color(
+      from var(--brand-accent) srgb-linear
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * 10000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * 10000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.179) * 10000), 1)
+    );
+
+    --brand-accent-hover: color-mix(
+      in oklab,
+      var(--brand-accent-fill),
+      var(--brand-accent-shade) 16%
+    );
+    --brand-accent-active: color-mix(
+      in oklab,
+      var(--brand-accent-fill),
+      var(--brand-accent-shade) 28%
+    );
+
+    --brand-accent-ink: oklch(from var(--brand-accent) clamp(0.2, min(l, 0.46), 1) c h);
+    --brand-accent-edge: oklch(from var(--brand-accent) min(l, 0.56) c h);
+    --brand-accent-wash: oklch(from var(--brand-accent) 0.965 calc(min(c, 0.2) * 0.22) h);
+    --brand-accent-wash-2: oklch(from var(--brand-accent) 0.925 calc(min(c, 0.2) * 0.34) h);
+  }
+}
+
+/* ============================================================================
+ * Dark theme
+ *
+ * Warm graphite, not black: the paper world keeps its warmth after dark, and a
+ * true-black ground with light text smears on the cheap LCDs site staff carry.
+ * ========================================================================= */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --stone-0: #191714;
+    --stone-50: #110f0d;
+    --stone-100: #23201d;
+    --stone-150: #2d2a26;
+    --stone-200: #37332f;
+    --stone-300: #47433e;
+    --stone-400: #5f5a54;
+    --stone-500: #7f7973;
+    --stone-600: #9e9992;
+    --stone-700: #bab5ae;
+    --stone-800: #d3cfc9;
+    --stone-900: #e9e6e1;
+    --stone-950: #f7f5f1;
+
+    --success-ink: #89d293;
+    --success-surface: #1a2b1c;
+    --success-edge: #305135;
+    --warning-ink: #ecb166;
+    --warning-surface: #302313;
+    --warning-edge: #5c4221;
+    --danger-ink: #ffa095;
+    --danger-surface: #351f1d;
+    --danger-edge: #643b36;
+    --info-ink: #80c4ff;
+    --info-surface: #182736;
+    --info-edge: #2c4a67;
+
+    /* Shadows read as almost nothing on a dark ground, so floating layers lean
+     * on a hairline and a deeper, wider shadow. */
+    --shadow-color: 0 0 0;
+    --shadow-1: 0 1px 2px rgb(var(--shadow-color) / 0.3),
+      0 4px 14px rgb(var(--shadow-color) / 0.38);
+    --shadow-2: 0 2px 6px rgb(var(--shadow-color) / 0.36),
+      0 18px 44px rgb(var(--shadow-color) / 0.52);
+    --scrim: rgb(var(--shadow-color) / 0.62);
+
+    --skeleton-base: var(--stone-150);
+    --skeleton-sheen: var(--stone-200);
+
+    color-scheme: dark;
+  }
+
+  @supports (color: oklch(from white l c h)) {
+    :root:not([data-theme='light']) {
+      --brand-accent-ink: oklch(
+        from var(--brand-accent) max(l, 0.78) calc(min(c, 0.2) * 0.9) h
+      );
+      --brand-accent-edge: oklch(from var(--brand-accent) clamp(0.56, l, 0.72) c h);
+      --brand-accent-wash: oklch(from var(--brand-accent) 0.26 calc(min(c, 0.2) * 0.3) h);
+      --brand-accent-wash-2: oklch(from var(--brand-accent) 0.33 calc(min(c, 0.2) * 0.4) h);
+    }
+  }
+
+  :root:not([data-theme='light']) {
+    /* Fallback for engines without relative colour syntax. */
+    --brand-accent-ink: color-mix(in oklab, var(--brand-accent), #fff 42%);
+  }
+}
+
+/* Forced dark, independent of the operating system. Same values. */
+:root[data-theme='dark'] {
+  --stone-0: #191714;
+  --stone-50: #110f0d;
+  --stone-100: #23201d;
+  --stone-150: #2d2a26;
+  --stone-200: #37332f;
+  --stone-300: #47433e;
+  --stone-400: #5f5a54;
+  --stone-500: #7f7973;
+  --stone-600: #9e9992;
+  --stone-700: #bab5ae;
+  --stone-800: #d3cfc9;
+  --stone-900: #e9e6e1;
+  --stone-950: #f7f5f1;
+
+  --success-ink: #89d293;
+  --success-surface: #1a2b1c;
+  --success-edge: #305135;
+  --warning-ink: #ecb166;
+  --warning-surface: #302313;
+  --warning-edge: #5c4221;
+  --danger-ink: #ffa095;
+  --danger-surface: #351f1d;
+  --danger-edge: #643b36;
+  --info-ink: #80c4ff;
+  --info-surface: #182736;
+  --info-edge: #2c4a67;
+
+  --shadow-color: 0 0 0;
+  --shadow-1: 0 1px 2px rgb(var(--shadow-color) / 0.3),
+    0 4px 14px rgb(var(--shadow-color) / 0.38);
+  --shadow-2: 0 2px 6px rgb(var(--shadow-color) / 0.36),
+    0 18px 44px rgb(var(--shadow-color) / 0.52);
+  --scrim: rgb(var(--shadow-color) / 0.62);
+
+  --skeleton-base: var(--stone-150);
+  --skeleton-sheen: var(--stone-200);
+
+  --brand-accent-ink: color-mix(in oklab, var(--brand-accent), #fff 42%);
+
+  color-scheme: dark;
+}
+
+@supports (color: oklch(from white l c h)) {
+  :root[data-theme='dark'] {
+    --brand-accent-ink: oklch(
+      from var(--brand-accent) max(l, 0.78) calc(min(c, 0.2) * 0.9) h
+    );
+    --brand-accent-edge: oklch(from var(--brand-accent) clamp(0.56, l, 0.72) c h);
+    --brand-accent-wash: oklch(from var(--brand-accent) 0.26 calc(min(c, 0.2) * 0.3) h);
+    --brand-accent-wash-2: oklch(from var(--brand-accent) 0.33 calc(min(c, 0.2) * 0.4) h);
+  }
+}

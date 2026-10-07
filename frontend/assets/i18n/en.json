@@ -1,0 +1,309 @@
+{
+  "app": {
+    "name": "MG Holding Portal",
+    "group": "MG Holding",
+    "company": "Genesis Mining",
+    "companyShort": "GEN",
+    "skipToContent": "Skip to main content"
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Home",
+    "announcements": "Announcements",
+    "directory": "Directory",
+    "rooms": "Rooms",
+    "tickets": "Tickets",
+    "admin": "Company admin",
+    "auditLog": "Audit log",
+    "notifications": "Notifications",
+    "signOut": "Sign out"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "ar": "العربية"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "accent": {
+    "label": "Company accent",
+    "help": "Every company supplies one accent colour. Switch it to check that the whole system still holds.",
+    "ironOxide": "Iron oxide",
+    "blue": "Blue",
+    "green": "Green",
+    "amber": "Amber",
+    "red": "Red"
+  },
+  "action": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "close": "Close",
+    "delete": "Delete",
+    "deleteTicket": "Delete ticket",
+    "edit": "Edit",
+    "assign": "Assign to me",
+    "bookRoom": "Book a room",
+    "newTicket": "New ticket",
+    "openTicket": "Open ticket",
+    "viewAll": "View all",
+    "retry": "Try again",
+    "search": "Search",
+    "saving": "Saving",
+    "more": "More actions"
+  },
+  "field": {
+    "required": "required",
+    "optional": "optional",
+    "subject": "Subject",
+    "subjectHelp": "One line. What is wrong, and where.",
+    "subjectError": "Enter a subject so the support team can route this ticket.",
+    "description": "Description",
+    "descriptionHelp": "Add the steps you took and anything you can see on screen.",
+    "team": "Support team",
+    "teamHelp": "Pick the team that owns this kind of request.",
+    "priority": "Priority",
+    "site": "Site",
+    "date": "Date",
+    "time": "Start time",
+    "timezoneNote": "Times are Cairo time (GMT+2).",
+    "attachments": "Attachments",
+    "notifyEmail": "Email me when this ticket changes",
+    "notifyEmailHelp": "Only for changes to tickets you opened.",
+    "notifySms": "Text me when a ticket is urgent",
+    "offlineMode": "Keep this page available offline",
+    "offlineModeHelp": "Stores the last version on this device. Useful at sites with no signal.",
+    "selectPlaceholder": "Choose one",
+    "searchPlaceholder": "Search people, rooms or tickets",
+    "shift": "Shift"
+  },
+  "team": {
+    "it": "IT",
+    "hr": "HR",
+    "facilities": "Facilities",
+    "admin": "Administration"
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "shift": {
+    "day": "Day shift",
+    "night": "Night shift"
+  },
+  "status": {
+    "label": "Status",
+    "open": "Open",
+    "inProgress": "In progress",
+    "waiting": "Waiting on you",
+    "resolved": "Resolved",
+    "closed": "Closed",
+    "overdue": "Overdue",
+    "draft": "Draft",
+    "published": "Published",
+    "available": "Available",
+    "booked": "Booked"
+  },
+  "ticket": {
+    "one": "Ticket",
+    "number": "Ticket no.",
+    "queue": "Queue",
+    "opened": "Opened",
+    "due": "SLA due",
+    "company": "Company",
+    "assignee": "Assigned to",
+    "reporter": "Opened by",
+    "unassigned": "Unassigned",
+    "sampleSubject": "Weighbridge terminal will not print tickets",
+    "sampleBody": "The terminal at the north gate accepts a load and shows the weight, but nothing comes out of the printer. Drivers are queuing. We have restarted the terminal twice.",
+    "sampleProvenance": "Last changed by Y. El-Shal, 7 Oct 2026 at 14:05 Cairo time.",
+    "detailTitle": "Ticket detail"
+  },
+  "room": {
+    "one": "Room",
+    "name": "Room",
+    "capacity": "Capacity",
+    "floor": "Floor",
+    "building": "Building",
+    "capacityValue": "{count} seats",
+    "sampleName": "Quarry meeting room",
+    "sampleBuilding": "HQ, New Cairo"
+  },
+  "person": {
+    "sampleName": "Nadia Abdel-Rahman",
+    "sampleRole": "Mine planning engineer",
+    "sampleSite": "Abu Tartur"
+  },
+  "announcement": {
+    "one": "Announcement",
+    "published": "Published",
+    "author": "Published by",
+    "sampleTitle": "Shuttle times change from Sunday",
+    "sampleBody": "The HQ shuttle will leave fifteen minutes earlier on working days from Sunday. The last return from the Abu Tartur site moves to 17:30."
+  },
+  "table": {
+    "caption": "Open tickets assigned to the IT team, newest first.",
+    "scrollHint": "Scroll the table sideways to see every column.",
+    "sortBy": "Sort by {column}",
+    "sortedAscending": "sorted oldest first",
+    "sortedDescending": "sorted newest first"
+  },
+  "tabs": {
+    "label": "Ticket views",
+    "mine": "Mine",
+    "team": "My team",
+    "all": "All",
+    "panelMine": "Tickets you opened appear here, newest first.",
+    "panelTeam": "Everything in your team's queues.",
+    "panelAll": "Every ticket in the company you can see."
+  },
+  "pagination": {
+    "label": "Ticket pages",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page}",
+    "status": "Showing {from}–{to} of {total} tickets"
+  },
+  "breadcrumb": {
+    "label": "You are here"
+  },
+  "empty": {
+    "noTicketsTitle": "No open tickets",
+    "noTicketsText": "Nothing in this queue needs you right now. New tickets appear here as soon as they are opened.",
+    "noResultsTitle": "Nothing matched that search",
+    "noResultsText": "Check the spelling, or search for a person's name instead of their job title."
+  },
+  "loading": {
+    "label": "Loading",
+    "ticket": "Loading ticket"
+  },
+  "dialog": {
+    "assignTitle": "Assign this ticket",
+    "assignBody": "The ticket moves to your name and the current owner is told. You can hand it back at any time.",
+    "deleteTitle": "Delete this ticket?",
+    "deleteBody": "The ticket and its history are removed for everyone in the company. This cannot be undone.",
+    "deleteConfirm": "Yes, delete it"
+  },
+  "toast": {
+    "savedTitle": "Ticket saved",
+    "savedText": "The support team has been notified.",
+    "offlineTitle": "You are offline",
+    "offlineText": "Your changes are kept on this device and will be sent when the signal returns.",
+    "failedTitle": "Could not save the ticket",
+    "failedText": "The connection dropped. Nothing was lost; try again.",
+    "copiedTitle": "Ticket number copied"
+  },
+  "notice": {
+    "formErrorTitle": "This ticket cannot be sent yet",
+    "formErrorText": "One field needs your attention. It is marked below.",
+    "slaTitle": "This ticket is past its SLA",
+    "slaText": "It was due at 12:00 Cairo time. The facilities lead has been told."
+  },
+  "upload": {
+    "prompt": "Choose files or drop them here",
+    "hint": "Photos or PDFs, up to 10 MB each. On a weak signal, send one at a time.",
+    "selected": "{count} files chosen"
+  },
+  "styleguide": {
+    "title": "Design system",
+    "subtitle": "Every component in the MG Holding portal, in both languages and both themes. The company accent is switchable, because no screen may depend on a particular one.",
+    "contentsLabel": "Sections",
+    "worldTitle": "The world",
+    "worldText": "Every record in this portal is a labelled specimen: an identity, its measured values with units, and a provenance line saying who last touched it. A ticket, a room, a colleague and an announcement are all read the same way, so one reading habit covers the whole product.",
+    "sections": {
+      "foundations": "Foundations",
+      "colour": "Colour",
+      "type": "Type",
+      "space": "Space and pitch",
+      "radii": "Radii and borders",
+      "elevation": "Elevation",
+      "motion": "Motion",
+      "labelstrip": "Label strip",
+      "buttons": "Buttons",
+      "links": "Links",
+      "forms": "Form controls",
+      "choices": "Checkbox, radio, switch",
+      "dates": "Date and time",
+      "upload": "File upload",
+      "cards": "Cards",
+      "badges": "Status badges",
+      "tabs": "Tabs",
+      "tables": "Tables",
+      "pagination": "Pagination",
+      "breadcrumb": "Breadcrumb",
+      "avatars": "Avatars",
+      "dialogs": "Dialogs",
+      "toasts": "Toasts",
+      "notices": "Inline notices",
+      "empty": "Empty states",
+      "skeleton": "Skeleton loading",
+      "shell": "App shell"
+    },
+    "notes": {
+      "colour": "The neutral scale is a warm stone, tinted at OKLCH hue 74. The accent arrives at runtime from the Company record and every brand value below is derived from it, with AA guaranteed for any hue.",
+      "type": "IBM Plex Sans and IBM Plex Sans Arabic, self-hosted, two weights. Digits always come from the Latin face, so numerals line up identically in both languages.",
+      "space": "One 4px pitch. The 1px hairline is the only sub-pitch value and the portal's only structural separator.",
+      "labelstrip": "The signature. It always carries the record's real fields, never decorative labels. Hover or focus a card to see the strip register.",
+      "tables": "Below 640px every row becomes a label card and each cell takes its column name as a micro-label. Resize the window to see it.",
+      "elevation": "Elevation is declared once per element: a hairline or a shadow, never both. Cards take the hairline; only dialogs, toasts and popovers float.",
+      "motion": "One authored moment, on the label strip. Everything else is a plain state change. All of it stops under reduced motion.",
+      "dates": "Native pickers, restyled. Stored in UTC, shown in Cairo time. The working week runs Sunday to Thursday.",
+      "arabic": "Arabic is designed for, not mirrored. It gets its own leading and measure, and never takes uppercase or letter-spacing: the micro-label's small-caps treatment is replaced by weight and colour rather than applied and broken."
+    },
+    "swatch": {
+      "neutrals": "Warm stone neutrals",
+      "brand": "Derived brand values",
+      "state": "State colours",
+      "contrastOn": "on"
+    },
+    "state": {
+      "default": "Default",
+      "hover": "Hover",
+      "active": "Active",
+      "focus": "Focus",
+      "disabled": "Disabled",
+      "loading": "Loading",
+      "invalid": "Invalid",
+      "readonly": "Read only",
+      "group": "States"
+    },
+    "variant": {
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "ghost": "Ghost",
+      "danger": "Danger",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "iconOnly": "Icon only",
+      "block": "Full width",
+      "neutral": "Neutral",
+      "success": "Success",
+      "warning": "Warning",
+      "info": "Information",
+      "accent": "Accent",
+      "sizes": "Sizes"
+    },
+    "demo": {
+      "openDialog": "Open the assign dialog",
+      "openDeleteDialog": "Open the delete dialog",
+      "showToast": "Show a toast",
+      "registerStrip": "Register the strip"
+    }
+  },
+  "a11y": {
+    "closeDialog": "Close this dialog",
+    "dismissToast": "Dismiss this message",
+    "ticketActions": "Actions for this ticket",
+    "copyTicketNumber": "Copy the ticket number",
+    "currentPage": "Current page",
+    "breadcrumbSeparator": "then"
+  }
+}

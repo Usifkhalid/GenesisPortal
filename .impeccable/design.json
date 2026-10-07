@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T00:00:00.000Z",
+  "title": "Design System: MG Holding Employee Portal",
+  "extensions": {
+    "colorMeta": {
+      "brand-accent": {
+        "role": "primary",
+        "displayName": "Iron Oxide (runtime placeholder)",
+        "canonical": "oklch(0.561 0.119 42.06)",
+        "tonalRamp": [
+          "#2a1109",
+          "#4a1f11",
+          "#6d2f1a",
+          "#8f4023",
+          "#b4552d",
+          "#cf7c58",
+          "#e4a98e",
+          "#f7dccf"
+        ]
+      },
+      "stone-50": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(0.981 0.005 74)",
+        "tonalRamp": [
+          "#110f0c",
+          "#1f1c18",
+          "#312d29",
+          "#4a4641",
+          "#68635d",
+          "#aaa49c",
+          "#e0dad4",
+          "#fbf8f5"
+        ]
+      },
+      "stone-200": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.892 0.011 74)",
+        "tonalRamp": [
+          "#110f0c",
+          "#1f1c18",
+          "#312d29",
+          "#4a4641",
+          "#68635d",
+          "#aaa49c",
+          "#e0dad4",
+          "#fbf8f5"
+        ]
+      },
+      "stone-900": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "oklch(0.228 0.008 74)",
+        "tonalRamp": [
+          "#110f0c",
+          "#1f1c18",
+          "#312d29",
+          "#4a4641",
+          "#68635d",
+          "#aaa49c",
+          "#e0dad4",
+          "#fbf8f5"
+        ]
+      },
+      "success-ink": {
+        "role": "tertiary",
+        "displayName": "Malachite",
+        "canonical": "oklch(0.46 0.13 148)",
+        "tonalRamp": [
+          "#04200c",
+          "#063818",
+          "#076b29",
+          "#0f8d3c",
+          "#3fae62",
+          "#7fc994",
+          "#b8dabc",
+          "#e9f7ea"
+        ]
+      },
+      "warning-ink": {
+        "role": "tertiary",
+        "displayName": "Ochre",
+        "canonical": "oklch(0.455 0.105 72)",
+        "tonalRamp": [
+          "#241500",
+          "#3d2500",
+          "#5c3800",
+          "#7a4b00",
+          "#a36a10",
+          "#c79243",
+          "#e6caa9",
+          "#fcf0e3"
+        ]
+      },
+      "danger-ink": {
+        "role": "tertiary",
+        "displayName": "Red Earth",
+        "canonical": "oklch(0.5 0.13 27)",
+        "tonalRamp": [
+          "#2b0d0a",
+          "#4a1812",
+          "#71261d",
+          "#a04038",
+          "#c2675d",
+          "#dd9188",
+          "#f2c2bc",
+          "#ffedeb"
+        ]
+      },
+      "info-ink": {
+        "role": "tertiary",
+        "displayName": "Survey Blue",
+        "canonical": "oklch(0.5 0.13 248)",
+        "tonalRamp": [
+          "#04202f",
+          "#07364f",
+          "#0b4d73",
+          "#0b67a9",
+          "#3a88c4",
+          "#74abdb",
+          "#b4d3f2",
+          "#e7f4ff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The one display size. A desktop page masthead only."
+      },
+      "headline": { "displayName": "Headline", "purpose": "A page heading." },
+      "title": { "displayName": "Title", "purpose": "A card title or a dialog title." },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text, capped at 68ch in Latin and 60ch in Arabic. Tabular lining numerals throughout."
+      },
+      "label": {
+        "displayName": "Micro-label",
+        "purpose": "The key above a value, a table head, a badge. Uppercase and tracked in Latin; replaced by weight and colour at a larger size in Arabic, which has no uppercase and must not be letter-spaced."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-1",
+        "value": "0 1px 2px rgb(31 28 24 / 0.07), 0 4px 12px rgb(31 28 24 / 0.09)",
+        "purpose": "A popover, the switch knob, the focused skip link. Warm ink, never pure black."
+      },
+      {
+        "name": "shadow-2",
+        "value": "0 2px 4px rgb(31 28 24 / 0.08), 0 16px 40px rgb(31 28 24 / 0.14)",
+        "purpose": "A dialog or a toast: the only layers that genuinely float."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Exponential ease-out. Entrances and the label strip's register."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "The skeleton sweep."
+      },
+      { "name": "dur-1", "value": "120ms", "purpose": "A state change on a control." },
+      { "name": "dur-2", "value": "180ms", "purpose": "A small layer entering." },
+      {
+        "name": "dur-3",
+        "value": "280ms",
+        "purpose": "A dialog, a toast, and the label strip's register."
+      }
+    ],
+    "breakpoints": [
+      { "name": "row", "value": "480px" },
+      { "name": "table-stacks", "value": "640px" },
+      { "name": "rail", "value": "768px" },
+      { "name": "split", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Label strip",
+      "kind": "custom",
+      "refersTo": "label-strip-key",
+      "description": "The signature. Every record opens with the same ruled strip of its real fields; on hover the closing rule takes the accent and strikes in from the centre.",
+      "html": "<dl class=\"ds-strip\"><div class=\"ds-strip-pair\"><dt>Ticket no.</dt><dd>TCK-10482</dd></div><div class=\"ds-strip-pair\"><dt>Queue</dt><dd>IT</dd></div><div class=\"ds-strip-pair\"><dt>SLA due</dt><dd>07/10/2026 12:00</dd></div></dl>",
+      "css": ".ds-strip { position: relative; display: flex; flex-wrap: wrap; margin: 0; padding: 0; border-block-end: 1px solid var(--rule, #e0dad4); font-family: 'IBM Plex Sans', system-ui, sans-serif; } .ds-strip::after { content: ''; position: absolute; inset-block-end: -1px; inset-inline: 0; block-size: 2px; background: var(--brand-accent-edge, #b4552d); transform: scaleX(0); transition: transform 280ms cubic-bezier(0.16,1,0.3,1); } .ds-strip:hover::after { transform: scaleX(1); } .ds-strip-pair { display: flex; flex-direction: column; gap: 4px; padding-block: 8px 12px; padding-inline-end: 20px; } .ds-strip-pair + .ds-strip-pair { padding-inline-start: 20px; border-inline-start: 1px solid var(--rule-muted, #eae5e0); } .ds-strip dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted, #68635d); } .ds-strip dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-strong, #1f1c18); font-variant-numeric: tabular-nums lining-nums; transition: transform 280ms cubic-bezier(0.16,1,0.3,1); } .ds-strip:hover dd { transform: translateY(-1px); }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The only solid accent in the portal, so it is always the action the visitor is meant to take.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>New ticket</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 38px; padding: 8px 16px; background: var(--brand-accent-fill, #b4552d); color: var(--brand-accent-on, #fff); border: 1px solid var(--brand-accent-edge, #b4552d); border-radius: 6px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), box-shadow 120ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { background: var(--brand-accent-hover, #8e4221); box-shadow: 0 0 0 3px var(--brand-accent-wash-2, #f7d8c7); } .ds-btn-primary:active { background: var(--brand-accent-active, #733419); box-shadow: none; } .ds-btn-primary:focus-visible { outline: 2px solid var(--brand-accent-ink, #933706); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A hairline on the raised surface. The default for everything that is not the one primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Assign to me</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 38px; padding: 8px 16px; background: var(--surface-raised, #fff); color: var(--text-strong, #1f1c18); border: 1px solid var(--rule-strong, #cfc9c2); border-radius: 6px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 120ms, border-color 120ms, color 120ms; } .ds-btn-secondary:hover { background: var(--surface-hover, #f3efea); border-color: var(--brand-accent-edge, #b4552d); color: var(--brand-accent-ink, #933706); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--brand-accent-ink, #933706); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Colour plus a per-status icon silhouette, so the state survives greyscale and direct sun.",
+      "html": "<span class=\"ds-badge ds-badge-danger\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.7 4.6a1.5 1.5 0 0 1 2.6 0l7 12.2a1.5 1.5 0 0 1-1.3 2.2H5a1.5 1.5 0 0 1-1.3-2.2Z\"/><path d=\"M12 9.5v4\"/><circle cx=\"12\" cy=\"16.3\" r=\"0.9\"/></svg>Overdue</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; min-block-size: 24px; padding: 4px 8px; border: 1px solid var(--rule-strong, #cfc9c2); border-radius: 3px; background: var(--surface-sunken, #f3efea); color: var(--text-body, #312d29); font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1.35; white-space: nowrap; } .ds-badge-danger { background: var(--danger-surface, #ffedeb); border-color: var(--danger-edge, #f2c2bc); color: var(--danger-ink, #a04038); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A hairline field on the raised surface. The focus treatment is shared with every other control in the system.",
+      "html": "<input class=\"ds-input\" type=\"text\" value=\"TCK-10482\" aria-label=\"Ticket number\">",
+      "css": ".ds-input { inline-size: 100%; min-block-size: 38px; padding: 8px 12px; background: var(--surface-raised, #fff); color: var(--text-strong, #1f1c18); border: 1px solid var(--rule-strong, #cfc9c2); border-radius: 6px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums lining-nums; transition: border-color 120ms; } .ds-input:hover { border-color: #aaa49c; } .ds-input:focus { border-color: var(--brand-accent-edge, #b4552d); } .ds-input:focus-visible { outline: 2px solid var(--brand-accent-ink, #933706); outline-offset: 2px; } .ds-input[aria-invalid='true'] { border-color: var(--danger-ink, #a04038); background: var(--danger-surface, #ffedeb); }"
+    },
+    {
+      "name": "Record Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat, hairline-edged, never nested. Elevation is declared once: a border, never also a shadow.",
+      "html": "<article class=\"ds-card\"><h3>Weighbridge terminal will not print tickets</h3><p>The terminal at the north gate accepts a load and shows the weight, but nothing comes out of the printer.</p><p class=\"ds-provenance\">Last changed by Y. El-Shal, 7 Oct 2026 at 14:05 Cairo time.</p></article>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--surface-raised, #fff); border: 1px solid var(--rule, #e0dad4); border-radius: 10px; font-family: 'IBM Plex Sans', system-ui, sans-serif; } .ds-card h3 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.35; color: var(--text-strong, #1f1c18); } .ds-card p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-body, #312d29); } .ds-provenance { padding-block-start: 12px; border-block-start: 1px solid var(--rule-muted, #eae5e0); font-size: 12px !important; color: var(--text-muted, #68635d) !important; }"
+    },
+    {
+      "name": "Rail Navigation Link",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "The current page is marked three ways: accent wash, a rule on the inline-start edge, and the bold weight.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1Z\"/></svg>Home</a><a class=\"ds-nav-link\" href=\"#\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 8.5A1.5 1.5 0 0 1 4.5 7h15A1.5 1.5 0 0 1 21 8.5v2a2.5 2.5 0 0 0 0 5v2A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-2a2.5 2.5 0 0 0 0-5Z\"/></svg>Tickets<span class=\"ds-nav-count\">4</span></a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; font-family: 'IBM Plex Sans', system-ui, sans-serif; } .ds-nav-link { display: flex; align-items: center; gap: 12px; min-block-size: 44px; padding: 8px 12px; border-radius: 6px; color: var(--text-body, #312d29); font-size: 14px; text-decoration: none; transition: background-color 120ms, color 120ms; } .ds-nav-link:hover { background: var(--surface-hover, #f3efea); color: var(--text-strong, #1f1c18); } .ds-nav-link[aria-current='page'] { background: var(--brand-accent-wash, #ffeee4); color: var(--brand-accent-ink, #933706); font-weight: 600; box-shadow: inset 2px 0 0 0 var(--brand-accent-edge, #b4552d); } .ds-nav-count { margin-inline-start: auto; font-size: 11px; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Empty State",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Says what is missing, why, and the one thing to do next. The mark is a blank specimen label, drawn geometry rather than an illustration.",
+      "html": "<div class=\"ds-empty\"><svg width=\"48\" height=\"48\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5v11A1.5 1.5 0 0 1 17.5 19h-11A1.5 1.5 0 0 1 5 17.5Z\"/><path d=\"M5 10.5h14\"/><path d=\"M8 14h3\"/></svg><p class=\"ds-empty-title\">No open tickets</p><p class=\"ds-empty-text\">Nothing in this queue needs you right now. New tickets appear here as soon as they are opened.</p></div>",
+      "css": ".ds-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 16px; text-align: center; background: var(--surface-raised, #fff); border: 1px dashed var(--rule-strong, #cfc9c2); border-radius: 10px; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #aaa49c; } .ds-empty-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-strong, #1f1c18); } .ds-empty-text { margin: 0; max-width: 44ch; font-size: 14px; line-height: 1.55; color: var(--text-muted, #68635d); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Assay Card",
+    "overview": "A mine assays its ore and writes the result on a card: what the sample is, where it came from, what it measured, and who signed for it. Nothing on that card is decoration. This portal is built the same way. Every record it holds — a support ticket, a meeting room, a colleague, an announcement — opens with the same ruled strip of labelled values, carries its body beneath, and closes with a provenance line naming who last touched it. A ticket and a room are different things, but they are read the same way, so one reading habit covers the whole product.\n\nThe surface is warm stone paper rather than the cold grey of every other internal portal. That is a working decision, not a mood: site staff at Abu Tartur read this on an Android phone in direct sun, where a warm low-chroma ground holds its contrast better than a blue-white one and glares less. Structure is carried by a one-pixel hairline on a strict four-pixel pitch. No shadow does structural work; a card's edge is a rule, and only things that genuinely float — a dialog, a toast — are allowed to cast anything.\n\nThe shell is deliberately anonymous, because the identity belongs to the company, not to us. A Company record supplies exactly one value, its accent colour, and every brand value in the system is derived from it with contrast guaranteed by arithmetic rather than by taste. Adding the fourth or fifth company to the group is configuration. The anti-reference is the generic SaaS admin console: cold greys, a default blue, soft nested cards, and an accent that was picked to look good in the marketing screenshot rather than to survive being swapped.",
+    "keyCharacteristics": [
+      "Every record is a labelled specimen: identity, measured values, provenance.",
+      "Warm stone neutrals, tuned for a phone screen in bright sun.",
+      "One 4px pitch; the 1px hairline is the only structural separator.",
+      "One runtime accent, every other brand value derived from it and AA-safe for any hue.",
+      "Arabic and English designed together, with identical weight coverage and their own leading.",
+      "State is always encoded twice, so nothing depends on colour alone."
+    ],
+    "rules": [
+      {
+        "name": "The Derived Accent Rule",
+        "body": "A company supplies one value, --brand-accent, and nothing else. Fill, hover, active, on-colour, ink, edge and both washes are computed from it in tokens.css. Never hand-author a second brand colour, and never write a literal accent value into a component.",
+        "section": "colors"
+      },
+      {
+        "name": "The Luminance Flip Rule",
+        "body": "Whether a label on an accent fill is black or white is decided on WCAG relative luminance, not on OKLCH lightness — a saturated red sits at L 0.52 but has Y 0.13, so a lightness threshold picks black and fails. The threshold is Y 0.179, where the guarantees for black and white overlap.",
+        "section": "colors"
+      },
+      {
+        "name": "The Outward Press Rule",
+        "body": "Hover and active mix the fill away from its label colour, so a dark fill darkens and a light fill lightens. The label's contrast can therefore only improve as a control is pressed.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numerals Rule",
+        "body": "font-variant-numeric: tabular-nums lining-nums is set on body and inherited everywhere. The Arabic subset deliberately excludes U+0030-0039, so every digit in both languages is set by the Latin face and lines up identically.",
+        "section": "typography"
+      },
+      {
+        "name": "The Arabic Equal Standing Rule",
+        "body": "Arabic is designed for, not mirrored. It takes its own leading and measure, never takes uppercase, and never takes letter-spacing, so the micro-label's small-caps treatment is replaced for Arabic by weight and colour rather than applied and broken.",
+        "section": "typography"
+      },
+      {
+        "name": "The Declare Once Rule",
+        "body": "An element gets a border or a shadow, never both. A 1px border under a wide soft shadow is the ghost card.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Structural Shadow Rule",
+        "body": "No shadow may carry structure. If a boundary matters, it is a hairline.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Logical Properties Rule",
+        "body": "margin-inline, padding-block, inset-inline-end, text-align: start. Never left or right. The three exceptions are marked in the source, because those properties have no logical form.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do open every record with a label strip carrying its real fields, and close it with a provenance line.",
+      "Do derive every brand value from --brand-accent. One company, one supplied colour.",
+      "Do keep every spacing value a multiple of 4px, and make every separator a 1px hairline.",
+      "Do encode state twice — colour plus an icon, a fill, or a rule — so it survives greyscale and direct sun.",
+      "Do give anything tappable 44px on a phone.",
+      "Do use CSS logical properties exclusively, and mark the rare exception in the source with its reason.",
+      "Do give Arabic its own leading and measure, and replace the micro-label's small-caps treatment rather than applying it.",
+      "Do set every number in tabular lining numerals."
+    ],
+    "donts": [
+      "Don't nest a card inside a card.",
+      "Don't let a shadow carry structure, or put a border and a shadow on the same element.",
+      "Don't hand-author a second brand colour, or write a literal accent value into a component.",
+      "Don't apply text-transform: uppercase or positive letter-spacing to Arabic.",
+      "Don't use a card radius above 10px; at 16px a label card stops looking measured.",
+      "Don't put a coloured border above 1px on the inline edge of a card, list item or alert. A toast's state edge sits on its block-start.",
+      "Don't rely on a placeholder to state a rule, or repeat the help text in it.",
+      "Don't add a second authored motion. The label strip's register is the one moment; everything else is a plain state change, and all of it stops under prefers-reduced-motion.",
+      "Don't reach for --text-disabled for live text. It is exempt from contrast rules and is for disabled controls only."
+    ]
+  }
+}

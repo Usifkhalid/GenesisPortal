@@ -1,0 +1,455 @@
+/* ============================================================================
+ * pages/styleguide.css — the specimen sheet.
+ *
+ * The styleguide is itself an Assay Card document: a sheet of plates, each
+ * with a micro-label naming what it shows. Tokens only, no raw values.
+ * ========================================================================= */
+
+.sg {
+  background: var(--surface-ground);
+}
+
+/* --- Toolbar -----------------------------------------------------------
+ * Language, theme and company accent. Sticky, because checking a component in
+ * Arabic or in the dark should never mean scrolling back to the top.
+ */
+.sg__bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--gutter);
+  background: var(--surface-raised);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.sg__bar-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  margin-inline-end: auto;
+}
+
+/* On a phone each control stacks its label above its group. Laid out in a row
+ * the groups wrap mid-set and strand their label on the next line, which reads
+ * as three broken controls rather than three labelled ones. */
+.sg__control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+@media (min-width: 64rem) {
+  .sg__control {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
+
+.sg__control-label {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+[lang='ar'] .sg__control-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+/* An accent chip. The swatch shows the raw company colour; the whole system
+ * downstream is derived from it. */
+.sg__accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-2);
+  border: var(--border-1) solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 48rem) {
+  .sg__accent {
+    min-block-size: 2rem;
+  }
+}
+
+.sg__accent:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.sg__accent[aria-pressed='true'] {
+  border-color: var(--rule-strong);
+  background: var(--surface-sunken);
+  color: var(--text-strong);
+}
+
+.sg__accent-swatch {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid var(--rule-strong);
+  flex: none;
+}
+
+/* --- Sheet layout ------------------------------------------------------- */
+
+.sg__layout {
+  display: grid;
+  gap: var(--space-8);
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  padding-block: var(--space-8) var(--space-24);
+}
+
+@media (min-width: 64rem) {
+  .sg__layout {
+    grid-template-columns: 14rem minmax(0, 1fr);
+    gap: var(--space-12);
+  }
+}
+
+.sg__toc {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .sg__toc {
+    display: block;
+    position: sticky;
+    inset-block-start: calc(var(--topbar-height) + var(--space-4));
+    align-self: start;
+    max-block-size: calc(100vh - var(--topbar-height) - var(--space-8));
+    overflow-y: auto;
+  }
+}
+
+.sg__toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-inline-start: var(--border-1) solid var(--rule);
+}
+
+.sg__toc-link {
+  display: block;
+  padding: var(--space-1) var(--space-3);
+  margin-inline-start: calc(-1 * var(--border-1));
+  border-inline-start: var(--border-2) solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  text-decoration: none;
+}
+
+.sg__toc-link:hover {
+  color: var(--brand-accent-ink);
+  border-inline-start-color: var(--brand-accent-edge);
+  text-decoration: none;
+}
+
+.sg__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* --- Masthead ---------------------------------------------------------- */
+
+.sg__masthead {
+  padding-block-end: var(--space-6);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.sg__title {
+  font-size: var(--text-3xl);
+}
+
+@media (min-width: 48rem) {
+  .sg__title {
+    font-size: var(--text-4xl);
+  }
+}
+
+.sg__subtitle {
+  margin-block-start: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+
+/* --- Section ----------------------------------------------------------- */
+
+.sg-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  scroll-margin-block-start: calc(var(--topbar-height) + var(--space-6));
+}
+
+.sg-section__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.sg-section__note {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+/* --- Specimen plate ----------------------------------------------------
+ * A plate holds one variant or state. The micro-label names it, and the stage
+ * below is where the real component sits, on the page ground so a component's
+ * own surface is always distinguishable from the sheet.
+ */
+.specimen-set {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--specimen-min, 16rem)), 1fr));
+}
+
+.specimen-set--wide {
+  --specimen-min: 26rem;
+}
+
+.specimen-set--full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.specimen__label {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+[lang='ar'] .specimen__label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-2xs);
+}
+
+.specimen__stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-ground);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+
+.specimen__stage--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.specimen__stage--plain {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* --- Swatches ---------------------------------------------------------- */
+
+.swatch-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.swatch__chip {
+  block-size: var(--space-12);
+  display: grid;
+  place-items: center;
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+}
+
+.swatch__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--surface-raised);
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+.swatch__name {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.swatch__token {
+  font-size: var(--text-3xs);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* --- Type scale -------------------------------------------------------- */
+
+.type-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-3);
+}
+
+.type-row + .type-row {
+  border-block-start: var(--border-1) solid var(--rule-muted);
+}
+
+.type-row__token {
+  flex: none;
+  inline-size: 9rem;
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.type-row__sample {
+  min-width: 0;
+  color: var(--text-strong);
+  line-height: var(--leading-snug);
+}
+
+/* --- Space and radius rulers ------------------------------------------ */
+
+.ruler {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ruler__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ruler__token {
+  flex: none;
+  inline-size: 6rem;
+  font-size: var(--text-3xs);
+  color: var(--text-muted);
+}
+
+.ruler__bar {
+  block-size: var(--space-3);
+  background: var(--brand-accent-wash-2);
+  border-inline-end: var(--border-2) solid var(--brand-accent-edge);
+}
+
+.radius-sample {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-16);
+  block-size: var(--space-16);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule-strong);
+  font-size: var(--text-3xs);
+  color: var(--text-muted);
+}
+
+/* --- Shell preview ----------------------------------------------------
+ * The rail and the bottom nav are driven by viewport width in layout.css, so
+ * inside a specimen they are released from that and shown together. This is
+ * the one place in the project where both shells appear at once.
+ */
+.shell-preview {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 48rem) {
+  .shell-preview {
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.shell-preview .rail {
+  display: flex;
+  position: static;
+  block-size: auto;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.shell-preview .bottomnav {
+  position: static;
+  display: flex;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding-block-end: 0;
+  overflow: hidden;
+}
+
+.shell-preview .topbar {
+  position: static;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+/* The toaster is fixed in the app; in the sheet it is shown in place. */
+.toaster-preview .toaster {
+  position: static;
+  inset: auto;
+  inline-size: 100%;
+  pointer-events: auto;
+}
+
+/* --- Code note --------------------------------------------------------
+ * Monospace appears exactly once in this project, for token names, which are
+ * code. It is never used as a costume for "technical".
+ */
+.sg__token-name {
+  font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', monospace;
+  font-size: 0.95em;
+}

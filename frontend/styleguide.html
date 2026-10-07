@@ -1,0 +1,1895 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Design system — MG Holding Portal</title>
+
+    <!-- The two faces used above the fold, fetched in parallel with the CSS so
+         the first paint is not held back on a weak connection. -->
+    <link
+      rel="preload"
+      href="assets/fonts/plex-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="assets/fonts/fonts.css" />
+    <link rel="stylesheet" href="assets/css/tokens.css" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+    <link rel="stylesheet" href="assets/css/pages/styleguide.css" />
+  </head>
+
+  <body class="sg">
+    <a class="u-skip-link" href="#main" data-i18n="app.skipToContent">Skip to main content</a>
+
+    <!-- ===================================================== toolbar ===== -->
+    <header class="sg__bar">
+      <p class="sg__bar-title" data-i18n="styleguide.title">Design system</p>
+
+      <div class="sg__control">
+        <span class="sg__control-label" id="lang-label" data-i18n="lang.label">Language</span>
+        <div class="segmented" data-group="lang" role="group" aria-labelledby="lang-label">
+          <button type="button" class="segmented__option" data-value="en" aria-pressed="true">
+            English
+          </button>
+          <button type="button" class="segmented__option" data-value="ar" aria-pressed="false">
+            العربية
+          </button>
+        </div>
+      </div>
+
+      <div class="sg__control">
+        <span class="sg__control-label" id="theme-label" data-i18n="theme.label">Theme</span>
+        <div class="segmented" data-group="theme" role="group" aria-labelledby="theme-label">
+          <button type="button" class="segmented__option" data-value="light" aria-pressed="false">
+            <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
+            <span data-i18n="theme.light">Light</span>
+          </button>
+          <button type="button" class="segmented__option" data-value="dark" aria-pressed="false">
+            <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
+            <span data-i18n="theme.dark">Dark</span>
+          </button>
+          <button type="button" class="segmented__option" data-value="system" aria-pressed="true">
+            <span data-i18n="theme.system">System</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sg__control">
+        <span class="sg__control-label" id="accent-label" data-i18n="accent.label">
+          Company accent
+        </span>
+        <div class="cluster cluster--tight" data-group="accent" role="group" aria-labelledby="accent-label">
+          <button type="button" class="sg__accent" data-value="ironOxide" aria-pressed="true">
+            <span class="sg__accent-swatch" style="background: #b4552d"></span>
+            <span data-i18n="accent.ironOxide">Iron oxide</span>
+          </button>
+          <button type="button" class="sg__accent" data-value="blue" aria-pressed="false">
+            <span class="sg__accent-swatch" style="background: #1e5aa8"></span>
+            <span data-i18n="accent.blue">Blue</span>
+          </button>
+          <button type="button" class="sg__accent" data-value="green" aria-pressed="false">
+            <span class="sg__accent-swatch" style="background: #1c7a4a"></span>
+            <span data-i18n="accent.green">Green</span>
+          </button>
+          <button type="button" class="sg__accent" data-value="amber" aria-pressed="false">
+            <span class="sg__accent-swatch" style="background: #e8a317"></span>
+            <span data-i18n="accent.amber">Amber</span>
+          </button>
+          <button type="button" class="sg__accent" data-value="red" aria-pressed="false">
+            <span class="sg__accent-swatch" style="background: #c4302b"></span>
+            <span data-i18n="accent.red">Red</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="sg__layout">
+      <!-- ================================================== contents ===== -->
+      <nav class="sg__toc" aria-labelledby="toc-label">
+        <p class="sg__control-label" id="toc-label" data-i18n="styleguide.contentsLabel">
+          Sections
+        </p>
+        <ul class="sg__toc-list">
+          <li><a class="sg__toc-link" href="#colour" data-i18n="styleguide.sections.colour">Colour</a></li>
+          <li><a class="sg__toc-link" href="#type" data-i18n="styleguide.sections.type">Type</a></li>
+          <li><a class="sg__toc-link" href="#space" data-i18n="styleguide.sections.space">Space and pitch</a></li>
+          <li><a class="sg__toc-link" href="#radii" data-i18n="styleguide.sections.radii">Radii and borders</a></li>
+          <li><a class="sg__toc-link" href="#elevation" data-i18n="styleguide.sections.elevation">Elevation</a></li>
+          <li><a class="sg__toc-link" href="#motion" data-i18n="styleguide.sections.motion">Motion</a></li>
+          <li><a class="sg__toc-link" href="#labelstrip" data-i18n="styleguide.sections.labelstrip">Label strip</a></li>
+          <li><a class="sg__toc-link" href="#buttons" data-i18n="styleguide.sections.buttons">Buttons</a></li>
+          <li><a class="sg__toc-link" href="#links" data-i18n="styleguide.sections.links">Links</a></li>
+          <li><a class="sg__toc-link" href="#forms" data-i18n="styleguide.sections.forms">Form controls</a></li>
+          <li><a class="sg__toc-link" href="#choices" data-i18n="styleguide.sections.choices">Checkbox, radio, switch</a></li>
+          <li><a class="sg__toc-link" href="#dates" data-i18n="styleguide.sections.dates">Date and time</a></li>
+          <li><a class="sg__toc-link" href="#upload" data-i18n="styleguide.sections.upload">File upload</a></li>
+          <li><a class="sg__toc-link" href="#cards" data-i18n="styleguide.sections.cards">Cards</a></li>
+          <li><a class="sg__toc-link" href="#badges" data-i18n="styleguide.sections.badges">Status badges</a></li>
+          <li><a class="sg__toc-link" href="#tabs" data-i18n="styleguide.sections.tabs">Tabs</a></li>
+          <li><a class="sg__toc-link" href="#tables" data-i18n="styleguide.sections.tables">Tables</a></li>
+          <li><a class="sg__toc-link" href="#pagination" data-i18n="styleguide.sections.pagination">Pagination</a></li>
+          <li><a class="sg__toc-link" href="#breadcrumb" data-i18n="styleguide.sections.breadcrumb">Breadcrumb</a></li>
+          <li><a class="sg__toc-link" href="#avatars" data-i18n="styleguide.sections.avatars">Avatars</a></li>
+          <li><a class="sg__toc-link" href="#dialogs" data-i18n="styleguide.sections.dialogs">Dialogs</a></li>
+          <li><a class="sg__toc-link" href="#toasts" data-i18n="styleguide.sections.toasts">Toasts</a></li>
+          <li><a class="sg__toc-link" href="#notices" data-i18n="styleguide.sections.notices">Inline notices</a></li>
+          <li><a class="sg__toc-link" href="#empty" data-i18n="styleguide.sections.empty">Empty states</a></li>
+          <li><a class="sg__toc-link" href="#skeleton" data-i18n="styleguide.sections.skeleton">Skeleton loading</a></li>
+          <li><a class="sg__toc-link" href="#shell" data-i18n="styleguide.sections.shell">App shell</a></li>
+        </ul>
+      </nav>
+
+      <main class="sg__main" id="main">
+        <!-- ================================================ masthead ===== -->
+        <div class="sg__masthead">
+          <h1 class="sg__title" data-i18n="styleguide.title">Design system</h1>
+          <p class="sg__subtitle" data-i18n="styleguide.subtitle"></p>
+        </div>
+
+        <section class="sg-section">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.worldTitle">The world</h2>
+          </div>
+          <p class="sg-section__note" data-i18n="styleguide.worldText"></p>
+          <p class="sg-section__note" data-i18n="styleguide.notes.arabic"></p>
+        </section>
+
+        <!-- ================================================== colour ===== -->
+        <section class="sg-section" id="colour">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.colour">Colour</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.colour"></p>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="styleguide.swatch.neutrals">
+              Warm stone neutrals
+            </p>
+            <div class="swatch-grid">
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-0)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">0</span>
+                  <span class="swatch__token sg__token-name">--surface-raised</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-50)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">50</span>
+                  <span class="swatch__token sg__token-name">--surface-ground</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-100)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">100</span>
+                  <span class="swatch__token sg__token-name">--surface-sunken</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-150)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">150</span>
+                  <span class="swatch__token sg__token-name">--rule-muted</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-200)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">200</span>
+                  <span class="swatch__token sg__token-name">--rule</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-300)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">300</span>
+                  <span class="swatch__token sg__token-name">--rule-strong</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-500)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">500</span>
+                  <span class="swatch__token sg__token-name">--text-disabled</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-600); color: var(--stone-0)">
+                  5.9:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">600</span>
+                  <span class="swatch__token sg__token-name">--text-muted</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-800); color: var(--stone-0)">
+                  13.4:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">800</span>
+                  <span class="swatch__token sg__token-name">--text-body</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--stone-900); color: var(--stone-0)">
+                  17:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name">900</span>
+                  <span class="swatch__token sg__token-name">--text-strong</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="styleguide.swatch.brand">
+              Derived brand values
+            </p>
+            <div class="swatch-grid">
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--brand-accent-fill); color: var(--brand-accent-on)"
+                >
+                  <span data-i18n="styleguide.swatch.contrastOn">on</span>
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-fill</span>
+                  <span class="swatch__token sg__token-name">+ -on</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--brand-accent-hover)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-hover</span>
+                  <span class="swatch__token">16%</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--brand-accent-active)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-active</span>
+                  <span class="swatch__token">28%</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--surface-raised); color: var(--brand-accent-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-ink</span>
+                  <span class="swatch__token">4.5:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--brand-accent-edge)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-edge</span>
+                  <span class="swatch__token">3:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--brand-accent-wash); color: var(--brand-accent-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-wash</span>
+                  <span class="swatch__token">4.5:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--brand-accent-wash-2); color: var(--brand-accent-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-wash-2</span>
+                  <span class="swatch__token">4.5:1</span>
+                </div>
+              </div>
+            </div>
+            <p class="field__help" data-i18n="accent.help"></p>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="styleguide.swatch.state">State colours</p>
+            <div class="swatch-grid">
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--success-surface); color: var(--success-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name" data-i18n="styleguide.variant.success">Success</span>
+                  <span class="swatch__token">6.0:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--warning-surface); color: var(--warning-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name" data-i18n="styleguide.variant.warning">Warning</span>
+                  <span class="swatch__token">6.6:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--danger-surface); color: var(--danger-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name" data-i18n="styleguide.variant.danger">Danger</span>
+                  <span class="swatch__token">5.7:1</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--info-surface); color: var(--info-ink)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name" data-i18n="styleguide.variant.info">Information</span>
+                  <span class="swatch__token">5.3:1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================== type ===== -->
+        <section class="sg-section" id="type">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.type">Type</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.type"></p>
+          </div>
+
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-4xl / 600</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-4xl); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight)"
+                  data-i18n="app.name"
+                ></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-2xl / 600</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-2xl); font-weight: var(--weight-bold)"
+                  data-i18n="ticket.sampleSubject"
+                ></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-xl / 600</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-xl); font-weight: var(--weight-bold)"
+                  data-i18n="announcement.sampleTitle"
+                ></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-lg / 600</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-lg); font-weight: var(--weight-bold)"
+                  data-i18n="room.sampleName"
+                ></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-md / 400</span>
+                <span class="type-row__sample" style="font-size: var(--text-md)" data-i18n="ticket.sampleBody"></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-sm / 400</span>
+                <span class="type-row__sample" style="font-size: var(--text-sm)" data-i18n="field.subjectHelp"></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-2xs / 400</span>
+                <span class="type-row__sample" style="font-size: var(--text-2xs)" data-i18n="field.timezoneNote"></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-3xs / 600 caps</span>
+                <span class="type-row__sample u-microlabel" data-i18n="ticket.number">Ticket no.</span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">tabular-nums</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-lg); font-weight: var(--weight-bold)"
+                  >TCK-10482 · 0123456789 · 14:05</span
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== space ===== -->
+        <section class="sg-section" id="space">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.space">Space and pitch</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.space"></p>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <div class="ruler">
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-px</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-px)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-1</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-1)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-2</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-2)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-3</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-3)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-4</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-4)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-6</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-6)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-8</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-8)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-12</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-12)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-16</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-16)"></span>
+                </div>
+                <div class="ruler__row">
+                  <span class="ruler__token sg__token-name">--space-24</span>
+                  <span class="ruler__bar" style="inline-size: var(--space-24)"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== radii ===== -->
+        <section class="sg-section" id="radii">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.radii">Radii and borders</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-sm)">
+                sm 3
+              </span>
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-md)">
+                md 6
+              </span>
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-lg)">
+                lg 10
+              </span>
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-pill)">
+                pill
+              </span>
+              <span
+                class="radius-sample sg__token-name"
+                style="border-width: var(--border-2); border-color: var(--brand-accent-edge)"
+              >
+                border-2
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- =============================================== elevation ===== -->
+        <section class="sg-section" id="elevation">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.elevation">Elevation</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.elevation"></p>
+          </div>
+          <div class="specimen-set">
+            <div class="specimen">
+              <p class="specimen__label sg__token-name">--rule (hairline)</p>
+              <div class="specimen__stage">
+                <span
+                  class="radius-sample"
+                  style="border-radius: var(--radius-lg); background: var(--surface-raised)"
+                ></span>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label sg__token-name">--shadow-1</p>
+              <div class="specimen__stage">
+                <span
+                  class="radius-sample"
+                  style="
+                    border-radius: var(--radius-lg);
+                    border-color: transparent;
+                    background: var(--surface-raised);
+                    box-shadow: var(--shadow-1);
+                  "
+                ></span>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label sg__token-name">--shadow-2</p>
+              <div class="specimen__stage">
+                <span
+                  class="radius-sample"
+                  style="
+                    border-radius: var(--radius-lg);
+                    border-color: transparent;
+                    background: var(--surface-raised);
+                    box-shadow: var(--shadow-2);
+                  "
+                ></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================== motion ===== -->
+        <section class="sg-section" id="motion">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.motion">Motion</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.motion"></p>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <dl class="deflist">
+                <dt class="sg__token-name">--dur-1</dt>
+                <dd>120ms</dd>
+                <dt class="sg__token-name">--dur-2</dt>
+                <dd>180ms</dd>
+                <dt class="sg__token-name">--dur-3</dt>
+                <dd>280ms</dd>
+                <dt class="sg__token-name">--ease-out</dt>
+                <dd class="sg__token-name">cubic-bezier(0.16, 1, 0.3, 1)</dd>
+                <dt class="sg__token-name">--ease-in-out</dt>
+                <dd class="sg__token-name">cubic-bezier(0.4, 0, 0.2, 1)</dd>
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== labelstrip ===== -->
+        <section class="sg-section" id="labelstrip">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.labelstrip">Label strip</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.labelstrip"></p>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="ticket.one">Ticket</p>
+            <div class="specimen__stage specimen__stage--stack">
+              <article class="card">
+                <dl class="labelstrip" id="strip-ticket">
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
+                    <dd class="labelstrip__value">TCK-10482</dd>
+                  </div>
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="ticket.queue">Queue</dt>
+                    <dd class="labelstrip__value" data-i18n="team.it">IT</dd>
+                  </div>
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="field.priority">Priority</dt>
+                    <dd class="labelstrip__value" data-i18n="priority.urgent">Urgent</dd>
+                  </div>
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="ticket.opened">Opened</dt>
+                    <dd class="labelstrip__value">07/10/2026 09:12</dd>
+                  </div>
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="ticket.due">SLA due</dt>
+                    <dd class="labelstrip__value">07/10/2026 12:00</dd>
+                  </div>
+                  <div class="labelstrip__pair">
+                    <dt class="labelstrip__key" data-i18n="ticket.company">Company</dt>
+                    <dd class="labelstrip__value" data-i18n="app.company">Genesis Mining</dd>
+                  </div>
+                </dl>
+
+                <div class="card__header">
+                  <h3 class="card__title" data-i18n="ticket.sampleSubject"></h3>
+                  <span class="card__aside">
+                    <span class="badge badge--danger">
+                      <svg class="badge__icon" aria-hidden="true" focusable="false">
+                        <use href="#i-statusOverdue" />
+                      </svg>
+                      <span data-i18n="status.overdue">Overdue</span>
+                    </span>
+                  </span>
+                </div>
+                <p class="card__body" data-i18n="ticket.sampleBody"></p>
+                <p class="provenance" data-i18n="ticket.sampleProvenance"></p>
+              </article>
+
+              <div class="cluster">
+                <button
+                  type="button"
+                  class="btn btn--secondary btn--sm"
+                  data-register="strip-ticket"
+                  data-i18n="styleguide.demo.registerStrip"
+                >
+                  Register the strip
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="room.one">Room</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <article class="card">
+                  <dl class="labelstrip">
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="room.name">Room</dt>
+                      <dd class="labelstrip__value">GEN-204</dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="room.capacity">Capacity</dt>
+                      <dd class="labelstrip__value" data-i18n="room.capacityValue" data-i18n-vars='{"count": 12}'></dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="room.floor">Floor</dt>
+                      <dd class="labelstrip__value">2</dd>
+                    </div>
+                  </dl>
+                  <div class="card__header">
+                    <h3 class="card__title" data-i18n="room.sampleName"></h3>
+                    <span class="card__aside">
+                      <span class="badge badge--success">
+                        <svg class="badge__icon" aria-hidden="true" focusable="false">
+                          <use href="#i-statusResolved" />
+                        </svg>
+                        <span data-i18n="status.available">Available</span>
+                      </span>
+                    </span>
+                  </div>
+                  <p class="provenance" data-i18n="room.sampleBuilding"></p>
+                </article>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="announcement.one">Announcement</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <article class="card">
+                  <dl class="labelstrip">
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="announcement.published">Published</dt>
+                      <dd class="labelstrip__value">05/10/2026</dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="ticket.company">Company</dt>
+                      <dd class="labelstrip__value" data-i18n="app.group">MG Holding</dd>
+                    </div>
+                  </dl>
+                  <div class="card__header">
+                    <h3 class="card__title" data-i18n="announcement.sampleTitle"></h3>
+                  </div>
+                  <p class="card__body" data-i18n="announcement.sampleBody"></p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= buttons ===== -->
+        <section class="sg-section" id="buttons">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.buttons">Buttons</h2>
+          </div>
+
+          <div class="specimen-set">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.primary">Primary</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--primary">
+                  <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-plus" /></svg>
+                  <span class="btn__label" data-i18n="action.newTicket">New ticket</span>
+                </button>
+                <button type="button" class="btn btn--primary" disabled>
+                  <span class="btn__label" data-i18n="action.newTicket">New ticket</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.secondary">Secondary</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--secondary">
+                  <span class="btn__label" data-i18n="action.assign">Assign to me</span>
+                </button>
+                <button type="button" class="btn btn--secondary" disabled>
+                  <span class="btn__label" data-i18n="action.assign">Assign to me</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.ghost">Ghost</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--ghost">
+                  <span class="btn__label" data-i18n="action.cancel">Cancel</span>
+                </button>
+                <button type="button" class="btn btn--ghost" disabled>
+                  <span class="btn__label" data-i18n="action.cancel">Cancel</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.danger">Danger</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--danger">
+                  <span class="btn__label" data-i18n="action.deleteTicket">Delete ticket</span>
+                </button>
+                <button type="button" class="btn btn--danger" disabled>
+                  <span class="btn__label" data-i18n="action.deleteTicket">Delete ticket</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.loading">Loading</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--primary" aria-busy="true">
+                  <span class="btn__spinner"></span>
+                  <span class="btn__label" data-i18n="action.saving">Saving</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.iconOnly">Icon only</p>
+              <div class="specimen__stage">
+                <button
+                  type="button"
+                  class="btn btn--secondary btn--icon"
+                  data-i18n-attr="aria-label:a11y.copyTicketNumber"
+                >
+                  <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--icon"
+                  data-i18n-attr="aria-label:a11y.ticketActions"
+                >
+                  <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-more" /></svg>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--icon"
+                  data-i18n-attr="aria-label:action.search"
+                >
+                  <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-search" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.sizes">Sizes</p>
+              <div class="specimen__stage">
+                <button type="button" class="btn btn--secondary btn--sm">
+                  <span class="btn__label" data-i18n="action.edit">Edit</span>
+                </button>
+                <button type="button" class="btn btn--secondary">
+                  <span class="btn__label" data-i18n="action.edit">Edit</span>
+                </button>
+                <button type="button" class="btn btn--secondary btn--lg">
+                  <span class="btn__label" data-i18n="action.edit">Edit</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.block">Full width</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <button type="button" class="btn btn--primary btn--block">
+                  <svg class="btn__icon icon--dir" aria-hidden="true" focusable="false">
+                    <use href="#i-chevronEnd" />
+                  </svg>
+                  <span class="btn__label" data-i18n="action.bookRoom">Book a room</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== links ===== -->
+        <section class="sg-section" id="links">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.links">Links</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <p>
+                <a href="#links" data-i18n="action.openTicket">Open ticket</a>
+              </p>
+              <p>
+                <a class="link-quiet" href="#links" data-i18n="nav.auditLog">Audit log</a>
+              </p>
+              <p>
+                <a class="link-icon" href="#links">
+                  <span data-i18n="action.viewAll">View all</span>
+                  <svg class="icon--dir" aria-hidden="true" focusable="false">
+                    <use href="#i-chevronEnd" />
+                  </svg>
+                </a>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== forms ===== -->
+        <section class="sg-section" id="forms">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.forms">Form controls</h2>
+          </div>
+
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.default">Default</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <div class="field">
+                  <label class="field__label" for="f-subject">
+                    <span data-i18n="field.subject">Subject</span>
+                    <span class="field__required">(<span data-i18n="field.required">required</span>)</span>
+                  </label>
+                  <input
+                    class="input"
+                    id="f-subject"
+                    type="text"
+                    required
+                    aria-describedby="f-subject-help"
+                  />
+                  <p class="field__help" id="f-subject-help" data-i18n="field.subjectHelp"></p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-team" data-i18n="field.team">Support team</label>
+                  <select class="select" id="f-team" aria-describedby="f-team-help">
+                    <option data-i18n="field.selectPlaceholder"></option>
+                    <option data-i18n="team.it"></option>
+                    <option data-i18n="team.hr"></option>
+                    <option data-i18n="team.facilities"></option>
+                    <option data-i18n="team.admin"></option>
+                  </select>
+                  <p class="field__help" id="f-team-help" data-i18n="field.teamHelp"></p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-desc">
+                    <span data-i18n="field.description">Description</span>
+                    <span class="field__optional">(<span data-i18n="field.optional">optional</span>)</span>
+                  </label>
+                  <textarea class="textarea" id="f-desc" aria-describedby="f-desc-help"></textarea>
+                  <p class="field__help" id="f-desc-help" data-i18n="field.descriptionHelp"></p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-search" data-i18n="action.search">Search</label>
+                  <div class="input-group">
+                    <svg class="input-group__icon" aria-hidden="true" focusable="false">
+                      <use href="#i-search" />
+                    </svg>
+                    <input
+                      class="input"
+                      id="f-search"
+                      type="search"
+                      data-i18n-attr="placeholder:field.searchPlaceholder"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.group">States</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <div class="field">
+                  <label class="field__label" for="f-bad">
+                    <span data-i18n="field.subject">Subject</span>
+                    <span class="field__required">(<span data-i18n="field.required">required</span>)</span>
+                  </label>
+                  <input
+                    class="input"
+                    id="f-bad"
+                    type="text"
+                    value=""
+                    aria-invalid="true"
+                    aria-describedby="f-bad-help f-bad-error"
+                  />
+                  <p class="field__help" id="f-bad-help" data-i18n="field.subjectHelp"></p>
+                  <p class="field__error" id="f-bad-error" role="alert">
+                    <svg aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+                    <span data-i18n="field.subjectError"></span>
+                  </p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-ro" data-i18n="ticket.number">Ticket no.</label>
+                  <input class="input" id="f-ro" type="text" value="TCK-10482" readonly />
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-dis" data-i18n="field.site">Site</label>
+                  <select class="select" id="f-dis" disabled>
+                    <option data-i18n="person.sampleSite"></option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-dis-txt" data-i18n="field.description">
+                    Description
+                  </label>
+                  <textarea class="textarea" id="f-dis-txt" disabled></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= choices ===== -->
+        <section class="sg-section" id="choices">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.choices">Checkbox, radio, switch</h2>
+          </div>
+
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label">Checkbox</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <label class="choice">
+                  <input class="choice__control" type="checkbox" checked />
+                  <span class="choice__text">
+                    <span class="choice__label" data-i18n="field.notifyEmail"></span>
+                    <span class="choice__help" data-i18n="field.notifyEmailHelp"></span>
+                  </span>
+                </label>
+                <label class="choice">
+                  <input class="choice__control" type="checkbox" />
+                  <span class="choice__text">
+                    <span class="choice__label" data-i18n="field.notifySms"></span>
+                  </span>
+                </label>
+                <label class="choice">
+                  <input class="choice__control" type="checkbox" disabled />
+                  <span class="choice__text">
+                    <span class="choice__label" data-i18n="field.offlineMode"></span>
+                    <span class="choice__help" data-i18n="field.offlineModeHelp"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label">Radio</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <fieldset>
+                  <legend class="field__label" data-i18n="field.priority">Priority</legend>
+                  <label class="choice">
+                    <input class="choice__control" type="radio" name="prio" />
+                    <span class="choice__text">
+                      <span class="choice__label" data-i18n="priority.low"></span>
+                    </span>
+                  </label>
+                  <label class="choice">
+                    <input class="choice__control" type="radio" name="prio" checked />
+                    <span class="choice__text">
+                      <span class="choice__label" data-i18n="priority.normal"></span>
+                    </span>
+                  </label>
+                  <label class="choice">
+                    <input class="choice__control" type="radio" name="prio" />
+                    <span class="choice__text">
+                      <span class="choice__label" data-i18n="priority.high"></span>
+                    </span>
+                  </label>
+                  <label class="choice">
+                    <input class="choice__control" type="radio" name="prio" />
+                    <span class="choice__text">
+                      <span class="choice__label" data-i18n="priority.urgent"></span>
+                    </span>
+                  </label>
+                </fieldset>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label">Switch</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <label class="switch">
+                  <input class="switch__input" type="checkbox" checked />
+                  <span class="switch__track"><span class="switch__knob"></span></span>
+                  <span class="switch__text" data-i18n="field.notifyEmail"></span>
+                </label>
+                <label class="switch">
+                  <input class="switch__input" type="checkbox" />
+                  <span class="switch__track"><span class="switch__knob"></span></span>
+                  <span class="switch__text" data-i18n="field.offlineMode"></span>
+                </label>
+                <label class="switch">
+                  <input class="switch__input" type="checkbox" disabled />
+                  <span class="switch__track"><span class="switch__knob"></span></span>
+                  <span class="switch__text" data-i18n="field.notifySms"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== dates ===== -->
+        <section class="sg-section" id="dates">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.dates">Date and time</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.dates"></p>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="f-date" data-i18n="field.date">Date</label>
+                  <input class="input" id="f-date" type="date" value="2026-10-11" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="f-time" data-i18n="field.time">Start time</label>
+                  <div class="input-zone">
+                    <input class="input" id="f-time" type="time" value="09:30" />
+                    <span class="input-zone__note" data-i18n="field.timezoneNote"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="f-dt" data-i18n="ticket.due">SLA due</label>
+                <input class="input" id="f-dt" type="datetime-local" value="2026-10-11T12:00" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================== upload ===== -->
+        <section class="sg-section" id="upload">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.upload">File upload</h2>
+          </div>
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.default">Default</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <div class="field">
+                  <span class="field__label" id="up-label" data-i18n="field.attachments">
+                    Attachments
+                  </span>
+                  <label class="upload">
+                    <input
+                      class="upload__input"
+                      type="file"
+                      multiple
+                      aria-labelledby="up-label"
+                      data-file-list="up-list"
+                    />
+                    <span class="upload__zone">
+                      <svg class="upload__icon" aria-hidden="true" focusable="false">
+                        <use href="#i-upload" />
+                      </svg>
+                      <span class="upload__prompt" data-i18n="upload.prompt"></span>
+                      <span class="upload__hint" data-i18n="upload.hint"></span>
+                    </span>
+                  </label>
+                  <ul class="upload__list" id="up-list"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.disabled">Disabled</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <label class="upload">
+                  <input class="upload__input" type="file" disabled data-i18n-attr="aria-label:field.attachments" />
+                  <span class="upload__zone">
+                    <svg class="upload__icon" aria-hidden="true" focusable="false">
+                      <use href="#i-upload" />
+                    </svg>
+                    <span class="upload__prompt" data-i18n="upload.prompt"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== cards ===== -->
+        <section class="sg-section" id="cards">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.cards">Cards</h2>
+          </div>
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.default">Default</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <article class="card card--interactive">
+                  <dl class="labelstrip">
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
+                      <dd class="labelstrip__value">TCK-10455</dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="ticket.assignee">Assigned to</dt>
+                      <dd class="labelstrip__value" data-i18n="ticket.unassigned">Unassigned</dd>
+                    </div>
+                  </dl>
+                  <div class="card__header">
+                    <h3 class="card__title">
+                      <a href="#cards" data-i18n="ticket.sampleSubject"></a>
+                    </h3>
+                    <span class="card__aside">
+                      <span class="badge badge--info">
+                        <svg class="badge__icon" aria-hidden="true" focusable="false">
+                          <use href="#i-statusProgress" />
+                        </svg>
+                        <span data-i18n="status.inProgress">In progress</span>
+                      </span>
+                    </span>
+                  </div>
+                  <p class="card__body" data-i18n="ticket.sampleBody"></p>
+                  <div class="card__footer">
+                    <button type="button" class="btn btn--secondary btn--sm">
+                      <span class="btn__label" data-i18n="action.assign">Assign to me</span>
+                    </button>
+                    <a class="link-icon" href="#cards">
+                      <span data-i18n="action.openTicket">Open ticket</span>
+                      <svg class="icon--dir" aria-hidden="true" focusable="false">
+                        <use href="#i-chevronEnd" />
+                      </svg>
+                    </a>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="person.sampleName">Person</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <article class="card">
+                  <div class="person">
+                    <span class="avatar avatar--lg" aria-hidden="true">NA</span>
+                    <span>
+                      <span class="person__name" data-i18n="person.sampleName"></span><br />
+                      <span class="person__role" data-i18n="person.sampleRole"></span>
+                    </span>
+                  </div>
+                  <dl class="labelstrip">
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="field.site">Site</dt>
+                      <dd class="labelstrip__value" data-i18n="person.sampleSite"></dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="ticket.company">Company</dt>
+                      <dd class="labelstrip__value" data-i18n="app.company"></dd>
+                    </div>
+                    <div class="labelstrip__pair">
+                      <dt class="labelstrip__key" data-i18n="field.shift">Shift</dt>
+                      <dd class="labelstrip__value" data-i18n="shift.day"></dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================== badges ===== -->
+        <section class="sg-section" id="badges">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.badges">Status badges</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <span class="badge">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusOpen" /></svg>
+                <span data-i18n="status.open">Open</span>
+              </span>
+              <span class="badge badge--info">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusProgress" /></svg>
+                <span data-i18n="status.inProgress">In progress</span>
+              </span>
+              <span class="badge badge--warning">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusWaiting" /></svg>
+                <span data-i18n="status.waiting">Waiting on you</span>
+              </span>
+              <span class="badge badge--success">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusResolved" /></svg>
+                <span data-i18n="status.resolved">Resolved</span>
+              </span>
+              <span class="badge badge--danger">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+                <span data-i18n="status.overdue">Overdue</span>
+              </span>
+              <span class="badge badge--accent">
+                <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusResolved" /></svg>
+                <span data-i18n="status.published">Published</span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================== tabs ===== -->
+        <section class="sg-section" id="tabs">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.tabs">Tabs</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack" data-tabs>
+              <div class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
+                <button
+                  type="button"
+                  class="tab"
+                  role="tab"
+                  id="tab-mine"
+                  aria-controls="panel-mine"
+                  aria-selected="true"
+                >
+                  <span data-i18n="tabs.mine">Mine</span>
+                  <span class="tab__count">4</span>
+                </button>
+                <button
+                  type="button"
+                  class="tab"
+                  role="tab"
+                  id="tab-team"
+                  aria-controls="panel-team"
+                  aria-selected="false"
+                >
+                  <span data-i18n="tabs.team">My team</span>
+                  <span class="tab__count">27</span>
+                </button>
+                <button
+                  type="button"
+                  class="tab"
+                  role="tab"
+                  id="tab-all"
+                  aria-controls="panel-all"
+                  aria-selected="false"
+                >
+                  <span data-i18n="tabs.all">All</span>
+                  <span class="tab__count">186</span>
+                </button>
+              </div>
+              <div class="tab-panel" id="panel-mine" role="tabpanel" aria-labelledby="tab-mine" tabindex="0">
+                <p data-i18n="tabs.panelMine"></p>
+              </div>
+              <div class="tab-panel" id="panel-team" role="tabpanel" aria-labelledby="tab-team" tabindex="0" hidden>
+                <p data-i18n="tabs.panelTeam"></p>
+              </div>
+              <div class="tab-panel" id="panel-all" role="tabpanel" aria-labelledby="tab-all" tabindex="0" hidden>
+                <p data-i18n="tabs.panelAll"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================== tables ===== -->
+        <section class="sg-section" id="tables">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.tables">Tables</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.tables"></p>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
+              <div class="table-wrap" tabindex="0" role="region" data-i18n-attr="aria-label:table.caption">
+                <table class="table" role="table">
+                  <caption data-i18n="table.caption"></caption>
+                  <thead role="rowgroup">
+                    <tr role="row">
+                      <th role="columnheader" scope="col" data-i18n="ticket.number">Ticket no.</th>
+                      <th role="columnheader" scope="col" data-i18n="field.subject">Subject</th>
+                      <th role="columnheader" scope="col" data-i18n="status.label">Status</th>
+                      <th role="columnheader" scope="col" data-i18n="field.priority">Priority</th>
+                      <th role="columnheader" scope="col" aria-sort="descending">
+                        <button type="button" class="table__sort">
+                          <span data-i18n="ticket.opened">Opened</span>
+                          <svg aria-hidden="true" focusable="false"><use href="#i-arrowUp" /></svg>
+                          <span class="u-visually-hidden" data-i18n="table.sortedDescending"></span>
+                        </button>
+                      </th>
+                      <th role="columnheader" scope="col" data-i18n="ticket.assignee">Assigned to</th>
+                    </tr>
+                  </thead>
+                  <tbody role="rowgroup">
+                    <tr role="row">
+                      <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
+                        TCK-10482
+                      </th>
+                      <td role="cell" data-i18n-attr="data-label:field.subject">
+                        <span data-i18n="ticket.sampleSubject"></span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:status.label">
+                        <span class="badge badge--danger">
+                          <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+                          <span data-i18n="status.overdue">Overdue</span>
+                        </span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:field.priority">
+                        <span data-i18n="priority.urgent"></span>
+                      </td>
+                      <td role="cell" class="table__num" data-i18n-attr="data-label:ticket.opened">
+                        07/10/2026 09:12
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:ticket.assignee">
+                        <span data-i18n="ticket.unassigned"></span>
+                      </td>
+                    </tr>
+                    <tr role="row">
+                      <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
+                        TCK-10477
+                      </th>
+                      <td role="cell" data-i18n-attr="data-label:field.subject">
+                        <span data-i18n="announcement.sampleTitle"></span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:status.label">
+                        <span class="badge badge--info">
+                          <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusProgress" /></svg>
+                          <span data-i18n="status.inProgress">In progress</span>
+                        </span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:field.priority">
+                        <span data-i18n="priority.normal"></span>
+                      </td>
+                      <td role="cell" class="table__num" data-i18n-attr="data-label:ticket.opened">
+                        06/10/2026 16:40
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:ticket.assignee">
+                        <span class="person">
+                          <span class="avatar avatar--sm" aria-hidden="true">NA</span>
+                          <span class="person__name" data-i18n="person.sampleName"></span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr role="row">
+                      <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
+                        TCK-10455
+                      </th>
+                      <td role="cell" data-i18n-attr="data-label:field.subject">
+                        <span data-i18n="room.sampleName"></span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:status.label">
+                        <span class="badge badge--success">
+                          <svg class="badge__icon" aria-hidden="true" focusable="false"><use href="#i-statusResolved" /></svg>
+                          <span data-i18n="status.resolved">Resolved</span>
+                        </span>
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:field.priority">
+                        <span data-i18n="priority.low"></span>
+                      </td>
+                      <td role="cell" class="table__num" data-i18n-attr="data-label:ticket.opened">
+                        05/10/2026 08:05
+                      </td>
+                      <td role="cell" data-i18n-attr="data-label:ticket.assignee">
+                        <span data-i18n="team.facilities"></span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="field__help table__scroll-hint" data-i18n="table.scrollHint"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== pagination ===== -->
+        <section class="sg-section" id="pagination">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.pagination">Pagination</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <nav class="pagination" data-i18n-attr="aria-label:pagination.label">
+                <a class="pagination__link pagination__step" href="#pagination" aria-disabled="true">
+                  <svg class="icon--dir" aria-hidden="true" focusable="false"><use href="#i-chevronEnd" /></svg>
+                  <span data-i18n="pagination.previous">Previous</span>
+                </a>
+                <ul class="pagination__list">
+                  <li>
+                    <a class="pagination__link" href="#pagination" aria-current="page"
+                       data-i18n-attr="aria-label:a11y.currentPage">1</a>
+                  </li>
+                  <li><a class="pagination__link" href="#pagination">2</a></li>
+                  <li><a class="pagination__link" href="#pagination">3</a></li>
+                  <li><span class="pagination__ellipsis" aria-hidden="true">…</span></li>
+                  <li><a class="pagination__link" href="#pagination">9</a></li>
+                </ul>
+                <a class="pagination__link pagination__step" href="#pagination">
+                  <span data-i18n="pagination.next">Next</span>
+                  <svg class="icon--dir" aria-hidden="true" focusable="false"><use href="#i-chevronEnd" /></svg>
+                </a>
+                <p
+                  class="pagination__status"
+                  data-i18n="pagination.status"
+                  data-i18n-vars='{"from": 1, "to": 20, "total": 186}'
+                ></p>
+              </nav>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== breadcrumb ===== -->
+        <section class="sg-section" id="breadcrumb">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.breadcrumb">Breadcrumb</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <nav class="breadcrumb" data-i18n-attr="aria-label:breadcrumb.label">
+                <ol class="breadcrumb__list">
+                  <li class="breadcrumb__item">
+                    <a class="breadcrumb__link" href="#breadcrumb" data-i18n="nav.home">Home</a>
+                    <svg class="breadcrumb__sep icon--dir" aria-hidden="true" focusable="false">
+                      <use href="#i-chevronEnd" />
+                    </svg>
+                  </li>
+                  <li class="breadcrumb__item">
+                    <a class="breadcrumb__link" href="#breadcrumb" data-i18n="nav.tickets">Tickets</a>
+                    <svg class="breadcrumb__sep icon--dir" aria-hidden="true" focusable="false">
+                      <use href="#i-chevronEnd" />
+                    </svg>
+                  </li>
+                  <li class="breadcrumb__item" aria-current="page">TCK-10482</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= avatars ===== -->
+        <section class="sg-section" id="avatars">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.avatars">Avatars</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <span class="avatar avatar--sm" aria-hidden="true">NA</span>
+              <span class="avatar" aria-hidden="true">NA</span>
+              <span class="avatar avatar--lg" aria-hidden="true">NA</span>
+              <span class="avatar avatar--xl" aria-hidden="true">NA</span>
+              <span class="person">
+                <span class="avatar" aria-hidden="true">YE</span>
+                <span>
+                  <span class="person__name" data-i18n="person.sampleName"></span><br />
+                  <span class="person__role" data-i18n="person.sampleRole"></span>
+                </span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= dialogs ===== -->
+        <section class="sg-section" id="dialogs">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.dialogs">Dialogs</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <button
+                type="button"
+                class="btn btn--secondary"
+                data-dialog-open="dlg-assign"
+                data-i18n="styleguide.demo.openDialog"
+              ></button>
+              <button
+                type="button"
+                class="btn btn--danger"
+                data-dialog-open="dlg-delete"
+                data-i18n="styleguide.demo.openDeleteDialog"
+              ></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================== toasts ===== -->
+        <section class="sg-section" id="toasts">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.toasts">Toasts</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage">
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                data-toast="success"
+                data-toast-title="toast.savedTitle"
+                data-toast-text="toast.savedText"
+              >
+                <span class="btn__label" data-i18n="styleguide.variant.success">Success</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                data-toast="warning"
+                data-toast-title="toast.offlineTitle"
+                data-toast-text="toast.offlineText"
+              >
+                <span class="btn__label" data-i18n="styleguide.variant.warning">Warning</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                data-toast="danger"
+                data-toast-title="toast.failedTitle"
+                data-toast-text="toast.failedText"
+              >
+                <span class="btn__label" data-i18n="styleguide.variant.danger">Danger</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                data-toast="info"
+                data-toast-title="toast.copiedTitle"
+              >
+                <span class="btn__label" data-i18n="styleguide.variant.info">Information</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="specimen toaster-preview">
+            <p class="specimen__label" data-i18n="styleguide.state.default">Default</p>
+            <div class="specimen__stage specimen__stage--stack">
+              <div class="toaster">
+                <div class="toast toast--success">
+                  <svg class="toast__icon" aria-hidden="true" focusable="false"><use href="#i-statusResolved" /></svg>
+                  <div class="toast__content">
+                    <p class="toast__title" data-i18n="toast.savedTitle"></p>
+                    <p class="toast__text" data-i18n="toast.savedText"></p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--sm btn--icon toast__close"
+                    data-i18n-attr="aria-label:a11y.dismissToast"
+                  >
+                    <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-x" /></svg>
+                  </button>
+                </div>
+                <div class="toast toast--warning">
+                  <svg class="toast__icon" aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+                  <div class="toast__content">
+                    <p class="toast__title" data-i18n="toast.offlineTitle"></p>
+                    <p class="toast__text" data-i18n="toast.offlineText"></p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--sm btn--icon toast__close"
+                    data-i18n-attr="aria-label:a11y.dismissToast"
+                  >
+                    <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-x" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= notices ===== -->
+        <section class="sg-section" id="notices">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.notices">Inline notices</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <div class="notice notice--danger" role="alert">
+                <svg class="notice__icon" aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+                <div class="notice__content">
+                  <p class="notice__title" data-i18n="notice.formErrorTitle"></p>
+                  <p data-i18n="notice.formErrorText"></p>
+                </div>
+              </div>
+              <div class="notice notice--warning">
+                <svg class="notice__icon" aria-hidden="true" focusable="false"><use href="#i-clock" /></svg>
+                <div class="notice__content">
+                  <p class="notice__title" data-i18n="notice.slaTitle"></p>
+                  <p data-i18n="notice.slaText"></p>
+                </div>
+              </div>
+              <div class="notice notice--info">
+                <svg class="notice__icon" aria-hidden="true" focusable="false"><use href="#i-info" /></svg>
+                <div class="notice__content">
+                  <p data-i18n="field.timezoneNote"></p>
+                </div>
+              </div>
+              <div class="notice notice--success">
+                <svg class="notice__icon" aria-hidden="true" focusable="false"><use href="#i-statusResolved" /></svg>
+                <div class="notice__content">
+                  <p data-i18n="toast.savedText"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== empty ===== -->
+        <section class="sg-section" id="empty">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.empty">Empty states</h2>
+          </div>
+          <div class="specimen-set specimen-set--wide">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="nav.tickets">Tickets</p>
+              <div class="specimen__stage specimen__stage--plain">
+                <div class="empty">
+                  <svg class="empty__mark" aria-hidden="true" focusable="false"><use href="#i-blankLabel" /></svg>
+                  <p class="empty__title" data-i18n="empty.noTicketsTitle"></p>
+                  <p class="empty__text" data-i18n="empty.noTicketsText"></p>
+                  <div class="empty__action">
+                    <button type="button" class="btn btn--primary">
+                      <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-plus" /></svg>
+                      <span class="btn__label" data-i18n="action.newTicket">New ticket</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="action.search">Search</p>
+              <div class="specimen__stage specimen__stage--plain">
+                <div class="empty">
+                  <svg class="empty__mark" aria-hidden="true" focusable="false"><use href="#i-search" /></svg>
+                  <p class="empty__title" data-i18n="empty.noResultsTitle"></p>
+                  <p class="empty__text" data-i18n="empty.noResultsText"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================ skeleton ===== -->
+        <section class="sg-section" id="skeleton">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.skeleton">Skeleton loading</h2>
+          </div>
+          <div class="specimen">
+            <div
+              class="specimen__stage specimen__stage--stack specimen__stage--plain"
+              role="status"
+              aria-busy="true"
+              data-i18n-attr="aria-label:loading.ticket"
+            >
+              <div class="skeleton-card">
+                <div class="skeleton-card__strip">
+                  <div class="skeleton-card__pair">
+                    <span class="skeleton skeleton--text" style="inline-size: var(--space-12)"></span>
+                    <span class="skeleton skeleton--value"></span>
+                  </div>
+                  <div class="skeleton-card__pair">
+                    <span class="skeleton skeleton--text" style="inline-size: var(--space-10)"></span>
+                    <span class="skeleton skeleton--value"></span>
+                  </div>
+                  <div class="skeleton-card__pair">
+                    <span class="skeleton skeleton--text" style="inline-size: var(--space-12)"></span>
+                    <span class="skeleton skeleton--value"></span>
+                  </div>
+                </div>
+                <span class="skeleton skeleton--title"></span>
+                <span class="skeleton skeleton--text skeleton--line-long"></span>
+                <span class="skeleton skeleton--text skeleton--line-short"></span>
+              </div>
+              <div class="card">
+                <div class="person">
+                  <span class="skeleton skeleton--avatar"></span>
+                  <span class="stack stack--tight" style="flex: 1">
+                    <span class="skeleton skeleton--text" style="inline-size: 40%"></span>
+                    <span class="skeleton skeleton--text" style="inline-size: 25%"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================== shell ===== -->
+        <section class="sg-section" id="shell">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.shell">App shell</h2>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
+              <div class="shell-preview">
+                <nav class="rail" data-i18n-attr="aria-label:nav.label">
+                  <a class="rail__brand" href="#shell">
+                    <span class="rail__mark" aria-hidden="true" data-i18n="app.companyShort">GEN</span>
+                    <span class="rail__company">
+                      <span class="rail__company-name" data-i18n="app.company"></span>
+                      <span class="rail__company-group" data-i18n="app.group"></span>
+                    </span>
+                  </a>
+                  <div class="rail__nav">
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-home" /></svg>
+                      <span data-i18n="nav.home">Home</span>
+                    </a>
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
+                      <span data-i18n="nav.announcements">Announcements</span>
+                    </a>
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-directory" /></svg>
+                      <span data-i18n="nav.directory">Directory</span>
+                    </a>
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-rooms" /></svg>
+                      <span data-i18n="nav.rooms">Rooms</span>
+                    </a>
+                    <a class="nav-link" href="#shell" aria-current="page">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-tickets" /></svg>
+                      <span data-i18n="nav.tickets">Tickets</span>
+                      <span class="nav-link__count">4</span>
+                    </a>
+                  </div>
+                  <div class="rail__nav rail__section">
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
+                      <span data-i18n="nav.admin">Company admin</span>
+                    </a>
+                    <a class="nav-link" href="#shell">
+                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
+                      <span data-i18n="nav.auditLog">Audit log</span>
+                    </a>
+                  </div>
+                </nav>
+
+                <div class="stack">
+                  <header class="topbar">
+                    <p class="topbar__title" data-i18n="nav.tickets">Tickets</p>
+                    <div class="topbar__actions topbar__spacer">
+                      <button
+                        type="button"
+                        class="btn btn--ghost btn--icon"
+                        data-i18n-attr="aria-label:nav.notifications"
+                      >
+                        <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-notifications" /></svg>
+                      </button>
+                      <span class="avatar avatar--sm" aria-hidden="true">YE</span>
+                    </div>
+                  </header>
+
+                  <nav class="bottomnav" data-i18n-attr="aria-label:nav.label">
+                    <a class="bottomnav__link" href="#shell">
+                      <svg class="bottomnav__icon" aria-hidden="true" focusable="false"><use href="#i-home" /></svg>
+                      <span class="bottomnav__label" data-i18n="nav.home">Home</span>
+                    </a>
+                    <a class="bottomnav__link" href="#shell">
+                      <svg class="bottomnav__icon" aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
+                      <span class="bottomnav__label" data-i18n="nav.announcements">Announcements</span>
+                    </a>
+                    <a class="bottomnav__link" href="#shell">
+                      <svg class="bottomnav__icon" aria-hidden="true" focusable="false"><use href="#i-rooms" /></svg>
+                      <span class="bottomnav__label" data-i18n="nav.rooms">Rooms</span>
+                    </a>
+                    <a class="bottomnav__link" href="#shell" aria-current="page">
+                      <svg class="bottomnav__icon" aria-hidden="true" focusable="false"><use href="#i-tickets" /></svg>
+                      <span class="bottomnav__label" data-i18n="nav.tickets">Tickets</span>
+                    </a>
+                    <a class="bottomnav__link" href="#shell">
+                      <svg class="bottomnav__icon" aria-hidden="true" focusable="false"><use href="#i-directory" /></svg>
+                      <span class="bottomnav__label" data-i18n="nav.directory">Directory</span>
+                    </a>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ===================================================== dialogs ===== -->
+    <dialog class="dialog" id="dlg-assign" aria-labelledby="dlg-assign-title">
+      <form class="dialog__form" method="dialog">
+        <div class="dialog__header">
+          <h2 class="dialog__title" id="dlg-assign-title" data-i18n="dialog.assignTitle"></h2>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm btn--icon dialog__close"
+            data-dialog-close
+            data-i18n-attr="aria-label:a11y.closeDialog"
+          >
+            <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-x" /></svg>
+          </button>
+        </div>
+        <div class="dialog__body stack">
+          <dl class="labelstrip labelstrip--registered">
+            <div class="labelstrip__pair">
+              <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
+              <dd class="labelstrip__value">TCK-10482</dd>
+            </div>
+            <div class="labelstrip__pair">
+              <dt class="labelstrip__key" data-i18n="ticket.queue">Queue</dt>
+              <dd class="labelstrip__value" data-i18n="team.it">IT</dd>
+            </div>
+          </dl>
+          <p data-i18n="dialog.assignBody"></p>
+        </div>
+        <div class="dialog__footer">
+          <button type="button" class="btn btn--ghost" data-dialog-close>
+            <span class="btn__label" data-i18n="action.cancel">Cancel</span>
+          </button>
+          <button type="button" class="btn btn--primary" data-dialog-close>
+            <span class="btn__label" data-i18n="action.assign">Assign to me</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog" id="dlg-delete" aria-labelledby="dlg-delete-title">
+      <form class="dialog__form" method="dialog">
+        <div class="dialog__header">
+          <h2 class="dialog__title" id="dlg-delete-title" data-i18n="dialog.deleteTitle"></h2>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm btn--icon dialog__close"
+            data-dialog-close
+            data-i18n-attr="aria-label:a11y.closeDialog"
+          >
+            <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-x" /></svg>
+          </button>
+        </div>
+        <div class="dialog__body stack">
+          <div class="notice notice--danger">
+            <svg class="notice__icon" aria-hidden="true" focusable="false"><use href="#i-statusOverdue" /></svg>
+            <div class="notice__content">
+              <p data-i18n="dialog.deleteBody"></p>
+            </div>
+          </div>
+        </div>
+        <div class="dialog__footer">
+          <button type="button" class="btn btn--ghost" data-dialog-close>
+            <span class="btn__label" data-i18n="action.cancel">Cancel</span>
+          </button>
+          <button type="button" class="btn btn--danger" data-dialog-close>
+            <span class="btn__label" data-i18n="dialog.deleteConfirm">Yes, delete it</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- The live region toasts are appended to. Announced without taking focus. -->
+    <div class="toaster" id="toaster" role="status" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="assets/js/pages/styleguide.js"></script>
+  </body>
+</html>
