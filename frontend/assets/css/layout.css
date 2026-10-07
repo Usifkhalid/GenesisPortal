@@ -5,6 +5,9 @@
  * rail becomes a thumb-reachable bottom nav, because site staff hold the phone
  * in one hand with the other on a ladder. Every nav target is at least 44px.
  *
+ * The shell sits on the page ground and is drawn with hairlines only, so the
+ * white cards in the work area are the only raised things on screen.
+ *
  * Logical properties only. The shell mirrors in RTL with no overrides.
  * ========================================================================= */
 
@@ -31,8 +34,8 @@
 }
 
 /* --- Company rail ------------------------------------------------------
- * Carries the company's mark and the four jobs. The only place in the shell
- * that is allowed to show the accent as a surface.
+ * Three fixed parts: the company switcher, the navigation (the only part that
+ * scrolls), and the collapse control at the foot.
  */
 /* Placement belongs to the shell, not to the component. Scoping it to a direct
  * child of .app means dropping a rail into any other grid (a preview, a future
@@ -45,15 +48,14 @@
 .rail {
   display: none;
   flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-5) var(--space-4);
-  background: var(--surface-raised);
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface-ground);
   border-inline-end: var(--border-1) solid var(--rule);
   position: sticky;
   inset-block-start: 0;
   block-size: 100vh;
   block-size: 100dvh;
-  overflow-y: auto;
   z-index: var(--z-nav);
 }
 
@@ -63,40 +65,94 @@
   }
 }
 
-.rail__top {
+/* The scroll lives on the navigation, not on the rail, so the company menu can
+ * open over the work area without being clipped by the rail's own overflow. */
+.rail__scroll {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  /* Room for the focus ring of the links inside the scroller. */
+  margin: calc(-1 * var(--space-1));
+  padding: var(--space-1);
+}
+
+.rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rail__group {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
-.rail__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1 1 auto;
-  min-width: 0;
-  min-block-size: var(--tap-min);
-  text-decoration: none;
-  color: var(--text-strong);
-  border-radius: var(--radius-md);
+.rail__group[hidden] {
+  display: none;
 }
 
-.rail__toggle {
-  flex: none;
+/* A section heading in the rail, such as "Administration". Set as a
+ * micro-label; collapsed, it becomes the hairline that still separates the
+ * group, and stays in the accessibility tree as the group's name. */
+.rail__heading {
+  margin: 0;
+  max-width: none;
+  padding-inline: var(--space-3);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+[lang='ar'] .rail__heading {
+  text-transform: none;
+  font-size: var(--text-2xs);
+}
+
+.rail[data-collapsed='true'] .rail__group {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+.rail__foot {
+  display: flex;
+}
+
+.rail .rail__toggle {
+  justify-content: flex-start;
+  inline-size: 100%;
+  --btn-padding: var(--space-3);
+  font-weight: var(--weight-normal);
+  color: var(--text-muted);
+}
+
+.rail__toggle .btn__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
 }
 
 /* The chevron points towards the rail's own edge, so it reads as "push this
  * side in". Collapsing flips it to point the other way. */
-.rail__toggle[aria-expanded='false'] .btn__icon {
+.rail__toggle .btn__icon {
   transform: rotate(180deg);
 }
 
+.rail__toggle[aria-expanded='false'] .btn__icon {
+  transform: none;
+}
+
 [dir='rtl'] .rail__toggle .btn__icon {
-  transform: scaleX(-1);
+  transform: none;
 }
 
 [dir='rtl'] .rail__toggle[aria-expanded='false'] .btn__icon {
-  transform: scaleX(-1) rotate(180deg);
+  transform: rotate(180deg);
 }
 
 /* Collapsed: icon-only rail. The label text is pulled out of the flow with
@@ -110,75 +166,130 @@
 }
 
 .rail[data-collapsed='true'] {
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-3);
 }
 
-.rail[data-collapsed='true'] .rail__top {
-  flex-direction: column;
+.rail[data-collapsed='true'] .nav-link,
+.rail[data-collapsed='true'] .rail__toggle,
+.rail[data-collapsed='true'] .switcher {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.rail[data-collapsed='true'] .switcher__chevron {
+  display: none;
+}
+
+/* --- Company switcher ---------------------------------------------------
+ * The company block is a control, and looks like one: a framed button with the
+ * company's mark, its name over the group's, and the up-down chevron of a
+ * picker. It opens the list of companies this person may work in.
+ */
+.switcher {
+  display: flex;
   align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--space-12);
+  padding: var(--space-2);
+  padding-inline-end: var(--space-3);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-control);
+  color: var(--text-strong);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
 }
 
-.rail[data-collapsed='true'] .rail__brand {
-  justify-content: center;
+.switcher:hover,
+.switcher[aria-expanded='true'] {
+  border-color: var(--brand-accent-edge);
 }
 
-.rail[data-collapsed='true'] .nav-link {
-  justify-content: center;
-  padding-inline: var(--space-2);
+.switcher__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.switcher__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher__group {
+  font-size: var(--text-2xs);
+  line-height: var(--leading-snug);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher__chevron {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  color: var(--text-muted);
+}
+
+/* One company, nothing to switch: the block states the company and stops
+ * looking like a control. */
+.switcher:disabled {
+  background: none;
+  border-color: transparent;
+  cursor: default;
+}
+
+.switcher:disabled .switcher__chevron {
+  display: none;
+}
+
+/* On a phone the switcher lives in the top bar and shows the mark alone. */
+.switcher--compact {
+  inline-size: auto;
+  min-block-size: var(--tap-min);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  padding-inline-end: var(--space-2);
 }
 
 /* The company mark. A Company record supplies a logo; until one is loaded the
  * mark falls back to the company's initials on the accent, so the shell is
  * never broken by missing evidence. */
-.rail__mark {
+.company-mark {
   display: grid;
   place-items: center;
-  inline-size: var(--space-8);
+  /* Square for a three-letter code or a logo; an Arabic short name is a word
+   * and is allowed to widen it. */
+  min-inline-size: var(--space-8);
+  padding-inline: var(--space-1);
   block-size: var(--space-8);
   flex: none;
   background: var(--brand-accent-fill);
   color: var(--brand-accent-on);
   border: var(--border-1) solid var(--brand-accent-edge);
   border-radius: var(--radius-sm);
-  font-size: var(--text-2xs);
+  font-size: var(--text-3xs);
   font-weight: var(--weight-bold);
+  line-height: 1;
   letter-spacing: var(--tracking-caps);
-  padding-inline-start: var(--tracking-caps);
   overflow: hidden;
 }
 
-.rail__mark img {
+.company-mark img {
   inline-size: 100%;
   block-size: 100%;
   object-fit: contain;
 }
 
-.rail__company {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.rail__company-name {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-snug);
-}
-
-.rail__company-group {
-  font-size: var(--text-3xs);
-  color: var(--text-muted);
-}
-
-.rail__nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.rail__section {
-  margin-block-start: var(--space-5);
-}
+/* --- Rail links --------------------------------------------------------- */
 
 .nav-link {
   display: flex;
@@ -187,10 +298,11 @@
   min-block-size: var(--tap-min);
   padding-inline: var(--space-3);
   padding-block: var(--space-2);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   color: var(--text-body);
   font-size: var(--text-sm);
   text-decoration: none;
+  position: relative;
   transition: background-color var(--dur-1) var(--ease-out),
     color var(--dur-1) var(--ease-out);
 }
@@ -201,17 +313,22 @@
   text-decoration: none;
 }
 
-/* The current page is marked by the accent wash plus a hairline rule on the
- * inline-start edge and a bold label: colour is never the only signal. */
+/* The current page is marked three ways: the accent wash, a short rule on the
+ * inline-start edge, and the bold label. Colour is never the only signal. */
 .nav-link[aria-current='page'] {
   background: var(--brand-accent-wash);
   color: var(--brand-accent-ink);
   font-weight: var(--weight-bold);
-  box-shadow: inset var(--border-2) 0 0 0 var(--brand-accent-edge);
 }
 
-[dir='rtl'] .nav-link[aria-current='page'] {
-  box-shadow: inset calc(-1 * var(--border-2)) 0 0 0 var(--brand-accent-edge);
+.nav-link[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: var(--space-3);
+  inline-size: var(--border-3);
+  border-radius: var(--radius-pill);
+  background: var(--brand-accent-edge);
 }
 
 .nav-link__icon {
@@ -221,17 +338,28 @@
 
 .nav-link__count {
   margin-inline-start: auto;
+  min-inline-size: var(--space-5);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
   font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--space-5);
+  text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
 .nav-link[aria-current='page'] .nav-link__count {
+  background: var(--brand-accent-wash-2);
   color: var(--brand-accent-ink);
 }
 
-/* --- Top bar ------------------------------------------------------------ */
-
+/* --- Top bar ------------------------------------------------------------
+ * Three zones on the same column as the page below it: where you are, the
+ * search in the middle, and your own controls at the end. The search is
+ * centred between two equal tracks, so no width leaves a one-sided gap.
+ */
 .app > .topbar {
   grid-area: topbar;
 }
@@ -240,59 +368,127 @@
   position: sticky;
   inset-block-start: 0;
   z-index: var(--z-sticky);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-block-size: var(--topbar-height);
   padding-inline: var(--gutter);
-  padding-block: var(--space-2);
-  background: var(--surface-raised);
+  background: var(--surface-ground);
   border-block-end: var(--border-1) solid var(--rule);
 }
 
-.topbar__search {
-  flex: 1 1 auto;
-  /* Floor it above "just the icon" so it stays a usable field on a narrow
-   * phone, even once the actions beside it have taken their share. */
-  min-inline-size: var(--space-16);
-  max-inline-size: var(--search-max);
+.topbar__inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--topbar-height);
+  max-inline-size: var(--page-max);
+  margin-inline: auto;
+  padding-block: var(--space-2);
 }
 
-/* The account button carries a visible name only from 48rem up (.u-hide-sm
- * on the name span); below that, drop its padding to icon-button size so an
- * avatar-only button does not cost as much room as a labelled one. */
-@media (max-width: 47.99rem) {
-  .topbar__user-btn {
-    --btn-padding: var(--space-2);
+@media (min-width: 48rem) {
+  .topbar__inner {
+    grid-template-columns:
+      minmax(max-content, 1fr) minmax(0, var(--search-max))
+      minmax(max-content, 1fr);
+    gap: var(--space-5);
   }
 }
 
 .topbar__title {
+  display: none;
+  margin: 0;
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   color: var(--text-strong);
   min-width: 0;
 }
 
-.topbar__spacer {
-  margin-inline-start: auto;
+@media (min-width: 48rem) {
+  .topbar__title {
+    display: block;
+  }
+}
+
+.topbar__search {
+  /* Floor it above "just the icon" so it stays a usable field on a narrow
+   * phone, even once the actions beside it have taken their share. */
+  min-inline-size: var(--space-16);
+}
+
+.topbar__search .input {
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  padding-inline-start: var(--space-10);
+}
+
+.topbar__search .input-group__icon {
+  inset-inline-start: var(--space-4);
+}
+
+/* The "/" shortcut, shown only where there is a keyboard to press it on. */
+.topbar__kbd {
+  display: none;
+}
+
+@media (min-width: 64rem) and (hover: hover) {
+  .topbar__kbd {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset-inline-end: var(--space-3);
+    min-inline-size: var(--space-6);
+    block-size: var(--space-6);
+    border: var(--border-1) solid var(--rule-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .topbar__search .input {
+    padding-inline-end: var(--space-12);
+  }
+
+  .topbar__search .input:focus ~ .topbar__kbd {
+    display: none;
+  }
 }
 
 .topbar__actions {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: var(--space-2);
 }
 
-/* On a phone the company mark moves into the top bar, since the rail is gone. */
-.topbar__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  text-decoration: none;
-  color: var(--text-strong);
+/* The account button carries a visible name only where the bar has room for
+ * it; below that it is the avatar and a chevron. */
+.topbar__user-btn {
+  --btn-padding: var(--space-2);
 }
 
+.topbar__user-name {
+  display: none;
+}
+
+/* On a phone the search needs the room more than the chevron does. */
+@media (max-width: 47.99rem) {
+  .topbar__user-btn .btn__icon {
+    display: none;
+  }
+}
+
+@media (min-width: 72rem) {
+  .topbar__user-name {
+    display: inline;
+  }
+}
+
+/* On a phone the company switcher moves into the top bar, since the rail is
+ * gone. */
 @media (min-width: 48rem) {
   .topbar__brand {
     display: none;
@@ -311,6 +507,12 @@
   padding-block: var(--space-6) var(--space-12);
 }
 
+@media (min-width: 48rem) {
+  .main {
+    padding-block-start: var(--space-8);
+  }
+}
+
 /* Clear the bottom nav on a phone, including the home-gesture inset. */
 @media (max-width: 47.99rem) {
   .main {
@@ -320,9 +522,13 @@
   }
 }
 
+/* The page column. It is a size container, so a page's grid responds to the
+ * room it actually has — the rail may be open, collapsed or absent — rather
+ * than to the viewport. */
 .page {
   max-width: var(--page-max);
   margin-inline: auto;
+  container: page / inline-size;
 }
 
 .page__header {
@@ -468,6 +674,40 @@
 
 .grid--narrow {
   --grid-min: 13rem;
+}
+
+/* Bento: cards of different sizes on one grid. One column on a phone, six in
+ * the middle, twelve when the page column is wide. The grid only supplies the
+ * tracks; each page says how many its own cards span (see pages/home.css).
+ * It answers to the page container, not the viewport. */
+.bento {
+  display: grid;
+  gap: var(--bento-gap);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bento > * {
+  min-width: 0;
+}
+
+@container page (min-width: 44rem) {
+  .bento {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .bento > * {
+    grid-column: span 6;
+  }
+}
+
+@container page (min-width: 68rem) {
+  .bento {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .bento > * {
+    grid-column: span 12;
+  }
 }
 
 /* Work area split: the record and its side panel. Stacks under 64rem. */

@@ -15,3 +15,6 @@ test-results/
 # Transient Impeccable session artifacts; design.json is kept.
 .impeccable/questions/
 .impeccable/mocks/
+
+# Review screenshots are regenerated on every critique.
+.impeccable/review/

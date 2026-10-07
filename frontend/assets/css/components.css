@@ -8,6 +8,9 @@
  *     float: a dialog, a toast, a popover. Elevation is declared once, never
  *     both a border and a shadow on the same element.
  *   - Every spacing value is a 4px multiple from the --space-* scale.
+ *   - Corners, control height and cell padding come from the density tokens
+ *     (--radius-control, --radius-card, --control-height, --pad-*), so the
+ *     same component is comfortable on Home and compact on a work page.
  *   - State is encoded at least twice: colour plus an icon, a fill, or a rule.
  *     Every status in the portal must survive greyscale and bright sunlight.
  *   - Anything tappable is at least 44px on a phone.
@@ -59,13 +62,21 @@
 
 .labelstrip {
   --labelstrip-rule: var(--rule);
+  --strip-gap: var(--space-5);
   display: flex;
   flex-wrap: wrap;
-  gap: 0;
+  /* Twice the gap between pairs, with the dividing hairline drawn in the
+   * middle of it by each pair's ::before. */
+  gap: 0 calc(var(--strip-gap) * 2);
   margin: 0;
   padding: 0;
   border-block-end: var(--border-1) solid var(--labelstrip-rule);
   position: relative;
+  /* The first pair on every row draws its divider outside the strip, where
+   * this clips it. That is what keeps a wrapped strip clean at 360px: no pair
+   * ever starts a row with a rule in front of it. Inline axis only, so the
+   * register rule below the strip is not clipped. */
+  overflow-x: clip;
 }
 
 /* The authored moment. When a record is hovered or holds focus, the strip
@@ -84,10 +95,24 @@
   transition: transform var(--dur-3) var(--ease-out);
 }
 
-.card:hover .labelstrip::after,
-.card:focus-within .labelstrip::after,
+.card:focus-within > .labelstrip::after,
+.record:focus-within .labelstrip::after,
 .labelstrip--registered::after {
   transform: scaleX(1);
+}
+
+/* Hover only where there is a pointer: on a touch screen a hover sticks to the
+ * last thing tapped. */
+@media (hover: hover) {
+  .card:hover > .labelstrip::after,
+  .record:hover .labelstrip::after {
+    transform: scaleX(1);
+  }
+
+  .card:hover > .labelstrip .labelstrip__value,
+  .record:hover .labelstrip__value {
+    transform: translateY(-1px);
+  }
 }
 
 .labelstrip__pair {
@@ -95,15 +120,48 @@
   flex-direction: column;
   gap: var(--space-1);
   padding-block: var(--space-2) var(--space-3);
-  padding-inline-end: var(--space-5);
   min-width: 0;
+  position: relative;
 }
 
 /* Pairs are divided by a hairline rather than by space alone, so the strip
  * reads as a ruled label even when two values are short. */
-.labelstrip__pair + .labelstrip__pair {
-  padding-inline-start: var(--space-5);
+.labelstrip__pair::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(-1 * var(--strip-gap));
   border-inline-start: var(--border-1) solid var(--rule-muted);
+}
+
+/* Inside a record list the strip is tighter: it is one line of a row, not the
+ * head of a card. */
+.labelstrip--compact {
+  --strip-gap: var(--space-3);
+}
+
+.labelstrip--compact .labelstrip__pair {
+  gap: 0;
+  padding-block: 0 var(--space-2);
+}
+
+/* One step under the record's title, so the title is what the eye lands on
+ * and the strip is what it reads next. */
+.labelstrip--compact .labelstrip__value {
+  font-size: var(--text-xs);
+}
+
+/* A strip that closes nothing — the last thing in its block — drops its rule. */
+.labelstrip--open {
+  border-block-end: 0;
+}
+
+.labelstrip--open::after {
+  content: none;
+}
+
+.labelstrip--open .labelstrip__pair {
+  padding-block-end: 0;
 }
 
 .labelstrip__key {
@@ -132,8 +190,8 @@
   transition: transform var(--dur-3) var(--ease-out);
 }
 
-.card:hover .labelstrip__value,
-.card:focus-within .labelstrip__value,
+.card:focus-within > .labelstrip .labelstrip__value,
+.record:focus-within .labelstrip__value,
 .labelstrip--registered .labelstrip__value {
   transform: translateY(-1px);
 }
@@ -167,7 +225,7 @@
   padding-inline: var(--btn-padding);
   padding-block: var(--space-2);
   border: var(--border-1) solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
@@ -184,7 +242,7 @@
  * target. The target wins on a phone, the density wins on a pointer device. */
 @media (min-width: 48rem) {
   .btn {
-    --btn-height: 2.375rem;
+    --btn-height: var(--control-height);
   }
 }
 
@@ -509,7 +567,7 @@
   background: var(--surface-raised);
   color: var(--text-strong);
   border: var(--border-1) solid var(--rule-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-size: var(--text-md);
   line-height: var(--leading-snug);
   transition: border-color var(--dur-1) var(--ease-out),
@@ -519,7 +577,7 @@
 @media (min-width: 48rem) {
   .input,
   .select {
-    min-block-size: 2.375rem;
+    min-block-size: var(--control-height);
     font-size: var(--text-sm);
   }
 
@@ -652,7 +710,7 @@
   /* The default indicator is a 10px target. Give it a real one. */
   padding: var(--space-1);
   margin-inline-start: var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   opacity: 0.65;
   transition: opacity var(--dur-1) var(--ease-out),
@@ -858,7 +916,7 @@
   padding: var(--space-6) var(--space-4);
   background: var(--surface-sunken);
   border: var(--border-1) dashed var(--rule-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   text-align: center;
   cursor: pointer;
   transition: border-color var(--dur-1) var(--ease-out),
@@ -917,7 +975,7 @@
   padding: var(--space-2) var(--space-3);
   background: var(--surface-raised);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-size: var(--text-2xs);
 }
 
@@ -947,18 +1005,12 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--gap-card);
+  padding: var(--pad-card);
   background: var(--surface-raised);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   min-width: 0;
-}
-
-@media (min-width: 48rem) {
-  .card {
-    padding: var(--space-5);
-  }
 }
 
 /* Enforcement, not advice: a card inside a card loses its chrome. */
@@ -976,12 +1028,33 @@
   min-width: 0;
 }
 
+/* A pill tag sits above the title and names what kind of thing the card
+ * holds. */
+.card__titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .card__title {
+  margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
   color: var(--text-strong);
   min-width: 0;
+}
+
+/* A count beside a card title: "Your tickets  3 open". */
+.card__count {
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .card__title a {
@@ -1035,6 +1108,289 @@
 }
 
 /* ============================================================================
+ * Tag
+ *
+ * A small pill above a card title that names the kind of thing below it:
+ * Tickets, Rooms, Announcement. It is a category, not a status — a status is a
+ * badge, with a square corner and its own icon. The lime variant is reserved
+ * for the one tag on a screen that marks something new.
+ * ========================================================================= */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--space-6);
+  padding-inline: var(--space-3);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-body);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag:lang(ar),
+[lang='ar'] .tag {
+  text-transform: none;
+  font-size: var(--text-2xs);
+}
+
+.tag__icon {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+}
+
+.tag--highlight {
+  background: var(--highlight);
+  border-color: var(--highlight-edge);
+  color: var(--highlight-on);
+}
+
+/* ============================================================================
+ * Round arrow button
+ *
+ * The lime disc in the corner of a card that opens somewhere: the card's
+ * "go to" control. Always a link with an accessible name saying where it goes.
+ * The arrow points up and towards the reading direction's end, so it is marked
+ * .icon--dir and mirrors in Arabic.
+ * ========================================================================= */
+
+.arrow-btn {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  flex: none;
+  background: var(--highlight);
+  border: var(--border-1) solid var(--highlight-edge);
+  border-radius: var(--radius-pill);
+  color: var(--highlight-on);
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 48rem) {
+  .arrow-btn {
+    inline-size: var(--control-height);
+    block-size: var(--control-height);
+  }
+}
+
+.arrow-btn svg {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.arrow-btn:hover {
+  background: var(--highlight-hover);
+  color: var(--highlight-on);
+}
+
+/* A plain state change, not a second authored motion: the arrow leans two
+ * pixels the way it points. */
+.arrow-btn:hover svg {
+  transform: translate(var(--border-2), calc(-1 * var(--border-2)));
+}
+
+[dir='rtl'] .arrow-btn:hover svg.icon--dir {
+  transform: scaleX(-1) translate(var(--border-2), calc(-1 * var(--border-2)));
+}
+
+/* The quiet variant, for a secondary destination next to a lime one. */
+.arrow-btn--quiet {
+  background: var(--surface-raised);
+  border-color: var(--rule-strong);
+  color: var(--text-strong);
+}
+
+.arrow-btn--quiet:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+/* A small icon on a lime disc. Decorative: it marks, it does not act. */
+.icon-disc {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  flex: none;
+  background: var(--highlight);
+  border: var(--border-1) solid var(--highlight-edge);
+  border-radius: var(--radius-pill);
+  color: var(--highlight-on);
+}
+
+.icon-disc svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+/* ============================================================================
+ * Record list
+ *
+ * Records inside a card: each row is a compact label strip over the record's
+ * title, divided from the next by a hairline. This is where the Assay Card
+ * lives now — soft card outside, ruled specimen inside. A record list is
+ * always compact; the markup carries data-density="compact".
+ * ========================================================================= */
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-block: var(--pad-row-block);
+}
+
+.record:first-child {
+  padding-block-start: 0;
+}
+
+.record:last-child {
+  padding-block-end: 0;
+}
+
+.record + .record {
+  border-block-start: var(--border-1) solid var(--rule-muted);
+}
+
+.record__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.record__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  color: var(--text-strong);
+  min-width: 0;
+}
+
+.record__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.record__title a:hover {
+  color: var(--brand-accent-ink);
+  text-decoration: underline;
+}
+
+/* A record's title is a control on a phone, so it takes a real target without
+ * growing the row: the padding is taken back by a negative margin. */
+@media (max-width: 47.99rem) {
+  .record__title a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    margin-block: calc(-1 * var(--space-3));
+  }
+}
+
+/* margin-block is reset because base.css spaces whatever follows a heading,
+   and here the thing after the heading sits beside it, not below it. */
+.record__aside {
+  margin-block: 0;
+  margin-inline-start: auto;
+  flex: none;
+}
+
+.record__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-body);
+}
+
+/* The link that closes a capped list: "3 more". */
+.record-list__more {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* On a phone a record is read at arm's length and often in the sun, so its
+ * text steps up to the body floor and its keys off the smallest size. Desktop
+ * keeps the dense measure. */
+@media (max-width: 47.99rem) {
+  .record__title,
+  .record__text {
+    font-size: var(--text-md);
+  }
+
+  .labelstrip--compact .labelstrip__value {
+    font-size: var(--text-sm);
+  }
+
+  .record .labelstrip__key,
+  .record .badge,
+  .record .person__role,
+  .record-list__more {
+    font-size: var(--text-2xs);
+  }
+}
+
+/* ============================================================================
+ * Photo slot
+ *
+ * A framed place for a photograph. Until a real one is supplied it shows a
+ * neutral placeholder — a tonal well with a drawn mark — never a stock image
+ * and never a fake. The image, when present, covers the slot.
+ * ========================================================================= */
+
+.photo-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  margin: 0;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+}
+
+.photo-slot img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.photo-slot__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  font-size: var(--text-2xs);
+  text-align: center;
+}
+
+.photo-slot__placeholder svg {
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+}
+
+/* ============================================================================
  * Status badge
  *
  * Colour, an icon and a fill, so a status reads in greyscale, in bright sun,
@@ -1051,7 +1407,7 @@
   padding-inline: var(--space-2);
   padding-block: var(--space-1);
   border: var(--border-1) solid var(--rule-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: var(--surface-sunken);
   color: var(--text-body);
   font-size: var(--text-3xs);
@@ -1155,7 +1511,7 @@
   font-size: var(--text-3xs);
   font-variant-numeric: tabular-nums;
   padding-inline: var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: var(--surface-sunken);
   color: var(--text-muted);
 }
@@ -1188,17 +1544,17 @@
    * reachable from the keyboard. */
   overflow-x: auto;
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
 }
 
 .table {
   inline-size: 100%;
-  font-size: var(--text-sm);
+  font-size: var(--text-cell);
 }
 
 .table caption {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--pad-cell-block) var(--pad-cell-inline);
   text-align: start;
   font-size: var(--text-2xs);
   color: var(--text-muted);
@@ -1207,7 +1563,7 @@
 
 .table th,
 .table td {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--pad-cell-block) var(--pad-cell-inline);
   text-align: start;
   vertical-align: baseline;
 }
@@ -1268,7 +1624,7 @@
   letter-spacing: inherit;
   text-transform: inherit;
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 .table__sort:hover {
@@ -1337,7 +1693,7 @@
     padding: var(--space-1) var(--space-4);
     background: var(--surface-raised);
     border: var(--border-1) solid var(--rule);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
   }
 
   .table tbody tr + tr {
@@ -1420,7 +1776,7 @@
   min-block-size: var(--tap-min);
   padding-inline: var(--space-2);
   border: var(--border-1) solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   color: var(--text-body);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -1507,7 +1863,7 @@
   color: var(--text-muted);
   text-decoration: none;
   padding-block: var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 .breadcrumb__link:hover {
@@ -1591,6 +1947,11 @@
   min-width: 0;
 }
 
+/* A person row that is a link takes a full tap target. */
+a.person {
+  min-block-size: var(--tap-min);
+}
+
 .person__name {
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
@@ -1628,12 +1989,43 @@
   padding: var(--space-2);
   background: var(--surface-raised);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-1);
 }
 
 .menu[hidden] {
   display: none;
+}
+
+/* Anchored to the inline-start edge of its trigger: the company switcher. */
+.menu--start {
+  inset-inline: 0 auto;
+}
+
+.menu__label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+}
+
+/* The company's own colour, shown raw as a swatch beside its name. */
+.menu__swatch {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  flex: none;
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+}
+
+.menu__item-meta {
+  margin-inline-start: auto;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-normal);
+  color: var(--text-muted);
+}
+
+.menu__item .menu__check {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  color: var(--brand-accent-ink);
 }
 
 .menu__header {
@@ -1665,7 +2057,7 @@
   inline-size: 100%;
   min-block-size: var(--tap-min);
   padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-body);
   font-size: var(--text-sm);
@@ -1676,7 +2068,7 @@
 
 @media (min-width: 48rem) {
   .menu__item {
-    min-block-size: 2.375rem;
+    min-block-size: var(--control-height);
   }
 }
 
@@ -1708,7 +2100,7 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
 }
 
 .menu__notice-title {
@@ -1745,7 +2137,7 @@
   color: var(--text-body);
   /* A floating layer: shadow, not a hairline. Elevation declared once. */
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-2);
   overflow: hidden;
 }
@@ -1864,7 +2256,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--surface-raised);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-2);
   pointer-events: auto;
   /* The state hairline is on the block-start edge, not a thick inline border:
@@ -1957,7 +2349,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: var(--border-1) solid var(--rule-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   background: var(--surface-sunken);
   font-size: var(--text-sm);
 }
@@ -2026,7 +2418,7 @@
   text-align: center;
   background: var(--surface-raised);
   border: var(--border-1) dashed var(--rule-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
 }
 
 .empty__mark {
@@ -2051,6 +2443,46 @@
   margin-block-start: var(--space-2);
 }
 
+/* The small empty state, for one card on a page that otherwise has content.
+ * A page never shows a page-sized empty state when only one of its lists is
+ * empty: the card stays its size and says so in a line. */
+.empty--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  text-align: start;
+  background: none;
+  /* No frame: a dashed box inside a card is a card in a card. */
+  border: 0;
+  border-radius: 0;
+}
+
+.empty--inline .empty__mark {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+}
+
+.empty--inline .empty__title {
+  font-size: var(--text-sm);
+}
+
+.empty--inline .empty__text {
+  font-size: var(--text-2xs);
+  max-width: none;
+}
+
+.empty__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.empty__copy p {
+  margin: 0;
+}
+
 /* ============================================================================
  * Skeleton loading
  *
@@ -2062,7 +2494,7 @@
 .skeleton {
   display: block;
   background: var(--skeleton-base);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   block-size: var(--space-4);
   inline-size: 100%;
 }
@@ -2128,7 +2560,7 @@
   padding: var(--space-4);
   background: var(--surface-raised);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
 }
 
 .skeleton-card__strip {
@@ -2156,7 +2588,7 @@
   padding: var(--space-1);
   background: var(--surface-sunken);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
 }
 
 .segmented__option {
@@ -2166,7 +2598,7 @@
   min-block-size: var(--tap-min);
   padding-inline: var(--space-3);
   border: var(--border-1) solid transparent;
-  border-radius: calc(var(--radius-md) - var(--border-1));
+  border-radius: calc(var(--radius-control) - var(--space-1));
   background: none;
   color: var(--text-muted);
   font-size: var(--text-2xs);

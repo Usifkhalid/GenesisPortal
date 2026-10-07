@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>MG Holding Portal</title>
+    <title data-i18n="app.name">MG Holding Portal</title>
 
     <link
       rel="preload"
@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css" />
     <link rel="stylesheet" href="assets/css/components.css" />
+    <link rel="stylesheet" href="assets/css/pages/home.css" />
   </head>
 
   <body>
@@ -26,171 +27,218 @@
     <div class="app">
       <!-- ==================================================== rail (desktop) === -->
       <nav class="rail" id="rail" data-i18n-attr="aria-label:nav.label">
-        <div class="rail__top">
-          <a class="rail__brand" href="#">
-            <span
-              class="rail__mark"
-              id="railMark"
-              aria-hidden="true"
-              data-i18n="app.companyShort"
-              >GEN</span
-            >
-            <span class="rail__company">
-              <span class="rail__company-name" data-i18n="app.company"></span>
-              <span class="rail__company-group" data-i18n="app.group"></span>
-            </span>
-          </a>
+        <div class="menu-wrap">
           <button
             type="button"
-            class="btn btn--ghost btn--icon u-hide-sm rail__toggle"
+            class="switcher"
+            id="companyBtn"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="companyMenu"
+          >
+            <span class="company-mark" data-company-mark aria-hidden="true"></span>
+            <span class="switcher__text" data-rail-text>
+              <span class="switcher__name" data-company-name></span>
+              <span class="switcher__group" data-i18n="app.group"></span>
+            </span>
+            <svg class="switcher__chevron" aria-hidden="true" focusable="false">
+              <use href="#i-chevronsUpDown" />
+            </svg>
+          </button>
+          <div class="menu menu--start" id="companyMenu" data-company-menu hidden></div>
+        </div>
+
+        <div class="rail__scroll">
+          <div class="rail__nav">
+            <a class="nav-link" href="#home" data-nav="home" aria-current="page">
+              <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                <use href="#i-home" />
+              </svg>
+              <span class="rail__label" data-rail-text data-i18n="nav.home">Home</span>
+            </a>
+            <a class="nav-link" href="#announcements" data-nav="announcements">
+              <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                <use href="#i-announcements" />
+              </svg>
+              <span class="rail__label" data-rail-text data-i18n="nav.announcements"
+                >Announcements</span
+              >
+            </a>
+            <a class="nav-link" href="#rooms" data-nav="rooms">
+              <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                <use href="#i-rooms" />
+              </svg>
+              <span class="rail__label" data-rail-text data-i18n="nav.rooms">Rooms</span>
+            </a>
+            <a class="nav-link" href="#tickets" data-nav="tickets">
+              <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                <use href="#i-tickets" />
+              </svg>
+              <span class="rail__label" data-rail-text data-i18n="nav.tickets">Tickets</span>
+              <span class="nav-link__count" data-rail-text data-ticket-count></span>
+            </a>
+            <a class="nav-link" href="#directory" data-nav="directory">
+              <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                <use href="#i-directory" />
+              </svg>
+              <span class="rail__label" data-rail-text data-i18n="nav.directory"
+                >Directory</span
+              >
+            </a>
+          </div>
+
+          <div
+            class="rail__group"
+            id="railAdminSection"
+            role="group"
+            aria-labelledby="railAdminHeading"
+            hidden
+          >
+            <p
+              class="rail__heading"
+              id="railAdminHeading"
+              data-rail-text
+              data-i18n="nav.administration"
+            >
+              Administration
+            </p>
+            <div class="rail__nav">
+              <a class="nav-link" href="#admin" data-nav="admin">
+                <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                  <use href="#i-admin" />
+                </svg>
+                <span class="rail__label" data-rail-text data-i18n="nav.admin"
+                  >Company admin</span
+                >
+              </a>
+              <a class="nav-link" href="#audit-log" data-nav="auditLog">
+                <svg class="nav-link__icon" aria-hidden="true" focusable="false">
+                  <use href="#i-auditLog" />
+                </svg>
+                <span class="rail__label" data-rail-text data-i18n="nav.auditLog"
+                  >Audit log</span
+                >
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail__foot">
+          <button
+            type="button"
+            class="btn btn--ghost rail__toggle"
             id="railToggle"
             aria-expanded="true"
-            data-i18n-attr="aria-label:nav.collapseRail"
           >
             <svg class="btn__icon" aria-hidden="true" focusable="false">
               <use href="#i-chevronEnd" />
             </svg>
+            <span class="rail__label" data-rail-text data-i18n="nav.collapse">Collapse</span>
           </button>
-        </div>
-
-        <div class="rail__nav">
-          <a class="nav-link" href="#home" data-nav="home" aria-current="page">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-home" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.home">Home</span>
-          </a>
-          <a class="nav-link" href="#announcements" data-nav="announcements">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-announcements" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.announcements">Announcements</span>
-          </a>
-          <a class="nav-link" href="#rooms" data-nav="rooms">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-rooms" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.rooms">Rooms</span>
-          </a>
-          <a class="nav-link" href="#tickets" data-nav="tickets">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-tickets" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.tickets">Tickets</span>
-            <span class="nav-link__count" id="railTicketCount">4</span>
-          </a>
-          <a class="nav-link" href="#directory" data-nav="directory">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-directory" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.directory">Directory</span>
-          </a>
-        </div>
-
-        <div class="rail__nav rail__section" id="railAdminSection" hidden>
-          <a class="nav-link" href="#admin" data-nav="admin">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-admin" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.admin">Company admin</span>
-          </a>
-          <a class="nav-link" href="#audit-log" data-nav="auditLog">
-            <svg class="nav-link__icon" aria-hidden="true" focusable="false">
-              <use href="#i-auditLog" />
-            </svg>
-            <span class="rail__label" data-i18n="nav.auditLog">Audit log</span>
-          </a>
         </div>
       </nav>
 
       <!-- ========================================================== top bar === -->
       <header class="topbar">
-        <a class="topbar__brand" href="#">
-          <span
-            class="rail__mark"
-            id="topbarMark"
-            aria-hidden="true"
-            data-i18n="app.companyShort"
-            >GEN</span
-          >
-        </a>
-
-        <div class="input-group topbar__search">
-          <svg class="input-group__icon" aria-hidden="true" focusable="false">
-            <use href="#i-search" />
-          </svg>
-          <input
-            class="input"
-            type="search"
-            id="globalSearch"
-            data-i18n-attr="placeholder:field.searchPlaceholder, aria-label:field.searchPlaceholder"
-          />
-        </div>
-
-        <div class="topbar__actions topbar__spacer">
-          <div class="menu-wrap">
+        <div class="topbar__inner">
+          <div class="menu-wrap topbar__brand">
             <button
               type="button"
-              class="btn btn--ghost btn--icon"
-              id="notifBtn"
+              class="switcher switcher--compact"
+              id="companyBtnTop"
               aria-haspopup="true"
               aria-expanded="false"
-              aria-controls="notifMenu"
+              aria-controls="companyMenuTop"
             >
-              <svg class="btn__icon" aria-hidden="true" focusable="false">
-                <use href="#i-notifications" />
+              <span class="company-mark" data-company-mark aria-hidden="true"></span>
+              <svg class="switcher__chevron" aria-hidden="true" focusable="false">
+                <use href="#i-chevronsUpDown" />
               </svg>
-              <span class="btn__count" id="notifCount">2</span>
             </button>
-            <div class="menu" id="notifMenu" hidden>
-              <div class="menu__notice">
-                <p class="menu__notice-title" data-i18n="notification.sample1Title"></p>
-                <p class="menu__notice-time" data-i18n="notification.sample1Time"></p>
-              </div>
-              <div class="menu__notice">
-                <p class="menu__notice-title" data-i18n="notification.sample2Title"></p>
-                <p class="menu__notice-time" data-i18n="notification.sample2Time"></p>
-              </div>
-              <hr class="menu__divider" />
-              <a class="menu__item" href="#notifications" data-i18n="action.viewAll"
-                >View all</a
-              >
-            </div>
+            <div class="menu menu--start" id="companyMenuTop" data-company-menu hidden></div>
           </div>
 
-          <div class="menu-wrap">
-            <button
-              type="button"
-              class="btn btn--ghost topbar__user-btn"
-              id="userMenuBtn"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="userMenu"
-              data-i18n-attr="aria-label:nav.account"
-            >
-              <span class="avatar avatar--sm" id="userAvatar" aria-hidden="true">YE</span>
-              <span class="u-hide-sm" id="userMenuName"></span>
-              <svg class="btn__icon" aria-hidden="true" focusable="false">
-                <use href="#i-chevronDown" />
-              </svg>
-            </button>
-            <div class="menu" id="userMenu" hidden>
-              <div class="menu__header">
-                <p class="menu__name" id="menuUserName"></p>
-                <p class="menu__meta" id="menuUserCompany"></p>
+          <p class="topbar__title" data-i18n="nav.home">Home</p>
+
+          <div class="input-group topbar__search" role="search">
+            <svg class="input-group__icon" aria-hidden="true" focusable="false">
+              <use href="#i-search" />
+            </svg>
+            <input
+              class="input"
+              type="search"
+              id="globalSearch"
+              aria-keyshortcuts="/"
+              data-i18n-attr="aria-label:field.searchPlaceholder"
+            />
+            <kbd class="topbar__kbd" aria-hidden="true">/</kbd>
+          </div>
+
+          <div class="topbar__actions">
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="btn btn--ghost btn--icon"
+                id="notifBtn"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-controls="notifMenu"
+              >
+                <svg class="btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#i-notifications" />
+                </svg>
+                <span class="btn__count" id="notifCount">2</span>
+              </button>
+              <div class="menu" id="notifMenu" hidden>
+                <div class="menu__notice">
+                  <p class="menu__notice-title" id="notifSample1"></p>
+                  <p class="menu__notice-time" data-i18n="notification.sample1Time"></p>
+                </div>
+                <div class="menu__notice">
+                  <p class="menu__notice-title" data-i18n="notification.sample2Title"></p>
+                  <p class="menu__notice-time" data-i18n="notification.sample2Time"></p>
+                </div>
+                <hr class="menu__divider" />
+                <a class="menu__item" href="#notifications" data-i18n="action.viewAll"
+                  >View all</a
+                >
               </div>
-              <hr class="menu__divider" />
-              <button type="button" class="menu__item" data-lang="en">
-                <span data-i18n="lang.en">English</span>
+            </div>
+
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="btn btn--ghost topbar__user-btn"
+                id="userMenuBtn"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-controls="userMenu"
+                data-i18n-attr="aria-label:nav.account"
+              >
+                <span class="avatar avatar--sm" id="userAvatar" aria-hidden="true"></span>
+                <span class="topbar__user-name" id="userMenuName"></span>
+                <svg class="btn__icon" aria-hidden="true" focusable="false">
+                  <use href="#i-chevronDown" />
+                </svg>
               </button>
-              <button type="button" class="menu__item" data-lang="ar">
-                <span data-i18n="lang.ar">العربية</span>
-              </button>
-              <hr class="menu__divider" />
-              <button type="button" class="menu__item" id="signOutBtn">
-                <svg aria-hidden="true" focusable="false"><use href="#i-signOut" /></svg>
-                <span data-i18n="nav.signOut">Sign out</span>
-              </button>
+              <div class="menu" id="userMenu" hidden>
+                <div class="menu__header">
+                  <p class="menu__name" id="menuUserName"></p>
+                  <p class="menu__meta" id="menuUserCompany"></p>
+                </div>
+                <hr class="menu__divider" />
+                <button type="button" class="menu__item" data-lang="en">
+                  <span data-i18n="lang.en">English</span>
+                </button>
+                <button type="button" class="menu__item" data-lang="ar">
+                  <span data-i18n="lang.ar">العربية</span>
+                </button>
+                <hr class="menu__divider" />
+                <button type="button" class="menu__item" id="signOutBtn">
+                  <svg aria-hidden="true" focusable="false"><use href="#i-signOut" /></svg>
+                  <span data-i18n="nav.signOut">Sign out</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -198,32 +246,8 @@
 
       <!-- ====================================================== main area === -->
       <main class="main" id="main">
-        <div class="page">
-          <div class="page__header">
-            <div class="page__heading">
-              <h1 data-i18n="home.title">Home</h1>
-              <p class="page__lead" data-i18n="home.lead"></p>
-            </div>
-            <div class="page__actions">
-              <button type="button" class="btn btn--primary">
-                <svg class="btn__icon" aria-hidden="true" focusable="false">
-                  <use href="#i-plus" />
-                </svg>
-                <span class="btn__label" data-i18n="action.newAnnouncement"
-                  >New announcement</span
-                >
-              </button>
-            </div>
-          </div>
-
-          <div class="empty">
-            <svg class="empty__mark" aria-hidden="true" focusable="false">
-              <use href="#i-blankLabel" />
-            </svg>
-            <p class="empty__title" data-i18n="home.welcomeTitle">You're all caught up</p>
-            <p class="empty__text" data-i18n="home.welcomeText"></p>
-          </div>
-        </div>
+        <!-- The page module renders here. See assets/js/pages/. -->
+        <div class="page" id="page"></div>
       </main>
 
       <!-- ================================================ bottom nav (phone) === -->
@@ -240,17 +264,17 @@
           </svg>
           <span class="bottomnav__label" data-i18n="nav.tickets">Tickets</span>
         </a>
+        <a class="bottomnav__link" href="#rooms" data-nav="rooms">
+          <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
+            <use href="#i-rooms" />
+          </svg>
+          <span class="bottomnav__label" data-i18n="nav.rooms">Rooms</span>
+        </a>
         <a class="bottomnav__link" href="#directory" data-nav="directory">
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
             <use href="#i-directory" />
           </svg>
           <span class="bottomnav__label" data-i18n="nav.directory">Directory</span>
-        </a>
-        <a class="bottomnav__link" href="#announcements" data-nav="announcements">
-          <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
-            <use href="#i-announcements" />
-          </svg>
-          <span class="bottomnav__label" data-i18n="nav.announcements">Announcements</span>
         </a>
         <button type="button" class="bottomnav__link" id="moreBtn" aria-haspopup="dialog">
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
@@ -275,18 +299,34 @@
         </button>
       </div>
       <div class="dialog__body stack stack--tight">
-        <a class="menu__item" href="#rooms" data-dialog-close>
-          <svg aria-hidden="true" focusable="false"><use href="#i-rooms" /></svg>
-          <span data-i18n="nav.rooms">Rooms</span>
+        <a class="menu__item" href="#announcements" data-dialog-close>
+          <svg aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
+          <span data-i18n="nav.announcements">Announcements</span>
         </a>
-        <a class="menu__item" href="#admin" id="moreAdminLink" hidden data-dialog-close>
-          <svg aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
-          <span data-i18n="nav.admin">Company admin</span>
-        </a>
-        <a class="menu__item" href="#audit-log" id="moreAuditLogLink" hidden data-dialog-close>
-          <svg aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
-          <span data-i18n="nav.auditLog">Audit log</span>
-        </a>
+        <div
+          class="stack stack--tight"
+          id="moreAdminSection"
+          role="group"
+          aria-labelledby="moreAdminHeading"
+          hidden
+        >
+          <hr class="menu__divider" />
+          <p
+            class="u-microlabel menu__label"
+            id="moreAdminHeading"
+            data-i18n="nav.administration"
+          >
+            Administration
+          </p>
+          <a class="menu__item" href="#admin" data-dialog-close>
+            <svg aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
+            <span data-i18n="nav.admin">Company admin</span>
+          </a>
+          <a class="menu__item" href="#audit-log" data-dialog-close>
+            <svg aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
+            <span data-i18n="nav.auditLog">Audit log</span>
+          </a>
+        </div>
       </div>
     </dialog>
 

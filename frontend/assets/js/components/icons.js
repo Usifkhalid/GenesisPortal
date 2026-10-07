@@ -42,6 +42,12 @@ const PATHS = {
   chevronDown: '<path d="M6 9.5 12 15.5 18 9.5"/>',
   chevronEnd: '<path d="M9.5 5 16.5 12 9.5 19"/>',
   arrowUp: '<path d="M12 19V5"/><path d="M6.5 10.5 12 5l5.5 5.5"/>',
+  // Up and towards the end of the line: "open this". Directional, so mark it .icon--dir.
+  arrowUpEnd: '<path d="M7 17 17 7"/><path d="M9 7h8v8"/>',
+  // The picker's chevron pair: this control switches between a set of things.
+  chevronsUpDown: '<path d="M8 9.5 12 5.5l4 4"/><path d="M8 14.5l4 4 4-4"/>',
+  image:
+    '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M4 16.5l4.5-4 3.5 3 3-2.5 5 4.5"/>',
   more: '<circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/>',
   copy:
     '<rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M15.5 9V5.5a1.5 1.5 0 0 0-1.5-1.5H5.5A1.5 1.5 0 0 0 4 5.5v8.5A1.5 1.5 0 0 0 5.5 15.5H9"/>',

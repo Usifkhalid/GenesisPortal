@@ -254,3 +254,57 @@ every published version and only an 8.0.0 release candidate sits outside it — 
 `@prisma/config` is used by the CLI at migration time, never by the server at runtime, so
 it is reachable only by a developer running `db:migrate` against their own schema. Pinned
 as-is and recorded here; revisit when Prisma 8 ships.
+
+## Session 4b — Shell and Home redesign (2026-10-07)
+
+### D23. Soft outside, measured inside
+
+The owner's reference (a consulting site) moved the surfaces to soft 16px cards, a 24px
+banner, pine ink and a lime highlight. The Assay Card was kept where it does work: inside
+a card every record still opens with the hairline label strip. This replaces the old
+"no card radius above 10px" rule; DESIGN.md was rewritten, not patched.
+
+### D24. Density is a token set, and compact is the old geometry
+
+Components read `--radius-control`, `--radius-card`, `--control-height`, `--pad-*` and
+`--text-cell`, never the raw scale. `[data-density='compact']` swaps the set to 6px
+controls / 10px frames / 8px rows, which is exactly the session-3 measure, so work pages
+lose nothing. Tables and record lists always carry it; a work page sets it on `.page`.
+
+### D25. Lime is fixed; the accent still owns actions
+
+`--highlight` is not derived from the company. It appears only on round arrow buttons,
+icon discs and the "new" tag, always under `--highlight-on` (pine, 11.8:1, same in both
+themes), with a 3:1 keyline on light grounds. Primary buttons, links, focus and the
+current page stay on the derived company accent, so "works with any accent" still holds.
+
+### D26. "Light" headings are weight 400, not a new font file
+
+The shipped fonts cover 400-600. A real 300 means re-fetching the Latin variable file and
+a third Arabic static (+43 kB for an Arabic reader on 3G). `h1`, `h2` and the display size
+use 400; bold is kept for card titles and values. Revisit only if the owner wants thinner.
+
+### D27. Text never sits on the banner photo, and phones get no photo
+
+The banner is a split: text column, then a photo slot from 56rem of page width. Contrast
+therefore never depends on whichever photo is supplied, and a site phone never downloads
+one (a lazy image in an undisplayed slot is not fetched). Until `photoUrl` exists the
+placeholder is shown to admins only.
+
+### D28. Bottom nav is Home, Tickets, Rooms, Directory, More (amends D20)
+
+"Book a room" is now one of Home's two primary actions, so its destination cannot sit
+behind More. Tickets and Directory keep their slots, as D20 argued; Announcements moves
+into More, since Home already shows the latest three.
+
+### D29. The page grid answers to its container, the rail does not scroll
+
+`.page` is an inline-size container and `.bento` uses container queries, so Home lays out
+the same with the rail open, collapsed or absent. The rail's scroll moved to an inner
+`.rail__scroll` so the company menu can open over the work area without being clipped.
+
+### D30. Demo data is one module of i18n keys
+
+`assets/js/demo-data.js` holds the stand-in companies, user, tickets, bookings and people,
+every display string an i18n key under `demo.`. Company accents there are placeholders,
+not the real brand colours. Delete the file when the last importer has an API.

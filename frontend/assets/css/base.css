@@ -61,6 +61,7 @@ body {
   --leading-normal: 1.75;
   --leading-loose: 1.9;
   --tracking-tight: 0;
+  --tracking-display: 0;
   --tracking-normal: 0;
   --tracking-caps: 0;
   /* Arabic counts fewer characters per line at the same measure. */
@@ -82,8 +83,17 @@ h6 {
   text-wrap: balance;
 }
 
+/* Large headings are set light: at these sizes the regular weight carries a
+ * page on its own, and the bold is kept for the small things that have to be
+ * found fast — a card title, a value, a label. */
+h1,
+h2 {
+  font-weight: var(--weight-normal);
+}
+
 h1 {
   font-size: var(--text-2xl);
+  letter-spacing: var(--tracking-display);
 }
 h2 {
   font-size: var(--text-xl);
@@ -100,6 +110,9 @@ h6 {
 @media (min-width: 48rem) {
   h1 {
     font-size: var(--text-3xl);
+  }
+  h2 {
+    font-size: var(--text-2xl);
   }
 }
 
@@ -179,14 +192,15 @@ a {
    * Latin ones alike. Pushing it clear is the single cheapest typographic
    * improvement on a page full of links. */
   text-underline-offset: 0.18em;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 a:hover {
   text-decoration-thickness: var(--border-2);
 }
 
-a:active {
+/* Not on a button-shaped link: its label colour belongs to the button. */
+a:not(.btn):active {
   color: var(--brand-accent-active);
 }
 
@@ -345,6 +359,12 @@ th {
 
 /* --- Utilities ---------------------------------------------------------- */
 
+/* The hidden attribute always wins. Without this, any component that sets its
+ * own display (a flex stack, a grid) silently un-hides itself. */
+[hidden] {
+  display: none !important;
+}
+
 /* Visible to screen readers, invisible on screen. Used for the label on a
  * search field whose purpose is already obvious from its icon, and for the
  * live region that announces toasts. */
@@ -373,7 +393,7 @@ th {
   background: var(--surface-raised);
   color: var(--brand-accent-ink);
   border: var(--border-1) solid var(--brand-accent-edge);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-weight: var(--weight-bold);
   text-decoration: none;
   /* Parked well clear of the viewport. The shadow only appears once the link

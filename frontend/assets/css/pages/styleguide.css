@@ -76,7 +76,7 @@
   min-block-size: var(--tap-min);
   padding-inline: var(--space-2);
   border: var(--border-1) solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-muted);
   font-size: var(--text-2xs);
@@ -107,7 +107,7 @@
 .sg__accent-swatch {
   inline-size: var(--space-4);
   block-size: var(--space-4);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   border: var(--border-1) solid var(--rule-strong);
   flex: none;
 }
@@ -271,7 +271,7 @@
   padding: var(--space-4);
   background: var(--surface-ground);
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   min-width: 0;
 }
 
@@ -298,7 +298,7 @@
   display: flex;
   flex-direction: column;
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 
@@ -419,14 +419,14 @@
   position: static;
   block-size: auto;
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
 }
 
 .shell-preview .bottomnav {
   position: static;
   display: flex;
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   padding-block-end: 0;
   overflow: hidden;
 }
@@ -434,7 +434,38 @@
 .shell-preview .topbar {
   position: static;
   border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
+}
+
+.shell-preview .topbar__title {
+  display: block;
+}
+
+.shell-preview .topbar__inner {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* --- Density pair ------------------------------------------------------
+ * The same markup twice, once in each density, so the difference is the
+ * tokens and nothing else.
+ */
+.density-pair {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+}
+
+.density-pair__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sg-photo {
+  min-block-size: var(--space-24);
+  inline-size: 100%;
 }
 
 /* The toaster is fixed in the app; in the sheet it is shown in place. */

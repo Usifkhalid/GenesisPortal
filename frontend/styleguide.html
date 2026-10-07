@@ -99,6 +99,7 @@
           <li><a class="sg__toc-link" href="#type" data-i18n="styleguide.sections.type">Type</a></li>
           <li><a class="sg__toc-link" href="#space" data-i18n="styleguide.sections.space">Space and pitch</a></li>
           <li><a class="sg__toc-link" href="#radii" data-i18n="styleguide.sections.radii">Radii and borders</a></li>
+          <li><a class="sg__toc-link" href="#density" data-i18n="styleguide.sections.density">Density</a></li>
           <li><a class="sg__toc-link" href="#elevation" data-i18n="styleguide.sections.elevation">Elevation</a></li>
           <li><a class="sg__toc-link" href="#motion" data-i18n="styleguide.sections.motion">Motion</a></li>
           <li><a class="sg__toc-link" href="#labelstrip" data-i18n="styleguide.sections.labelstrip">Label strip</a></li>
@@ -109,6 +110,8 @@
           <li><a class="sg__toc-link" href="#dates" data-i18n="styleguide.sections.dates">Date and time</a></li>
           <li><a class="sg__toc-link" href="#upload" data-i18n="styleguide.sections.upload">File upload</a></li>
           <li><a class="sg__toc-link" href="#cards" data-i18n="styleguide.sections.cards">Cards</a></li>
+          <li><a class="sg__toc-link" href="#tags" data-i18n="styleguide.sections.tags">Tags and arrow buttons</a></li>
+          <li><a class="sg__toc-link" href="#records" data-i18n="styleguide.sections.records">Record lists</a></li>
           <li><a class="sg__toc-link" href="#badges" data-i18n="styleguide.sections.badges">Status badges</a></li>
           <li><a class="sg__toc-link" href="#tabs" data-i18n="styleguide.sections.tabs">Tabs</a></li>
           <li><a class="sg__toc-link" href="#tables" data-i18n="styleguide.sections.tables">Tables</a></li>
@@ -194,40 +197,107 @@
                 </div>
               </div>
               <div class="swatch">
-                <div class="swatch__chip" style="background: var(--stone-500)"></div>
+                <div class="swatch__chip" style="background: var(--stone-400)"></div>
                 <div class="swatch__meta">
-                  <span class="swatch__name">500</span>
-                  <span class="swatch__token sg__token-name">--text-disabled</span>
+                  <span class="swatch__name">400</span>
+                  <span class="swatch__token sg__token-name">--stone-400</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="styleguide.swatch.ink">Pine ink</p>
+            <div class="swatch-grid">
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--surface-raised); color: var(--text-strong)"
+                >
+                  Aa 15:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">--pine-900</span>
+                  <span class="swatch__token sg__token-name">--text-strong</span>
                 </div>
               </div>
               <div class="swatch">
-                <div class="swatch__chip" style="background: var(--stone-600); color: var(--stone-0)">
-                  5.9:1
+                <div
+                  class="swatch__chip"
+                  style="background: var(--surface-raised); color: var(--text-body)"
+                >
+                  Aa 12:1
                 </div>
                 <div class="swatch__meta">
-                  <span class="swatch__name">600</span>
-                  <span class="swatch__token sg__token-name">--text-muted</span>
-                </div>
-              </div>
-              <div class="swatch">
-                <div class="swatch__chip" style="background: var(--stone-800); color: var(--stone-0)">
-                  13.4:1
-                </div>
-                <div class="swatch__meta">
-                  <span class="swatch__name">800</span>
+                  <span class="swatch__name sg__token-name">--pine-800</span>
                   <span class="swatch__token sg__token-name">--text-body</span>
                 </div>
               </div>
               <div class="swatch">
-                <div class="swatch__chip" style="background: var(--stone-900); color: var(--stone-0)">
-                  17:1
+                <div
+                  class="swatch__chip"
+                  style="background: var(--surface-sunken); color: var(--text-muted)"
+                >
+                  Aa 5.4:1
                 </div>
                 <div class="swatch__meta">
-                  <span class="swatch__name">900</span>
-                  <span class="swatch__token sg__token-name">--text-strong</span>
+                  <span class="swatch__name sg__token-name">--pine-600</span>
+                  <span class="swatch__token sg__token-name">--text-muted</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--surface-disabled); color: var(--text-disabled)"
+                >
+                  Aa
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">--pine-500</span>
+                  <span class="swatch__token sg__token-name">--text-disabled</span>
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="specimen">
+            <p class="specimen__label" data-i18n="styleguide.swatch.highlight">
+              Lime highlight (fixed)
+            </p>
+            <div class="swatch-grid">
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--highlight); color: var(--highlight-on)"
+                >
+                  Aa 11.8:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">--highlight</span>
+                  <span class="swatch__token sg__token-name">+ -on</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div
+                  class="swatch__chip"
+                  style="background: var(--highlight-hover); color: var(--highlight-on)"
+                >
+                  Aa 9.9:1
+                </div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-hover</span>
+                  <span class="swatch__token sg__token-name">+ -on</span>
+                </div>
+              </div>
+              <div class="swatch">
+                <div class="swatch__chip" style="background: var(--highlight-edge)"></div>
+                <div class="swatch__meta">
+                  <span class="swatch__name sg__token-name">-edge</span>
+                  <span class="swatch__token">3:1</span>
+                </div>
+              </div>
+            </div>
+            <p class="field__help" data-i18n="styleguide.notes.tags"></p>
           </div>
 
           <div class="specimen">
@@ -373,18 +443,27 @@
           <div class="specimen">
             <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
               <div class="type-row">
-                <span class="type-row__token sg__token-name">--text-4xl / 600</span>
+                <span class="type-row__token sg__token-name">--text-display / 400</span>
                 <span
                   class="type-row__sample"
-                  style="font-size: var(--text-4xl); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight)"
+                  style="font-size: var(--text-display); line-height: var(--leading-tight); letter-spacing: var(--tracking-display)"
+                  data-i18n="home.greetingMorning"
+                  data-i18n-vars='{"name": "Nadia"}'
+                ></span>
+              </div>
+              <div class="type-row">
+                <span class="type-row__token sg__token-name">--text-3xl / 400</span>
+                <span
+                  class="type-row__sample"
+                  style="font-size: var(--text-3xl); line-height: var(--leading-tight); letter-spacing: var(--tracking-display)"
                   data-i18n="app.name"
                 ></span>
               </div>
               <div class="type-row">
-                <span class="type-row__token sg__token-name">--text-2xl / 600</span>
+                <span class="type-row__token sg__token-name">--text-2xl / 400</span>
                 <span
                   class="type-row__sample"
-                  style="font-size: var(--text-2xl); font-weight: var(--weight-bold)"
+                  style="font-size: var(--text-2xl)"
                   data-i18n="ticket.sampleSubject"
                 ></span>
               </div>
@@ -425,7 +504,7 @@
                 <span
                   class="type-row__sample"
                   style="font-size: var(--text-lg); font-weight: var(--weight-bold)"
-                  >TCK-10482 · 0123456789 · 14:05</span
+                  >GEN-2026-00042 · 0123456789 · 14:05</span
                 >
               </div>
             </div>
@@ -490,17 +569,24 @@
         <section class="sg-section" id="radii">
           <div class="sg-section__head">
             <h2 data-i18n="styleguide.sections.radii">Radii and borders</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.radii"></p>
           </div>
           <div class="specimen">
             <div class="specimen__stage">
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-xs)">
+                xs 4
+              </span>
               <span class="radius-sample sg__token-name" style="border-radius: var(--radius-sm)">
-                sm 3
+                sm 6
               </span>
               <span class="radius-sample sg__token-name" style="border-radius: var(--radius-md)">
-                md 6
+                md 10
               </span>
               <span class="radius-sample sg__token-name" style="border-radius: var(--radius-lg)">
-                lg 10
+                lg 16
+              </span>
+              <span class="radius-sample sg__token-name" style="border-radius: var(--radius-xl)">
+                xl 24
               </span>
               <span class="radius-sample sg__token-name" style="border-radius: var(--radius-pill)">
                 pill
@@ -511,6 +597,115 @@
               >
                 border-2
               </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= density ===== -->
+        <section class="sg-section" id="density">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.density">Density</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.density"></p>
+          </div>
+          <div class="density-pair">
+            <div class="density-pair__side">
+              <p class="specimen__label" data-i18n="styleguide.density.comfortable">Comfortable</p>
+              <article class="card">
+                <div class="card__header">
+                  <h3 class="card__title" data-i18n="room.sampleName"></h3>
+                </div>
+                <div class="cluster cluster--tight">
+                  <button type="button" class="btn btn--primary">
+                    <span class="btn__label" data-i18n="action.bookRoom">Book a room</span>
+                  </button>
+                  <button type="button" class="btn btn--secondary">
+                    <span class="btn__label" data-i18n="action.edit">Edit</span>
+                  </button>
+                </div>
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th scope="col" data-i18n="ticket.one">Ticket</th>
+                        <th scope="col" data-i18n="field.priority">Priority</th>
+                        <th scope="col" data-i18n="ticket.due">SLA due</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.one">GEN-2026-00042</td>
+                        <td data-i18n-attr="data-label:field.priority">P2</td>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.due">14:30</td>
+                      </tr>
+                      <tr>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.one">GEN-2026-00039</td>
+                        <td data-i18n-attr="data-label:field.priority">P1</td>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.due">12:00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+              <dl class="deflist">
+                <dt class="sg__token-name">--radius-card</dt>
+                <dd>16px</dd>
+                <dt class="sg__token-name">--radius-control</dt>
+                <dd>10px</dd>
+                <dt class="sg__token-name">--control-height</dt>
+                <dd>40px</dd>
+                <dt class="sg__token-name">--pad-cell-block</dt>
+                <dd>12px</dd>
+              </dl>
+            </div>
+
+            <div class="density-pair__side" data-density="compact">
+              <p class="specimen__label" data-i18n="styleguide.density.compact">Compact</p>
+              <article class="card">
+                <div class="card__header">
+                  <h3 class="card__title" data-i18n="room.sampleName"></h3>
+                </div>
+                <div class="cluster cluster--tight">
+                  <button type="button" class="btn btn--primary">
+                    <span class="btn__label" data-i18n="action.bookRoom">Book a room</span>
+                  </button>
+                  <button type="button" class="btn btn--secondary">
+                    <span class="btn__label" data-i18n="action.edit">Edit</span>
+                  </button>
+                </div>
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th scope="col" data-i18n="ticket.one">Ticket</th>
+                        <th scope="col" data-i18n="field.priority">Priority</th>
+                        <th scope="col" data-i18n="ticket.due">SLA due</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.one">GEN-2026-00042</td>
+                        <td data-i18n-attr="data-label:field.priority">P2</td>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.due">14:30</td>
+                      </tr>
+                      <tr>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.one">GEN-2026-00039</td>
+                        <td data-i18n-attr="data-label:field.priority">P1</td>
+                        <td class="table__num" data-i18n-attr="data-label:ticket.due">12:00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+              <dl class="deflist">
+                <dt class="sg__token-name">--radius-card</dt>
+                <dd>10px</dd>
+                <dt class="sg__token-name">--radius-control</dt>
+                <dd>6px</dd>
+                <dt class="sg__token-name">--control-height</dt>
+                <dd>32px</dd>
+                <dt class="sg__token-name">--pad-cell-block</dt>
+                <dd>8px</dd>
+              </dl>
             </div>
           </div>
         </section>
@@ -600,7 +795,7 @@
                 <dl class="labelstrip" id="strip-ticket">
                   <div class="labelstrip__pair">
                     <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
-                    <dd class="labelstrip__value">TCK-10482</dd>
+                    <dd class="labelstrip__value">GEN-2026-00042</dd>
                   </div>
                   <div class="labelstrip__pair">
                     <dt class="labelstrip__key" data-i18n="ticket.queue">Queue</dt>
@@ -946,7 +1141,7 @@
 
                 <div class="field">
                   <label class="field__label" for="f-ro" data-i18n="ticket.number">Ticket no.</label>
-                  <input class="input" id="f-ro" type="text" value="TCK-10482" readonly />
+                  <input class="input" id="f-ro" type="text" value="GEN-2026-00042" readonly />
                 </div>
 
                 <div class="field">
@@ -1149,7 +1344,7 @@
                   <dl class="labelstrip">
                     <div class="labelstrip__pair">
                       <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
-                      <dd class="labelstrip__value">TCK-10455</dd>
+                      <dd class="labelstrip__value">GEN-2026-00038</dd>
                     </div>
                     <div class="labelstrip__pair">
                       <dt class="labelstrip__key" data-i18n="ticket.assignee">Assigned to</dt>
@@ -1212,6 +1407,163 @@
                   </dl>
                 </article>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================== tags ===== -->
+        <section class="sg-section" id="tags">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.tags">Tags and arrow buttons</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.tags"></p>
+          </div>
+          <div class="specimen-set">
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.state.default">Default</p>
+              <div class="specimen__stage">
+                <span class="tag" data-i18n="nav.tickets">Tickets</span>
+                <span class="tag" data-i18n="nav.rooms">Rooms</span>
+                <span class="tag" data-i18n="nav.announcements">Announcements</span>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.highlight">Highlight</p>
+              <div class="specimen__stage">
+                <span class="tag tag--highlight" data-i18n="home.news.new">New</span>
+                <a
+                  class="arrow-btn"
+                  href="#tags"
+                  data-i18n-attr="aria-label:home.tickets.openAll"
+                >
+                  <svg class="icon--dir" aria-hidden="true" focusable="false">
+                    <use href="#i-arrowUpEnd" />
+                  </svg>
+                </a>
+                <span class="icon-disc" aria-hidden="true">
+                  <svg focusable="false"><use href="#i-calendar" /></svg>
+                </span>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.quiet">Quiet</p>
+              <div class="specimen__stage">
+                <a
+                  class="arrow-btn arrow-btn--quiet"
+                  href="#tags"
+                  data-i18n-attr="aria-label:home.rooms.openAll"
+                >
+                  <svg class="icon--dir" aria-hidden="true" focusable="false">
+                    <use href="#i-arrowUpEnd" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.photoSlot">Photo slot</p>
+              <div class="specimen__stage">
+                <figure class="photo-slot sg-photo" aria-hidden="true">
+                  <span class="photo-slot__placeholder">
+                    <svg focusable="false"><use href="#i-image" /></svg>
+                    <span data-i18n="home.photoPlaceholder"></span>
+                  </span>
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================= records ===== -->
+        <section class="sg-section" id="records">
+          <div class="sg-section__head">
+            <h2 data-i18n="styleguide.sections.records">Record lists</h2>
+            <p class="sg-section__note" data-i18n="styleguide.notes.records"></p>
+          </div>
+          <div class="specimen">
+            <div class="specimen__stage specimen__stage--stack">
+              <section class="card" aria-labelledby="sg-records-title">
+                <div class="card__header">
+                  <div class="card__titles">
+                    <span class="tag" data-i18n="nav.tickets">Tickets</span>
+                    <h3 class="card__title" id="sg-records-title">
+                      <span data-i18n="home.tickets.title">Open right now</span>
+                      <span
+                        class="card__count"
+                        data-i18n="home.tickets.count"
+                        data-i18n-vars='{"count": 2}'
+                      ></span>
+                    </h3>
+                  </div>
+                  <a
+                    class="arrow-btn card__aside"
+                    href="#records"
+                    data-i18n-attr="aria-label:home.tickets.openAll"
+                  >
+                    <svg class="icon--dir" aria-hidden="true" focusable="false">
+                      <use href="#i-arrowUpEnd" />
+                    </svg>
+                  </a>
+                </div>
+                <ul class="record-list" data-density="compact">
+                  <li class="record">
+                    <dl class="labelstrip labelstrip--compact">
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="ticket.one">Ticket</dt>
+                        <dd class="labelstrip__value">GEN-2026-00042</dd>
+                      </div>
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="field.priority">Priority</dt>
+                        <dd class="labelstrip__value">P2</dd>
+                      </div>
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="ticket.due">SLA due</dt>
+                        <dd class="labelstrip__value">14:30</dd>
+                      </div>
+                    </dl>
+                    <div class="record__head">
+                      <h4 class="record__title">
+                        <a href="#records" data-i18n="demo.tickets.t1"></a>
+                      </h4>
+                      <span class="record__aside">
+                        <span class="badge badge--info">
+                          <svg class="badge__icon" aria-hidden="true" focusable="false">
+                            <use href="#i-statusProgress" />
+                          </svg>
+                          <span data-i18n="status.inProgress">In progress</span>
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                  <li class="record">
+                    <dl class="labelstrip labelstrip--compact">
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="ticket.one">Ticket</dt>
+                        <dd class="labelstrip__value">GEN-2026-00039</dd>
+                      </div>
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="field.priority">Priority</dt>
+                        <dd class="labelstrip__value">P1</dd>
+                      </div>
+                      <div class="labelstrip__pair">
+                        <dt class="labelstrip__key" data-i18n="ticket.due">SLA due</dt>
+                        <dd class="labelstrip__value">12:00</dd>
+                      </div>
+                    </dl>
+                    <div class="record__head">
+                      <h4 class="record__title">
+                        <a href="#records" data-i18n="demo.tickets.t2"></a>
+                      </h4>
+                      <span class="record__aside">
+                        <span class="badge badge--danger">
+                          <svg class="badge__icon" aria-hidden="true" focusable="false">
+                            <use href="#i-statusOverdue" />
+                          </svg>
+                          <span data-i18n="status.overdue">Overdue</span>
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                </ul>
+              </section>
             </div>
           </div>
         </section>
@@ -1314,7 +1666,7 @@
           </div>
           <div class="specimen">
             <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
-              <div class="table-wrap" tabindex="0" role="region" data-i18n-attr="aria-label:table.caption">
+              <div class="table-wrap" data-density="compact" tabindex="0" role="region" data-i18n-attr="aria-label:table.caption">
                 <table class="table" role="table">
                   <caption data-i18n="table.caption"></caption>
                   <thead role="rowgroup">
@@ -1336,7 +1688,7 @@
                   <tbody role="rowgroup">
                     <tr role="row">
                       <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
-                        TCK-10482
+                        GEN-2026-00042
                       </th>
                       <td role="cell" data-i18n-attr="data-label:field.subject">
                         <span data-i18n="ticket.sampleSubject"></span>
@@ -1359,7 +1711,7 @@
                     </tr>
                     <tr role="row">
                       <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
-                        TCK-10477
+                        GEN-2026-00041
                       </th>
                       <td role="cell" data-i18n-attr="data-label:field.subject">
                         <span data-i18n="announcement.sampleTitle"></span>
@@ -1385,7 +1737,7 @@
                     </tr>
                     <tr role="row">
                       <th role="cell" scope="row" class="table__num" data-i18n-attr="data-label:ticket.number">
-                        TCK-10455
+                        GEN-2026-00038
                       </th>
                       <td role="cell" data-i18n-attr="data-label:field.subject">
                         <span data-i18n="room.sampleName"></span>
@@ -1471,7 +1823,7 @@
                       <use href="#i-chevronEnd" />
                     </svg>
                   </li>
-                  <li class="breadcrumb__item" aria-current="page">TCK-10482</li>
+                  <li class="breadcrumb__item" aria-current="page">GEN-2026-00042</li>
                 </ol>
               </nav>
             </div>
@@ -1665,6 +2017,28 @@
               </div>
             </div>
             <div class="specimen">
+              <p class="specimen__label" data-i18n="styleguide.variant.inCard">Inside a card</p>
+              <div class="specimen__stage specimen__stage--stack">
+                <article class="card">
+                  <div class="card__header">
+                    <div class="card__titles">
+                      <span class="tag" data-i18n="nav.tickets">Tickets</span>
+                      <h3 class="card__title" data-i18n="home.waiting.title"></h3>
+                    </div>
+                  </div>
+                  <div class="empty empty--inline">
+                    <svg class="empty__mark" aria-hidden="true" focusable="false">
+                      <use href="#i-statusResolved" />
+                    </svg>
+                    <div class="empty__copy">
+                      <p class="empty__title" data-i18n="home.waiting.emptyTitle"></p>
+                      <p class="empty__text" data-i18n="home.waiting.emptyText"></p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+            <div class="specimen">
               <p class="specimen__label" data-i18n="action.search">Search</p>
               <div class="specimen__stage specimen__stage--plain">
                 <div class="empty">
@@ -1730,13 +2104,16 @@
             <div class="specimen__stage specimen__stage--stack specimen__stage--plain">
               <div class="shell-preview">
                 <nav class="rail" data-i18n-attr="aria-label:nav.label">
-                  <a class="rail__brand" href="#shell">
-                    <span class="rail__mark" aria-hidden="true" data-i18n="app.companyShort">GEN</span>
-                    <span class="rail__company">
-                      <span class="rail__company-name" data-i18n="app.company"></span>
-                      <span class="rail__company-group" data-i18n="app.group"></span>
+                  <button type="button" class="switcher" data-i18n-attr="aria-label:nav.switchCompany">
+                    <span class="company-mark" aria-hidden="true" data-i18n="app.companyShort">GEN</span>
+                    <span class="switcher__text">
+                      <span class="switcher__name" data-i18n="app.company"></span>
+                      <span class="switcher__group" data-i18n="app.group"></span>
                     </span>
-                  </a>
+                    <svg class="switcher__chevron" aria-hidden="true" focusable="false">
+                      <use href="#i-chevronsUpDown" />
+                    </svg>
+                  </button>
                   <div class="rail__nav">
                     <a class="nav-link" href="#shell">
                       <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-home" /></svg>
@@ -1760,30 +2137,47 @@
                       <span class="nav-link__count">4</span>
                     </a>
                   </div>
-                  <div class="rail__nav rail__section">
-                    <a class="nav-link" href="#shell">
-                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
-                      <span data-i18n="nav.admin">Company admin</span>
-                    </a>
-                    <a class="nav-link" href="#shell">
-                      <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
-                      <span data-i18n="nav.auditLog">Audit log</span>
-                    </a>
+                  <div class="rail__group" role="group" aria-labelledby="sg-admin-heading">
+                    <h3 class="rail__heading" id="sg-admin-heading" data-i18n="nav.administration">
+                      Administration
+                    </h3>
+                    <div class="rail__nav">
+                      <a class="nav-link" href="#shell">
+                        <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
+                        <span data-i18n="nav.admin">Company admin</span>
+                      </a>
+                      <a class="nav-link" href="#shell">
+                        <svg class="nav-link__icon" aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
+                        <span data-i18n="nav.auditLog">Audit log</span>
+                      </a>
+                    </div>
                   </div>
                 </nav>
 
                 <div class="stack">
                   <header class="topbar">
-                    <p class="topbar__title" data-i18n="nav.tickets">Tickets</p>
-                    <div class="topbar__actions topbar__spacer">
-                      <button
-                        type="button"
-                        class="btn btn--ghost btn--icon"
-                        data-i18n-attr="aria-label:nav.notifications"
-                      >
-                        <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-notifications" /></svg>
-                      </button>
-                      <span class="avatar avatar--sm" aria-hidden="true">YE</span>
+                    <div class="topbar__inner">
+                      <p class="topbar__title" data-i18n="nav.tickets">Tickets</p>
+                      <div class="input-group topbar__search">
+                        <svg class="input-group__icon" aria-hidden="true" focusable="false">
+                          <use href="#i-search" />
+                        </svg>
+                        <input
+                          class="input"
+                          type="search"
+                          data-i18n-attr="placeholder:field.searchPlaceholder, aria-label:field.searchPlaceholder"
+                        />
+                      </div>
+                      <div class="topbar__actions">
+                        <button
+                          type="button"
+                          class="btn btn--ghost btn--icon"
+                          data-i18n-attr="aria-label:nav.notifications"
+                        >
+                          <svg class="btn__icon" aria-hidden="true" focusable="false"><use href="#i-notifications" /></svg>
+                        </button>
+                        <span class="avatar avatar--sm" aria-hidden="true">YE</span>
+                      </div>
                     </div>
                   </header>
 
@@ -1835,7 +2229,7 @@
           <dl class="labelstrip labelstrip--registered">
             <div class="labelstrip__pair">
               <dt class="labelstrip__key" data-i18n="ticket.number">Ticket no.</dt>
-              <dd class="labelstrip__value">TCK-10482</dd>
+              <dd class="labelstrip__value">GEN-2026-00042</dd>
             </div>
             <div class="labelstrip__pair">
               <dt class="labelstrip__key" data-i18n="ticket.queue">Queue</dt>

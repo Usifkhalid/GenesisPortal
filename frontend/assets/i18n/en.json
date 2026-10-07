@@ -4,7 +4,9 @@
     "group": "MG Holding",
     "company": "Genesis Mining",
     "companyShort": "GEN",
-    "skipToContent": "Skip to main content"
+    "skipToContent": "Skip to main content",
+    "loadFailedTitle": "This page did not load",
+    "loadFailedText": "The connection may have dropped. Nothing was lost."
   },
   "nav": {
     "label": "Main",
@@ -20,7 +22,11 @@
     "more": "More",
     "collapseRail": "Collapse navigation",
     "expandRail": "Expand navigation",
-    "account": "Account menu"
+    "account": "Account menu",
+    "administration": "Administration",
+    "collapse": "Collapse",
+    "switchCompany": "Switch company",
+    "companyCurrent": "Company: {company}. Switch company"
   },
   "lang": {
     "label": "Language",
@@ -85,7 +91,8 @@
     "offlineModeHelp": "Stores the last version on this device. Useful at sites with no signal.",
     "selectPlaceholder": "Choose one",
     "searchPlaceholder": "Search people, rooms or tickets",
-    "shift": "Shift"
+    "shift": "Shift",
+    "searchShort": "Search"
   },
   "team": {
     "it": "IT",
@@ -156,16 +163,53 @@
   "notification": {
     "unreadLabel": "Notifications, {count} unread",
     "empty": "No new notifications.",
-    "sample1Title": "Your ticket TCK-10482 was assigned to I. Fahmy",
+    "sample1Title": "Your ticket {ticket} was assigned to I. Fahmy",
     "sample1Time": "10 minutes ago",
     "sample2Title": "Quarry meeting room booking confirmed for Sunday",
     "sample2Time": "Yesterday"
   },
   "home": {
-    "title": "Home",
-    "lead": "What's happening across MG Holding today.",
-    "welcomeTitle": "You're all caught up",
-    "welcomeText": "New announcements, tickets and room bookings for your company will appear here."
+    "lead": "Here is what needs you today.",
+    "greetingMorning": "Good morning, {name}",
+    "greetingAfternoon": "Good afternoon, {name}",
+    "greetingEvening": "Good evening, {name}",
+    "today": "Today",
+    "cairoTime": "Cairo time",
+    "photoPlaceholder": "HQ or site photo",
+    "tickets": {
+      "title": "Open right now",
+      "count": "{count} open",
+      "openAll": "See all tickets",
+      "emptyTitle": "No open tickets",
+      "emptyText": "Anything you raise with a support team will appear here."
+    },
+    "rooms": {
+      "title": "Your next bookings",
+      "when": "When",
+      "openAll": "See all rooms",
+      "emptyTitle": "No bookings coming up",
+      "emptyText": "Book a room and it will appear here."
+    },
+    "waiting": {
+      "title": "Waiting on you",
+      "emptyTitle": "Nothing is waiting on you",
+      "emptyText": "Tickets that need your reply will appear here."
+    },
+    "news": {
+      "title": "Latest news",
+      "from": "From",
+      "new": "New",
+      "openAll": "See all announcements",
+      "emptyTitle": "No announcements yet",
+      "emptyText": "News from your company will appear here."
+    },
+    "people": {
+      "title": "Find a colleague",
+      "label": "Name, job or site",
+      "recent": "Recently viewed",
+      "openAll": "Open the directory"
+    },
+    "more": "{count} more"
   },
   "table": {
     "caption": "Open tickets assigned to the IT team, newest first.",
@@ -201,7 +245,8 @@
   },
   "loading": {
     "label": "Loading",
-    "ticket": "Loading ticket"
+    "ticket": "Loading ticket",
+    "page": "Loading page"
   },
   "dialog": {
     "assignTitle": "Assign this ticket",
@@ -232,10 +277,10 @@
   },
   "styleguide": {
     "title": "Design system",
-    "subtitle": "Every component in the MG Holding portal, in both languages and both themes. The company accent is switchable, because no screen may depend on a particular one.",
+    "subtitle": "Every component in the MG Holding portal, in both languages, both themes and both densities. The company accent is switchable, because no screen may depend on a particular one.",
     "contentsLabel": "Sections",
     "worldTitle": "The world",
-    "worldText": "Every record in this portal is a labelled specimen: an identity, its measured values with units, and a provenance line saying who last touched it. A ticket, a room, a colleague and an announcement are all read the same way, so one reading habit covers the whole product.",
+    "worldText": "Every record in this portal is a labelled specimen: an identity, its measured values with units, and a provenance line saying who last touched it. The cards that hold those records are soft, rounded sheets on warm off-white paper, read in deep pine ink. A ticket, a room, a colleague and an announcement are all read the same way, so one reading habit covers the whole product.",
     "sections": {
       "foundations": "Foundations",
       "colour": "Colour",
@@ -263,24 +308,33 @@
       "notices": "Inline notices",
       "empty": "Empty states",
       "skeleton": "Skeleton loading",
-      "shell": "App shell"
+      "shell": "App shell",
+      "density": "Density",
+      "tags": "Tags and arrow buttons",
+      "records": "Record lists"
     },
     "notes": {
-      "colour": "The neutral scale is a warm stone, tinted at OKLCH hue 74. The accent arrives at runtime from the Company record and every brand value below is derived from it, with AA guaranteed for any hue.",
-      "type": "IBM Plex Sans and IBM Plex Sans Arabic, self-hosted, two weights. Digits always come from the Latin face, so numerals line up identically in both languages.",
+      "colour": "Warm off-white paper, deep pine ink and one fixed lime highlight. The company accent arrives at runtime from the Company record and every brand value below is derived from it, with AA guaranteed for any hue.",
+      "type": "IBM Plex Sans and IBM Plex Sans Arabic, self-hosted, two weights. Large headings are set in the regular weight; the bold is kept for small things that must be found fast. Digits always come from the Latin face, so numerals line up identically in both languages.",
       "space": "One 4px pitch. The 1px hairline is the only sub-pitch value and the portal's only structural separator.",
       "labelstrip": "The signature. It always carries the record's real fields, never decorative labels. Hover or focus a card to see the strip register.",
       "tables": "Below 640px every row becomes a label card and each cell takes its column name as a micro-label. Resize the window to see it.",
-      "elevation": "Elevation is declared once per element: a hairline or a shadow, never both. Cards take the hairline; only dialogs, toasts and popovers float.",
-      "motion": "One authored moment, on the label strip. Everything else is a plain state change. All of it stops under reduced motion.",
+      "elevation": "Elevation is declared once per element: a hairline or a shadow, never both. Cards take the hairline however soft their corner; only dialogs, toasts and popovers float.",
+      "motion": "One authored moment, on the label strip. Everything else is a plain state change, the arrow button’s two-pixel lean included. All of it stops under reduced motion.",
       "dates": "Native pickers, restyled. Stored in UTC, shown in Cairo time. The working week runs Sunday to Thursday.",
-      "arabic": "Arabic is designed for, not mirrored. It gets its own leading and measure, and never takes uppercase or letter-spacing: the micro-label's small-caps treatment is replaced by weight and colour rather than applied and broken."
+      "arabic": "Arabic is designed for, not mirrored. It gets its own leading and measure, and never takes uppercase or letter-spacing: the micro-label's small-caps treatment is replaced by weight and colour rather than applied and broken.",
+      "radii": "Soft outside, measured inside. A card takes 16px and the welcome banner 24px; a control takes 10px. Compact density brings back 10px frames and 6px controls for tables and work pages.",
+      "density": "Two densities from one set of tokens. Home and reading pages are comfortable. Work pages, tables and record lists carry data-density=\"compact\", which tightens corners, control height and cell padding. On a phone the 44px tap target always wins.",
+      "tags": "A tag names the kind of thing a card holds; a badge states a status. Lime marks what opens something or what is new. It always carries deep pine on top and is never used as text.",
+      "records": "Soft card outside, ruled specimen inside. Each row opens with a compact label strip of the record’s real fields. Hover or focus a row to see its strip register."
     },
     "swatch": {
-      "neutrals": "Warm stone neutrals",
+      "neutrals": "Warm paper neutrals",
       "brand": "Derived brand values",
       "state": "State colours",
-      "contrastOn": "on"
+      "contrastOn": "on",
+      "ink": "Pine ink",
+      "highlight": "Lime highlight (fixed)"
     },
     "state": {
       "default": "Default",
@@ -308,13 +362,22 @@
       "warning": "Warning",
       "info": "Information",
       "accent": "Accent",
-      "sizes": "Sizes"
+      "sizes": "Sizes",
+      "highlight": "Highlight",
+      "quiet": "Quiet",
+      "inCard": "Inside a card",
+      "iconDisc": "Icon disc",
+      "photoSlot": "Photo slot"
     },
     "demo": {
       "openDialog": "Open the assign dialog",
       "openDeleteDialog": "Open the delete dialog",
       "showToast": "Show a toast",
       "registerStrip": "Register the strip"
+    },
+    "density": {
+      "comfortable": "Comfortable",
+      "compact": "Compact"
     }
   },
   "a11y": {
@@ -324,5 +387,68 @@
     "copyTicketNumber": "Copy the ticket number",
     "currentPage": "Current page",
     "breadcrumbSeparator": "then"
+  },
+  "demo": {
+    "user": {
+      "name": "Youssef El-Shal",
+      "firstName": "Youssef"
+    },
+    "companies": {
+      "GEN": {
+        "name": "Genesis Mining",
+        "short": "GEN"
+      },
+      "MSR": {
+        "name": "Masar",
+        "short": "MSR"
+      },
+      "HLD": {
+        "name": "MG Holding",
+        "short": "HLD"
+      }
+    },
+    "tickets": {
+      "t1": "Weighbridge terminal will not print tickets",
+      "t2": "Site office Wi-Fi drops every afternoon",
+      "t3": "New starter needs a laptop and site access",
+      "t4": "Projector in the quarry meeting room has no signal"
+    },
+    "bookings": {
+      "b1": "Weekly production review",
+      "b2": "Contractor safety briefing"
+    },
+    "news": {
+      "n1": {
+        "title": "Shuttle times change from Sunday",
+        "body": "The HQ shuttle will leave fifteen minutes earlier on working days from Sunday. The last return from the Abu Tartur site moves to 17:30."
+      },
+      "n2": {
+        "title": "Site clinic now opens on Thursdays"
+      },
+      "n3": {
+        "title": "Annual safety training: book your session"
+      }
+    },
+    "people": {
+      "p1": {
+        "name": "Nadia Abdel-Rahman",
+        "role": "Mine planning engineer",
+        "site": "Abu Tartur"
+      },
+      "p2": {
+        "name": "Ibrahim Fahmy",
+        "role": "IT support lead",
+        "site": "HQ, New Cairo"
+      },
+      "p3": {
+        "name": "Mariam Saleh",
+        "role": "HR specialist",
+        "site": "HQ, New Cairo"
+      }
+    }
+  },
+  "day": {
+    "sun": "Sun",
+    "thu": "Thu"
   }
 }

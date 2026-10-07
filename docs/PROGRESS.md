@@ -84,3 +84,30 @@ install scripts: run `npm approve-scripts prisma @prisma/client @prisma/engines`
 db:migrate. Playwright not installed. icons.js is in .prettierignore.
 
 Next: Company and User models plus lib/scope.js, then sign-in with AUTH_MODE=mock.
+
+## Session 4b — Shell and Home redesign (2026-10-07)
+
+Done: tokens (radii xs-xl, density set, pine ink, fixed lime, 90rem page max); shell
+(company switcher with menu, "Administration" rail group, centred top-bar search with "/",
+bottom nav Home/Tickets/Rooms/Directory/More); Home as a bento (welcome banner with photo
+slot, Cairo date/time, tickets, bookings, waiting-on-you, news, directory) from static demo
+data, lazy-loaded with skeleton and retry; new components `.tag`, `.arrow-btn`,
+`.record-list`, `.empty--inline`, `.photo-slot`; styleguide updated. Ran `/impeccable
+critique` (20/40; 1 P0, 3 P1, all fixed in polish), `polish`, `document` (DESIGN.md and
+design.json rewritten). Decisions D23-D30.
+
+Verified: headless Chrome over 22 views (Home + styleguide, EN/AR, light/dark, 360, 900,
+1440, 1920, collapsed rail, switcher open): 0 overflow, 0 contrast failures, 0 missing
+keys, 0 unnamed controls, 0 console errors. `npm test` 3/3, `npm run lint` clean.
+
+Files: frontend/{index.html, styleguide.html}, assets/css/{tokens,base,layout,components}.css,
+assets/css/pages/{home,styleguide}.css, assets/js/{app,demo-data}.js, assets/js/pages/home.js,
+assets/js/components/icons.js, assets/i18n/{en,ar}.json, DESIGN.md, .impeccable/*, docs/*.
+
+Open issues: no router (links are hashes); real company accents and HQ/site photos not
+supplied; no help entry point; lime not yet reviewed by eye under a red or amber accent;
+detector still lists 4 advisory "colour outside DESIGN.md" hits for dark-theme values;
+favicon 404; breadcrumb links are under 44px on phones (styleguide only so far).
+
+Next: Company/User Prisma models, lib/scope.js, sign-in with AUTH_MODE=mock; then replace
+demo-data.js card by card.

@@ -1,11 +1,13 @@
 /* ============================================================================
  * tokens.css — the only file in the portal that holds raw values.
  *
- * Visual world: The Assay Card. Every record in the portal is a labelled
- * specimen — an identity, measured values with units, and a provenance line.
- * Warm stone paper, graphite ink, hairline rules, tabular numerals.
+ * Visual world: The Assay Card, on a softer desk. Every record in the portal
+ * is still a labelled specimen — an identity, measured values with units, and
+ * a provenance line — but the cards that hold them are soft, generously
+ * rounded sheets on warm off-white paper, read in deep pine ink, with one
+ * fixed lime highlight for the small things that invite a tap.
  *
- * Three rules this file exists to enforce:
+ * Four rules this file exists to enforce:
  *
  *   1. One pitch. Every spacing step is a multiple of 4px. Every separator is
  *      a 1px hairline. No shadow does structural work; shadows belong only to
@@ -17,6 +19,11 @@
  *      "Brand accent" below for the arithmetic and why it is shaped this way.
  *
  *   3. No raw values outside this file. Page and component CSS reads tokens.
+ *
+ *   4. Two densities. Home and reading surfaces are comfortable; work pages
+ *      (ticket queue, admin, audit log), tables and record lists are compact.
+ *      Components read the semantic density tokens, never the raw scale, so
+ *      [data-density='compact'] on any ancestor tightens everything inside it.
  *
  * Themes: light is the default because site staff work outdoors in bright sun.
  * Dark follows prefers-color-scheme and can be forced with [data-theme].
@@ -64,7 +71,10 @@
   --text-xl: 1.3125rem; /*  21px — section heading */
   --text-2xl: 1.5625rem; /* 25px — page heading */
   --text-3xl: 1.875rem; /*  30px — page heading, desktop */
-  --text-4xl: 2.25rem; /*   36px — the one display size */
+  --text-4xl: 2.25rem; /*   36px — page heading on a wide desktop */
+  /* The greeting on Home. Fluid, so it is large on a desktop and still fits
+   * two short lines at 360px. */
+  --text-display: clamp(1.75rem, 1.3rem + 2.1vw, 2.75rem);
 
   --leading-tight: 1.2; /*  headings */
   --leading-snug: 1.35; /*  card titles, control labels */
@@ -75,19 +85,24 @@
    * only and is switched off for Arabic, which has no uppercase and whose
    * letters must stay joined. See .u-microlabel in components.css. */
   --tracking-tight: -0.02em;
+  --tracking-display: -0.025em; /* large light headings only */
   --tracking-normal: 0;
   --tracking-caps: 0.07em;
 
   --measure: 68ch; /* body measure; 65-75ch */
 
   /* --- Radii -------------------------------------------------------------
-   * The world is a die-cut paper label, not a soft consumer card, so radii are
-   * crisp. Documented in DESIGN.md as a deliberate choice.
+   * The raw scale. Components do not read these directly for their own
+   * corners; they read --radius-control and --radius-card below, which the
+   * density set swaps. Soft outside, measured inside: a card is generous, the
+   * label strip and the chips within it stay crisp.
    */
-  --radius-sm: 3px; /*  badges' corners, swatches, checkbox */
-  --radius-md: 6px; /*  inputs, buttons, tabs */
-  --radius-lg: 10px; /* cards, dialogs, popovers */
-  --radius-pill: 999px; /* switch, small chips */
+  --radius-xs: 4px; /*  status badges, swatches, small marks */
+  --radius-sm: 6px; /*  compact controls */
+  --radius-md: 10px; /* controls; compact cards and table frames */
+  --radius-lg: 16px; /* cards, dialogs, popovers */
+  --radius-xl: 24px; /* the welcome banner */
+  --radius-pill: 999px; /* tags, round arrow buttons, switch, avatar */
 
   /* --- Borders -----------------------------------------------------------
    * The hairline is the portal's structural device. --border-2 exists only for
@@ -115,14 +130,38 @@
   --z-toast: 600;
 
   /* --- Layout ------------------------------------------------------------ */
-  --rail-width: 15rem;
+  --rail-width: 16rem;
   --rail-width-collapsed: 5rem;
-  --topbar-height: 3.5rem;
-  --search-max: 22rem;
+  --topbar-height: 4rem;
+  --search-max: 36rem;
   --bottomnav-height: 3.75rem; /* 60px: clears the 44px target plus padding */
   --tap-min: 2.75rem; /* 44px. The minimum hit area for anything tappable. */
-  --page-max: 78rem;
+  /* Content never runs wider than this, so a 1920px monitor gets margins
+   * rather than 1600px-long rows. The top bar aligns to the same column. */
+  --page-max: 90rem;
   --gutter: var(--space-4);
+  --bento-gap: var(--space-4);
+
+  /* ========================================================================
+   * Density
+   *
+   * Comfortable is the default: Home, announcements, a record's own page.
+   * Compact is for work: [data-density='compact'] on a page, a table frame or
+   * a record list swaps this whole set, and compact happens to be the original
+   * Assay Card measure (6px controls, 10px frames, 8px rows).
+   *
+   * On a phone the 44px tap target always wins over --control-height; density
+   * tightens corners and padding there, never the hit area.
+   * ===================================================================== */
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --control-height: 2.5rem; /* 40px on a pointer device */
+  --pad-card: var(--space-4); /* 24px from 48rem up, see below */
+  --gap-card: var(--space-4);
+  --pad-cell-block: var(--space-3);
+  --pad-cell-inline: var(--space-4);
+  --pad-row-block: var(--space-4);
+  --text-cell: var(--text-sm);
 
   /* ========================================================================
    * Brand accent
@@ -195,8 +234,8 @@
    * stay believable. Every text pair below is verified at 4.5:1 or better.
    * ===================================================================== */
   --stone-0: #ffffff;
-  --stone-50: #fbf8f5;
-  --stone-100: #f3efea;
+  --stone-50: #f8f5f0;
+  --stone-100: #f1ede7;
   --stone-150: #eae5e0;
   --stone-200: #e0dad4;
   --stone-300: #cfc9c2;
@@ -208,6 +247,38 @@
   --stone-900: #1f1c18;
   --stone-950: #110f0c;
 
+  /* ========================================================================
+   * Pine ink
+   *
+   * Text is a deep green rather than graphite. At these lightnesses it reads
+   * as near-black, so it sits under any company accent, but it gives the page
+   * a temperature of its own. Every step below is verified at 4.5:1 or better
+   * on the ground, a card and a well.
+   * ===================================================================== */
+  --pine-950: #0b1f16;
+  --pine-900: #12291d;
+  --pine-800: #213a2d;
+  --pine-600: #51655a;
+  --pine-500: #74857b;
+
+  /* ========================================================================
+   * Lime highlight
+   *
+   * Fixed, not derived from the company: the portal's own small signal for
+   * "this opens something" — a round arrow button, an icon disc, one tag. It
+   * is never text and never a large surface, and the only thing ever drawn on
+   * it is --highlight-on, the deep pine, in both themes.
+   * The company accent still owns primary buttons, links, focus and selection.
+   * ===================================================================== */
+  --lime-400: #c9f03d;
+  --lime-500: #b6de22;
+  --lime-700: #6c8610;
+
+  --highlight: var(--lime-400);
+  --highlight-hover: var(--lime-500);
+  --highlight-on: #12291d;
+  --highlight-edge: var(--lime-700); /* 3:1 keyline, so a disc reads in sun */
+
   /* --- Semantic surfaces and text --------------------------------------- */
   --surface-ground: var(--stone-50); /* the page */
   --surface-raised: var(--stone-0); /*  a card, an input, a dialog */
@@ -216,10 +287,10 @@
   --surface-active: var(--stone-150);
   --surface-disabled: var(--stone-100);
 
-  --text-strong: var(--stone-900); /* headings, values, ink */
-  --text-body: var(--stone-800); /*   body copy */
-  --text-muted: var(--stone-600); /*  secondary text, help, placeholder */
-  --text-disabled: var(--stone-500); /* exempt from contrast rules */
+  --text-strong: var(--pine-900); /* headings, values, ink */
+  --text-body: var(--pine-800); /*   body copy */
+  --text-muted: var(--pine-600); /*  secondary text, help, placeholder */
+  --text-disabled: var(--pine-500); /* exempt from contrast rules */
 
   --rule: var(--stone-200); /*        the hairline. The structural device. */
   --rule-strong: var(--stone-300); /* an input's edge, a table's outer frame */
@@ -243,7 +314,7 @@
    * Only for layers that genuinely float. A card never gets one: its edge is a
    * hairline. Shadow colour is the warm ink, never pure black.
    */
-  --shadow-color: 31 28 24; /* --stone-900 as an rgb triplet */
+  --shadow-color: 18 41 29; /* --pine-900 as an rgb triplet */
   --shadow-1: 0 1px 2px rgb(var(--shadow-color) / 0.07),
     0 4px 12px rgb(var(--shadow-color) / 0.09);
   --shadow-2: 0 2px 4px rgb(var(--shadow-color) / 0.08),
@@ -256,6 +327,34 @@
   --skeleton-sheen: var(--stone-100);
 
   color-scheme: light;
+}
+
+/* The gutter opens up with the viewport; the bento gap follows it. */
+@media (min-width: 48rem) {
+  :root {
+    --gutter: var(--space-6);
+    --bento-gap: var(--space-5);
+    --pad-card: var(--space-6);
+  }
+}
+
+@media (min-width: 80rem) {
+  :root {
+    --gutter: var(--space-8);
+  }
+}
+
+/* Compact density. See "Density" above. */
+[data-density='compact'] {
+  --radius-control: var(--radius-sm);
+  --radius-card: var(--radius-md);
+  --control-height: 2rem;
+  --pad-card: var(--space-4);
+  --gap-card: var(--space-3);
+  --pad-cell-block: var(--space-2);
+  --pad-cell-inline: var(--space-3);
+  --pad-row-block: var(--space-3);
+  --text-cell: var(--text-xs);
 }
 
 /* ============================================================================
@@ -302,24 +401,35 @@
 /* ============================================================================
  * Dark theme
  *
- * Warm graphite, not black: the paper world keeps its warmth after dark, and a
- * true-black ground with light text smears on the cheap LCDs site staff carry.
+ * The ink and the paper trade places: a deep pine ground with warm paper text.
+ * Not black, because a true-black ground with light text smears on the cheap
+ * LCDs site staff carry.
  * ========================================================================= */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --stone-0: #191714;
-    --stone-50: #110f0d;
-    --stone-100: #23201d;
-    --stone-150: #2d2a26;
-    --stone-200: #37332f;
-    --stone-300: #47433e;
-    --stone-400: #5f5a54;
-    --stone-500: #7f7973;
-    --stone-600: #9e9992;
-    --stone-700: #bab5ae;
-    --stone-800: #d3cfc9;
-    --stone-900: #e9e6e1;
-    --stone-950: #f7f5f1;
+    --stone-0: #15201a;
+    --stone-50: #0d1611;
+    --stone-100: #1c2921;
+    --stone-150: #243229;
+    --stone-200: #2d3c32;
+    --stone-300: #3c4c41;
+    --stone-400: #566559;
+    --stone-500: #76847a;
+    --stone-600: #9aa69c;
+    --stone-700: #b9c2b9;
+    --stone-800: #d4d9d1;
+    --stone-900: #e9ebe4;
+    --stone-950: #f6f5ef;
+
+    /* The ink and the paper trade places: text becomes the warm paper. */
+    --pine-950: #fbf8f2;
+    --pine-900: #f3efe8;
+    --pine-800: #dad6cd;
+    --pine-600: #a4aaa0;
+    --pine-500: #7c857d;
+
+    /* Lime needs no keyline on a dark ground; the fill is its own edge. */
+    --highlight-edge: var(--lime-400);
 
     --success-ink: #89d293;
     --success-surface: #1a2b1c;
@@ -368,19 +478,29 @@
 
 /* Forced dark, independent of the operating system. Same values. */
 :root[data-theme='dark'] {
-  --stone-0: #191714;
-  --stone-50: #110f0d;
-  --stone-100: #23201d;
-  --stone-150: #2d2a26;
-  --stone-200: #37332f;
-  --stone-300: #47433e;
-  --stone-400: #5f5a54;
-  --stone-500: #7f7973;
-  --stone-600: #9e9992;
-  --stone-700: #bab5ae;
-  --stone-800: #d3cfc9;
-  --stone-900: #e9e6e1;
-  --stone-950: #f7f5f1;
+  --stone-0: #15201a;
+  --stone-50: #0d1611;
+  --stone-100: #1c2921;
+  --stone-150: #243229;
+  --stone-200: #2d3c32;
+  --stone-300: #3c4c41;
+  --stone-400: #566559;
+  --stone-500: #76847a;
+  --stone-600: #9aa69c;
+  --stone-700: #b9c2b9;
+  --stone-800: #d4d9d1;
+  --stone-900: #e9ebe4;
+  --stone-950: #f6f5ef;
+
+  /* The ink and the paper trade places: text becomes the warm paper. */
+  --pine-950: #fbf8f2;
+  --pine-900: #f3efe8;
+  --pine-800: #dad6cd;
+  --pine-600: #a4aaa0;
+  --pine-500: #7c857d;
+
+  /* Lime needs no keyline on a dark ground; the fill is its own edge. */
+  --highlight-edge: var(--lime-400);
 
   --success-ink: #89d293;
   --success-surface: #1a2b1c;
