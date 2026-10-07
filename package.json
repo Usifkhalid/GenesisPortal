@@ -1,0 +1,35 @@
+{
+  "name": "mg-holding-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal employee portal for MG Holding and its companies.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node --watch backend/src/server.js",
+    "start": "node backend/src/server.js",
+    "test": "node --test \"backend/tests/**/*.test.js\"",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
+    "db:seed": "node backend/prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "express": "^5.1.0",
+    "helmet": "^8.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "prisma": "^6.1.0",
+    "supertest": "^7.0.0"
+  }
+}

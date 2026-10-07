@@ -123,3 +123,90 @@ the nesting inset, options are 32px with 12px padding; the dialog's `padding: 0`
 required so header and footer rules are full-bleed while the body scrolls, and each
 region carries 16–20px). The "37 em-dashes" are CSS custom-property names printed as
 visible text on a page whose job is to document tokens.
+
+## Session 1 — Project scaffold (2026-10-07)
+
+Scaffolded after sessions 2 and 3, so these decisions take the product brief and the
+design system as given. D1 (the Assay Card) and D2 (IBM Plex) above are unchanged and
+remain the binding visual direction.
+
+### D9. One root package.json, not a workspace
+
+The backend serves the frontend as static files and the frontend has no build step, so
+there is nothing for a second manifest to own: no frontend dependencies, no bundler, no
+separate install. One `npm install` and one `npm test` is the smallest thing that can run
+the whole project, which matters most to whoever picks this up on a weak connection.
+
+### D10. config/env.js is the only reader of process.env
+
+Every variable is parsed once through a zod schema at import time, so a missing
+`SESSION_SECRET` or a malformed `PORT` fails at boot naming the variable, never halfway
+through a request. `.env` is read by Node's own `process.loadEnvFile` rather than dotenv —
+Node 24 has it, so it is one fewer dependency — and its absence is not an error, because
+Azure App Service supplies real variables instead of a file.
+
+Variables that only some modes need (`DATABASE_URL`, `SESSION_SECRET`, `ENTRA_*`) are
+optional in the schema today. They become conditionally required as the modules that use
+them land, so that a clean checkout can run `npm run dev` and the health check with no
+database and no tenant.
+
+### D11. app.js builds the app; server.js listens
+
+`createApp()` returns an app without binding a port, so supertest drives the real
+middleware chain in-process with no port, no teardown race and no fixed port number in
+tests. Only `server.js` calls `listen`, and it is the only file `npm run dev` names.
+
+### D12. The health check touches nothing
+
+`GET /api/health` reads no database and no session. It answers on a clean checkout before
+`db:migrate` has ever run, which is what makes it usable as an Azure App Service health
+probe: a probe that fails when the database blinks takes the whole site down with it.
+Database readiness gets its own endpoint when there is a database to report on.
+
+### D13. Prisma is imported lazily
+
+`lib/prisma.js` dynamically imports `@prisma/client` on first use rather than at module
+load. With an empty schema there is no generated client yet, and a top-level import would
+make `npm run dev`, `npm test` and the health check all fail on a fresh clone until
+someone ran `db:generate`. Scoping still goes through `lib/scope.js`; this module owns only
+the connection.
+
+### D14. Graph has one door, chosen at runtime
+
+`integrations/graph/index.js` resolves `mock.js` or `real.js` from `GRAPH_MODE`, and
+nothing outside that folder may call Graph or hold a Graph token. Real tenant access has
+not been granted, so `real.js` is a stub that throws by name rather than quietly falling
+back to the mock — a silent fallback in production would serve fake colleagues as if they
+were real.
+
+### D15. CSP is set now, while the frontend is small
+
+helmet with `script-src 'self'` and no inline-script allowance, which the design system
+already satisfies: its only script tags are external modules. `style-src` keeps
+`'unsafe-inline'`, because the styleguide sets custom properties through style attributes,
+but drops helmet's default blanket `https:` allowance, since nothing is loaded from
+outside the origin. Choosing this before there are features means features are written
+to fit it, rather than the policy being loosened later to fit the features.
+
+### D16. Prettier is configured to the code that already exists
+
+`printWidth: 96` and single quotes match session 3's frontend JavaScript, so `npm run
+lint` passes over it without rewriting a line. Three deliberate exclusions, each for a
+reason rather than convenience: Markdown (Prettier rewraps prose, re-quotes the YAML front
+matter Impeccable reads out of DESIGN.md, and would rewrite CLAUDE.md), the design
+system's CSS and styleguide.html (verified in a browser; reformatting them risks a
+regression for no gain), and `components/icons.js` (a table of long SVG path strings where
+Prettier moves the break on some entries and not others, which reads worse than the
+aligned original).
+
+`.gitattributes` pins `eol=lf` for the same reason: without it a Windows clone
+converts every file to CRLF and `prettier --check` then fails on files nobody edited.
+
+### D17. The prisma CLI advisory is accepted, not patched
+
+`prisma` 6.19.3 depends on `deepmerge-ts` <8 through `@prisma/config`, a high-severity
+stack-exhaustion advisory. No stable Prisma release avoids it — the advisory range covers
+every published version and only an 8.0.0 release candidate sits outside it — and
+`@prisma/config` is used by the CLI at migration time, never by the server at runtime, so
+it is reachable only by a developer running `db:migrate` against their own schema. Pinned
+as-is and recorded here; revisit when Prisma 8 ships.

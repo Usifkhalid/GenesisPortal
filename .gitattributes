@@ -1,0 +1,10 @@
+# Checked out with LF on every platform. Prettier compares against LF, so a
+# Windows clone that converted to CRLF would fail `npm run lint` on untouched
+# files.
+* text=auto eol=lf
+
+# Binary; never converted, never diffed as text.
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.ico binary

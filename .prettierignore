@@ -1,0 +1,20 @@
+node_modules/
+backend/generated/
+coverage/
+.impeccable/
+package-lock.json
+
+# Prose and hand-authored documents. Prettier's Markdown printer rewraps text,
+# re-quotes YAML front matter and swaps emphasis markers, which would rewrite
+# CLAUDE.md and the committed design documents for style alone.
+*.md
+
+# Written and verified in a browser by session 3. Prettier's CSS and HTML
+# printers would rewrap them wholesale for no behavioural gain.
+frontend/assets/css/
+frontend/assets/fonts/fonts.css
+frontend/styleguide.html
+
+# A table of long single-line SVG path strings. Prettier moves the break for
+# some entries and not others, which reads worse than the aligned original.
+frontend/assets/js/components/icons.js

@@ -3,6 +3,15 @@ node_modules/
 *.log
 .DS_Store
 
+# Generated Prisma client.
+backend/generated/
+backend/prisma/*.db
+
+# Test and tooling output.
+coverage/
+playwright-report/
+test-results/
+
 # Transient Impeccable session artifacts; design.json is kept.
 .impeccable/questions/
 .impeccable/mocks/

@@ -1,5 +1,23 @@
 # Progress
 
+Sessions in the order they ran. Newest last.
+
+## Session 2 — Product brief (2026-10-07)
+
+Done: PRODUCT.md written and then extended (commits `f52b1eb`, `afa1ec3`) — platform,
+stack, the three user groups (HQ desktop, site Android, admins), product purpose,
+positioning, operating context, capabilities and constraints, brand commitments, evidence
+on hand, product principles and accessibility.
+
+Files: PRODUCT.md.
+
+Open issues: PRODUCT.md carries "Product Principles" and "Accessibility & Inclusion"
+twice, at lines 59–72 and 73–86. The second commit appended fuller rewrites instead of
+replacing the originals, so the two copies disagree in wording (numbered vs bulleted
+principles; "360 px width and keyboard-only use" appears only in the later copy). Left as
+found — PRODUCT.md is outside this session's scope. Whoever edits it next should keep the
+later copy and delete the earlier one.
+
 ## Session 3 — Design system (2026-10-07)
 
 Done: visual world chosen and built ("The Assay Card" — every record is a labelled
@@ -26,3 +44,27 @@ not been seen rendering in an engine that actually lacks `oklch(from ...)`.
 
 Next: scaffold the backend (Express 5 + Prisma + package.json with test/lint scripts),
 then the app shell and sign-in against this system.
+
+## Session 1 — Project scaffold (2026-10-07)
+
+Done: root package.json (dev/test/lint/format/db:*); Express 5 app serving /frontend
+statically under helmet with `GET /api/health`; zod-validated env; HttpError and JSON
+404/error handlers; lazy Prisma client; mock/real Graph boundary; Prisma initialised for
+sqlserver with no models; ESLint flat config + Prettier passing over backend and frontend;
+.env.example, .gitignore, README.md, docs/API.md; index.html and assets/js/app.js as
+placeholders — nothing else in frontend/ touched.
+
+Files: package.json, eslint.config.js, .prettierrc.json, .prettierignore, .env.example,
+.gitignore, README.md, docs/{PROGRESS,API}.md, backend/**, frontend/{index.html,
+assets/js/app.js}.
+
+Verified: `npm test` 3/3, `npm run lint` clean, `prisma validate` passes, server booted
+and /, /styleguide.html, app.js and a woff2 all 200 with CSP intact. Session 3's open
+issue about missing test/lint scripts is closed.
+
+Open issues: `prisma` 6.19.3 carries a high-severity advisory (deepmerge-ts <8 via
+@prisma/config) with no stable fix — dev-only CLI, left pinned. npm skipped Prisma's
+install scripts: run `npm approve-scripts prisma @prisma/client @prisma/engines` before
+db:migrate. Playwright not installed. icons.js is in .prettierignore.
+
+Next: Company and User models plus lib/scope.js, then sign-in with AUTH_MODE=mock.

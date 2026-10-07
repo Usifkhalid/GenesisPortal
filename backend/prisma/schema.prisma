@@ -1,0 +1,19 @@
+// MG Holding Portal — database schema.
+//
+// SQL Server: a local Developer edition instance in development, Azure SQL in
+// production. The provider is the same for both, so migrations are written once.
+//
+// No models yet. Company and User land with the company admin and sign-in
+// modules. Two rules bind every business table that follows:
+//   * it carries companyId with a relation to Company, and
+//   * reads and writes go through backend/src/lib/scope.js, never a bare query.
+// Timestamps are stored in UTC and rendered in Africa/Cairo by the frontend.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
