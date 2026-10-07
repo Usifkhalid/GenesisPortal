@@ -1,18 +1,99 @@
 /**
- * seed.js — development data: the companies in CLAUDE.md (HLD, GEN, MSR) and a
- * fake user per company and role for AUTH_MODE=mock to list.
+ * seed.js — loads seed-data.js into the database: the three companies, their
+ * departments and twelve fake users for AUTH_MODE=mock to list.
  *
- * Nothing to seed yet: the schema has no models. Run with `npm run db:seed`.
+ * Idempotent: rows are matched on natural keys (company code, department name
+ * within a company, user email), so `npm run db:seed` can be run again after
+ * editing seed-data.js. It updates and adds; it never deletes.
  */
 
-import { disconnectPrisma } from '../src/lib/prisma.js';
+import { isProduction } from '../src/config/env.js';
+import { disconnectPrisma, getPrisma } from '../src/lib/prisma.js';
+import { ROLES } from '../src/lib/roles.js';
+import { COMPANIES, DEPARTMENTS, USERS, fakeEntraObjectId } from './seed-data.js';
 
-async function seed() {
-  console.log('Nothing to seed: the schema has no models yet.');
+/**
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @returns {Promise<{ companies: number, departments: number, users: number }>}
+ */
+export async function seed(prisma) {
+  const companyIds = new Map();
+  for (const { code, ...data } of COMPANIES) {
+    const row = await prisma.company.upsert({
+      where: { code },
+      update: data,
+      create: { code, ...data },
+    });
+    companyIds.set(code, row.id);
+  }
+
+  const departmentIds = new Map();
+  for (const { company, key, ...names } of DEPARTMENTS) {
+    const companyId = companyIds.get(company);
+    const row = await prisma.department.upsert({
+      where: { companyId_nameEn: { companyId, nameEn: names.nameEn } },
+      update: names,
+      create: { companyId, ...names },
+    });
+    departmentIds.set(`${company}/${key}`, row.id);
+  }
+
+  // Users first without managers, so a manager may appear after their report.
+  const userIds = new Map();
+  for (const [index, user] of USERS.entries()) {
+    const { email, company, department } = user;
+    const data = {
+      displayNameEn: user.displayNameEn,
+      displayNameAr: user.displayNameAr,
+      jobTitle: user.jobTitle,
+      officeLocation: user.officeLocation,
+      phone: user.phone,
+      language: user.language,
+      companyId: companyIds.get(company),
+      departmentId: departmentIds.get(`${company}/${department}`),
+      lastSyncedAt: new Date(),
+    };
+    const row = await prisma.userProfile.upsert({
+      where: { email },
+      update: data,
+      create: { email, entraObjectId: fakeEntraObjectId(index), ...data },
+    });
+    userIds.set(email, row.id);
+  }
+
+  for (const user of USERS) {
+    const userId = userIds.get(user.email);
+
+    await prisma.userProfile.update({
+      where: { id: userId },
+      data: { managerId: user.manager ? userIds.get(user.manager) : null },
+    });
+
+    // A HoldingAdmin's assignment is holding-wide; every other role is scoped
+    // to the user's own company. Not an upsert: Prisma cannot address a
+    // compound unique key that contains NULL.
+    const assignment = {
+      userId,
+      role: user.role,
+      scopeCompanyId: user.role === ROLES.HOLDING_ADMIN ? null : companyIds.get(user.company),
+    };
+    const existing = await prisma.roleAssignment.findFirst({ where: assignment });
+    if (!existing) await prisma.roleAssignment.create({ data: assignment });
+  }
+
+  return { companies: companyIds.size, departments: departmentIds.size, users: userIds.size };
 }
 
-try {
-  await seed();
-} finally {
-  await disconnectPrisma();
+// Run only as `node backend/prisma/seed.js`, not when a test imports seed().
+if (import.meta.main) {
+  if (isProduction) throw new Error('Refusing to seed fake users into production.');
+
+  try {
+    const counts = await seed(await getPrisma());
+    console.log(
+      `Seeded ${counts.companies} companies, ${counts.departments} departments, ${counts.users} users.`
+    );
+  } finally {
+    await disconnectPrisma();
+  }
 }

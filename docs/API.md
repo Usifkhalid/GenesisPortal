@@ -18,13 +18,21 @@ existence of other companies' records is not disclosed.
 **Errors.** Every failure is
 
 ```json
-{ "error": { "code": "not_found", "message": "No such endpoint." } }
+{ "error": { "code": "not_found", "message": "No such endpoint.", "requestId": "…" } }
 ```
+
+`requestId` matches the `X-Request-Id` response header and the server's log line. A
+`validation_failed` error adds `details`: `[{ "path": "name", "message": "…" }]`, never the
+rejected value. A 500 never carries the cause; outside production it adds `debug`.
 
 `code` is a stable token to branch on; `message` is for logs and developers, never shown
 to users — the frontend renders its own string from `assets/i18n` keyed on `code`.
 
-Statuses in use: `400 validation_failed`, `401 unauthenticated`, `403 forbidden`,
+**Rate limits.** Per IP: 300 requests a minute across `/api` (the health check is
+exempt) and 20 per 15 minutes on `/api/auth`. Both are configurable; see `.env.example`.
+
+Statuses in use: `400 validation_failed`, `400 bad_request`, `413 payload_too_large`,
+`401 unauthenticated`, `403 forbidden`,
 `404 not_found`, `409 conflict`, `429 rate_limited`, `500 internal_error`.
 
 **Validation.** Every body, query and path parameter is parsed with a zod schema from the

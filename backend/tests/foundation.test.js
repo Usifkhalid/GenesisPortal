@@ -1,0 +1,298 @@
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
+import request from 'supertest';
+import { z } from 'zod';
+
+import { createApp } from '../src/app.js';
+import { loadEnv } from '../src/config/env.js';
+import { snapshot, writeAudit } from '../src/lib/audit.js';
+import { guardAuditLog } from '../src/lib/prisma.js';
+import { HttpError } from '../src/middleware/errors.js';
+import { createFakePrisma } from './helpers/fake-prisma.js';
+
+const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
+
+/** An app with a few routes that fail in the ways the error handler must cover. */
+const app = createApp({
+  routes(app) {
+    app.get('/api/_test/boom', () => {
+      throw new Error('connection string sa:hunter2@db leaked');
+    });
+    app.get('/api/_test/async-boom', async () => {
+      throw new Error('async failure');
+    });
+    app.get('/api/_test/forbidden', () => {
+      throw new HttpError(403, 'forbidden');
+    });
+    app.post('/api/_test/validate', (req, res) => {
+      res.json(z.strictObject({ name: z.string().min(1) }).parse(req.body));
+    });
+    app.get('/api/_test/big', (req, res) => {
+      res.json({ text: 'portal '.repeat(2000) });
+    });
+  },
+});
+
+describe('request IDs', () => {
+  test('every response carries a fresh X-Request-Id', async () => {
+    const [a, b] = await Promise.all([request(app).get('/api/health'), request(app).get('/')]);
+    assert.match(a.headers['x-request-id'], UUID);
+    assert.match(b.headers['x-request-id'], UUID);
+    assert.notEqual(a.headers['x-request-id'], b.headers['x-request-id']);
+  });
+
+  test('an inbound X-Request-Id is not adopted', async () => {
+    const res = await request(app).get('/api/health').set('X-Request-Id', 'forged-id');
+    assert.notEqual(res.headers['x-request-id'], 'forged-id');
+    assert.match(res.headers['x-request-id'], UUID);
+  });
+});
+
+describe('error handler', () => {
+  test('an unexpected error is a 500 that names the request', async () => {
+    const res = await request(app).get('/api/_test/boom');
+
+    assert.equal(res.status, 500);
+    assert.equal(res.body.error.code, 'internal_error');
+    assert.equal(res.body.error.message, 'Something went wrong.');
+    assert.equal(res.body.error.requestId, res.headers['x-request-id']);
+  });
+
+  test('a rejected async handler is caught too', async () => {
+    const res = await request(app).get('/api/_test/async-boom');
+    assert.equal(res.status, 500);
+    assert.equal(res.body.error.code, 'internal_error');
+  });
+
+  test('an HttpError keeps its status and code', async () => {
+    const res = await request(app).get('/api/_test/forbidden');
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.code, 'forbidden');
+  });
+
+  test('a zod failure is a 400 listing fields, never the rejected values', async () => {
+    const res = await request(app)
+      .post('/api/_test/validate')
+      .send({ name: '', password: 'do-not-echo' });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.code, 'validation_failed');
+    assert.ok(res.body.error.details.some((d) => d.path === 'name'));
+    assert.doesNotMatch(JSON.stringify(res.body), /do-not-echo/);
+  });
+
+  test('malformed JSON is a 400, not a 500', async () => {
+    const res = await request(app)
+      .post('/api/_test/validate')
+      .set('Content-Type', 'application/json')
+      .send('{"name": ');
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.code, 'bad_request');
+  });
+
+  test('an oversized body is a 413', async () => {
+    const res = await request(app)
+      .post('/api/_test/validate')
+      .send({ name: 'x'.repeat(200_000) });
+
+    assert.equal(res.status, 413);
+    assert.equal(res.body.error.code, 'payload_too_large');
+  });
+});
+
+describe('404', () => {
+  test('an unknown page is a 404 without a stack or framework page', async () => {
+    const res = await request(app).get('/no/such/page');
+    assert.equal(res.status, 404);
+    assert.match(res.headers['content-type'], /text\/plain/);
+    assert.doesNotMatch(res.text, /Cannot GET|<html/i);
+  });
+
+  test('an unknown /api path is JSON with the request ID', async () => {
+    const res = await request(app).post('/api/nope');
+    assert.equal(res.status, 404);
+    assert.equal(res.body.error.code, 'not_found');
+    assert.match(res.body.error.requestId, UUID);
+  });
+});
+
+describe('headers and compression', () => {
+  test('helmet headers are set and Express is not advertised', async () => {
+    const res = await request(app).get('/api/health');
+    assert.equal(res.headers['x-content-type-options'], 'nosniff');
+    assert.match(res.headers['content-security-policy'], /script-src 'self'/);
+    assert.equal(res.headers['x-powered-by'], undefined);
+  });
+
+  test('a large response is compressed when the client accepts it', async () => {
+    const res = await request(app).get('/api/_test/big').set('Accept-Encoding', 'gzip');
+    assert.equal(res.headers['content-encoding'], 'gzip');
+    assert.equal(res.body.text.length, 14_000);
+  });
+});
+
+describe('rate limiter', () => {
+  test('/api answers 429 past the limit, but never for the health probe', async () => {
+    const limited = createApp({ rateLimit: { limit: 2, windowMs: 60_000 } });
+
+    assert.equal((await request(limited).get('/api/a')).status, 404);
+    assert.equal((await request(limited).get('/api/b')).status, 404);
+
+    const res = await request(limited).get('/api/c');
+    assert.equal(res.status, 429);
+    assert.equal(res.body.error.code, 'rate_limited');
+    assert.ok(res.headers['ratelimit']);
+
+    assert.equal((await request(limited).get('/api/health')).status, 200);
+    assert.equal((await request(limited).get('/styleguide.html')).status, 200);
+  });
+
+  test('/api/auth has its own stricter limit', async () => {
+    const limited = createApp({ authRateLimit: { limit: 1, windowMs: 60_000 } });
+
+    assert.equal((await request(limited).post('/api/auth/login')).status, 404);
+    assert.equal((await request(limited).post('/api/auth/login')).status, 429);
+    assert.equal((await request(limited).get('/api/other')).status, 404);
+  });
+});
+
+describe('config loader', () => {
+  const production = {
+    NODE_ENV: 'production',
+    DATABASE_URL: 'sqlserver://db;database=x;user=u;password=p',
+    SESSION_SECRET: 'a-long-enough-secret',
+    AUTH_MODE: 'entra',
+    ENTRA_TENANT_ID: 't',
+    ENTRA_CLIENT_ID: 'c',
+    ENTRA_CLIENT_SECRET: 's',
+  };
+
+  test('development boots with nothing set', () => {
+    const env = loadEnv({});
+    assert.equal(env.PORT, 3000);
+    assert.equal(env.AUTH_MODE, 'mock');
+    assert.equal(env.hasDatabase, false);
+  });
+
+  test('a placeholder DATABASE_URL does not count as a database', () => {
+    assert.equal(
+      loadEnv({ DATABASE_URL: 'sqlserver://x;password=CHANGE_ME' }).hasDatabase,
+      false
+    );
+  });
+
+  test('production accepts a complete configuration', () => {
+    assert.equal(loadEnv(production).LOG_LEVEL, 'info');
+  });
+
+  test('production refuses missing secrets, placeholders and mock sign-in', () => {
+    assert.throws(() => loadEnv({ ...production, DATABASE_URL: undefined }), /DATABASE_URL/);
+    assert.throws(
+      () => loadEnv({ ...production, SESSION_SECRET: 'CHANGE_ME_LONG_RANDOM_STRING' }),
+      /SESSION_SECRET/
+    );
+    assert.throws(() => loadEnv({ ...production, AUTH_MODE: 'mock' }), /AUTH_MODE/);
+    assert.throws(
+      () => loadEnv({ ...production, ENTRA_CLIENT_SECRET: 'CHANGE_ME' }),
+      /ENTRA_CLIENT_SECRET/
+    );
+  });
+
+  test('an invalid value is named without being echoed', () => {
+    assert.throws(
+      () => loadEnv({ SESSION_SECRET: 'short' }),
+      (err) => /SESSION_SECRET/.test(err.message) && !/short/.test(err.message)
+    );
+  });
+});
+
+describe('audit log', () => {
+  const req = { user: { id: 'actor-1' }, ip: '203.0.113.7' };
+
+  test('writeAudit records actor, entity, snapshots and IP', async () => {
+    const tx = createFakePrisma();
+    const before = { id: 'dep-1', companyId: 'co-1', nameEn: 'Old' };
+    const after = { ...before, nameEn: 'New' };
+
+    await writeAudit(req, 'department.update', 'Department', before, after, { tx });
+
+    const [row] = tx.auditLog.rows;
+    assert.equal(row.actorId, 'actor-1');
+    assert.equal(row.action, 'department.update');
+    assert.equal(row.entity, 'Department');
+    assert.equal(row.entityId, 'dep-1');
+    assert.equal(row.companyId, 'co-1');
+    assert.equal(row.ip, '203.0.113.7');
+    assert.deepEqual(JSON.parse(row.before), before);
+    assert.deepEqual(JSON.parse(row.after), after);
+  });
+
+  test('create has no before, delete has no after, a Company scopes to itself', async () => {
+    const tx = createFakePrisma();
+    await writeAudit(
+      req,
+      'company.create',
+      'Company',
+      null,
+      { id: 'co-9', code: 'NEW' },
+      { tx }
+    );
+    await writeAudit(
+      req,
+      'department.delete',
+      'Department',
+      { id: 'd', companyId: 'co-1' },
+      null,
+      { tx }
+    );
+    await writeAudit(
+      req,
+      'role.grant',
+      'RoleAssignment',
+      null,
+      { id: 'r' },
+      { tx, companyId: null }
+    );
+
+    const [created, deleted, holdingWide] = tx.auditLog.rows;
+    assert.equal(created.before, null);
+    assert.equal(created.companyId, 'co-9');
+    assert.equal(deleted.after, null);
+    assert.equal(deleted.entityId, 'd');
+    assert.equal(holdingWide.companyId, null);
+  });
+
+  test('snapshots drop secrets and survive BigInt and Date', () => {
+    const json = snapshot({
+      id: 1n,
+      at: new Date(0),
+      clientSecret: 'x',
+      nested: { apiToken: 'y' },
+    });
+    assert.deepEqual(JSON.parse(json), {
+      id: '1',
+      at: '1970-01-01T00:00:00.000Z',
+      clientSecret: '[redacted]',
+      nested: { apiToken: '[redacted]' },
+    });
+  });
+
+  test('the Prisma client refuses to change or remove audit rows', async () => {
+    const { PrismaClient } = await import('@prisma/client');
+    // Never connects: the guard throws before any query is sent.
+    const prisma = guardAuditLog(
+      new PrismaClient({
+        datasourceUrl: 'sqlserver://localhost:1;database=none;user=u;password=p',
+      })
+    );
+
+    for (const op of ['update', 'updateMany', 'upsert', 'delete', 'deleteMany']) {
+      await assert.rejects(
+        async () => prisma.auditLog[op]({ where: { id: 'x' } }),
+        /append-only/,
+        op
+      );
+    }
+  });
+});

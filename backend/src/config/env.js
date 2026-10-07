@@ -22,34 +22,99 @@ export const FRONTEND_DIR = fileURLToPath(new URL('../../../frontend/', import.m
 const envFile = new URL('../../../.env', import.meta.url);
 if (existsSync(envFile)) process.loadEnvFile(fileURLToPath(envFile));
 
-const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+// `node --test` marks its child processes; treating them as NODE_ENV=test keeps
+// `npm test` free of a cross-platform env-setting dependency.
+if (!process.env.NODE_ENV && process.env.NODE_TEST_CONTEXT) process.env.NODE_ENV = 'test';
 
-  /** SQL Server connection string. Prisma reads this too, from .env. */
-  DATABASE_URL: z.string().min(1).optional(),
+/** True for a value still carrying a .env.example placeholder. */
+const isPlaceholder = (value) => !value || value.includes('CHANGE_ME');
 
-  /** Signs the server-side session cookie. Required once sign-in exists. */
-  SESSION_SECRET: z.string().min(16).optional(),
+const schema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3000),
 
-  /** mock: seeded fake users, no tenant needed. entra: real Entra ID. */
-  AUTH_MODE: z.enum(['mock', 'entra']).default('mock'),
+    /** pino level. Defaults to silent under test, info in production, debug in dev. */
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .optional(),
 
-  /** mock: canned Graph responses. real: the live tenant. */
-  GRAPH_MODE: z.enum(['mock', 'real']).default('mock'),
+    /** SQL Server connection string. Prisma reads this too, from .env. */
+    DATABASE_URL: z.string().min(1).optional(),
 
-  ENTRA_TENANT_ID: z.string().optional(),
-  ENTRA_CLIENT_ID: z.string().optional(),
-  ENTRA_CLIENT_SECRET: z.string().optional(),
-});
+    /** Signs the server-side session cookie. Required once sign-in exists. */
+    SESSION_SECRET: z.string().min(16).optional(),
 
-const parsed = schema.safeParse(process.env);
+    /** Requests per IP per window across /api, and the stricter cap on /api/auth. */
+    RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+    RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+    AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
 
-if (!parsed.success) {
-  const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
-  throw new Error(`Invalid environment:\n${lines.join('\n')}\n\nSee .env.example.`);
+    /** mock: seeded fake users, no tenant needed. entra: real Entra ID. */
+    AUTH_MODE: z.enum(['mock', 'entra']).default('mock'),
+
+    /** mock: canned Graph responses. real: the live tenant. */
+    GRAPH_MODE: z.enum(['mock', 'real']).default('mock'),
+
+    ENTRA_TENANT_ID: z.string().optional(),
+    ENTRA_CLIENT_ID: z.string().optional(),
+    ENTRA_CLIENT_SECRET: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const require = (key, why) => {
+      if (isPlaceholder(value[key])) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `required ${why}` });
+      }
+    };
+
+    // Dev and test boot without a database or a secret; production never does,
+    // and never with a mocked identity.
+    if (value.NODE_ENV === 'production') {
+      require('DATABASE_URL', 'in production');
+      require('SESSION_SECRET', 'in production');
+      if (value.AUTH_MODE === 'mock') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_MODE'],
+          message: 'mock sign-in is not allowed in production',
+        });
+      }
+    }
+
+    if (value.AUTH_MODE === 'entra' || value.GRAPH_MODE === 'real') {
+      const why = 'when AUTH_MODE=entra or GRAPH_MODE=real';
+      require('ENTRA_TENANT_ID', why);
+      require('ENTRA_CLIENT_ID', why);
+      require('ENTRA_CLIENT_SECRET', why);
+    }
+  });
+
+/**
+ * Validates a set of variables. Exported for tests; the app uses `env`.
+ * Error messages name variables and never echo their values.
+ * @param {Record<string, string | undefined>} source
+ */
+export function loadEnv(source) {
+  const parsed = schema.safeParse(source);
+
+  if (!parsed.success) {
+    const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
+    throw new Error(`Invalid environment:\n${lines.join('\n')}\n\nSee .env.example.`);
+  }
+
+  const data = parsed.data;
+  const defaultLevel = { test: 'silent', production: 'info', development: 'debug' };
+
+  return Object.freeze({
+    ...data,
+    LOG_LEVEL: data.LOG_LEVEL ?? defaultLevel[data.NODE_ENV],
+    /** False while DATABASE_URL is missing or still the .env.example placeholder. */
+    hasDatabase: !isPlaceholder(data.DATABASE_URL),
+  });
 }
 
-export const env = parsed.data;
+export const env = loadEnv(process.env);
 
 export const isProduction = env.NODE_ENV === 'production';
+export const isTest = env.NODE_ENV === 'test';

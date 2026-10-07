@@ -147,3 +147,27 @@ show no mark); company menu and dark theme not screenshotted; logo use not clear
 the brand owners.
 
 Next: unchanged from 4b.
+
+## Session 7 — Backend foundation (2026-10-07; the prompt called it "Session 5")
+
+Done: config loader hardened (production refuses placeholders and mock sign-in), pino +
+pino-http with request IDs, safe central error handler (zod, Prisma, body-parser mapped),
+compression, /api and /api/auth rate limiters, page and API 404s. Prisma models Company,
+Department, UserProfile, RoleAssignment, AuditLog, Notification with a first migration.
+lib/scope.js, lib/audit.js, lib/roles.js; AuditLog append-only guard in lib/prisma.js.
+Seed: HLD/GEN/MSR, 9 departments, 12 fake users. D33-D38. `.env` already existed; a random
+SESSION_SECRET was written into it, the DB password is still the placeholder.
+
+Files: backend/src/{app,server}.js, config/env.js, lib/{logger,scope,audit,roles,prisma}.js,
+middleware/{errors,rate-limit,request-log}.js, backend/prisma/{schema.prisma,seed.js,
+seed-data.js,migrations/*}, backend/tests/*, .env.example, package.json, docs/*.
+
+Verified: `npm test` 51 pass, 1 skipped; `npm run lint` clean; server boots, health 200.
+
+Open issues: NOTHING HAS RUN AGAINST SQL SERVER. No instance on this machine (no service,
+port 1433 closed, no Docker), so the migration SQL is Prisma's generated output, unapplied,
+and the real-database seed test skips. HLD's domain `mgholding.example` is a placeholder.
+Rate-limit counters are in memory (single instance only). No CSRF yet (comes with sessions).
+
+Next: install/start SQL Server, set the password in .env, `npm run db:migrate`,
+`npm run db:seed`, `npm test` (the skipped test must pass). Then sign-in with AUTH_MODE=mock.

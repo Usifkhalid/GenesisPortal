@@ -5,9 +5,29 @@
  * client until a module actually queries the database; `npm run dev` and the
  * health check work on a clean checkout, before `npm run db:migrate` has run.
  *
- * Reads and writes still go through lib/scope.js once business tables exist:
- * this module only owns the connection.
+ * Reads and writes of business tables go through lib/scope.js: this module
+ * only owns the connection, and one invariant — AuditLog is append-only.
  */
+
+const AUDIT_WRITES_REFUSED = ['update', 'updateMany', 'upsert', 'delete', 'deleteMany'];
+
+/**
+ * Makes AuditLog append-only for every caller, transactions included.
+ * Exported for tests.
+ * @param {import('@prisma/client').PrismaClient} base
+ */
+export function guardAuditLog(base) {
+  const refuse = (operation) => () => {
+    throw new Error(`AuditLog is append-only: ${operation} is not allowed.`);
+  };
+
+  return base.$extends({
+    name: 'audit-log-append-only',
+    query: {
+      auditLog: Object.fromEntries(AUDIT_WRITES_REFUSED.map((op) => [op, refuse(op)])),
+    },
+  });
+}
 
 /** @type {import('@prisma/client').PrismaClient | undefined} */
 let client;
@@ -16,7 +36,7 @@ let client;
 export async function getPrisma() {
   if (!client) {
     const { PrismaClient } = await import('@prisma/client');
-    client = new PrismaClient();
+    client = guardAuditLog(new PrismaClient());
   }
   return client;
 }
