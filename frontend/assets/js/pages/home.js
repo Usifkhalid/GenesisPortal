@@ -9,6 +9,7 @@
 
 import { t, getLocale } from '../i18n.js';
 import { icon } from '../components/icons.js';
+import { companyName } from '../components/company-mark.js';
 import {
   DEMO_TICKETS,
   DEMO_BOOKINGS,
@@ -204,7 +205,7 @@ function banner({ company, user, admin }, now) {
         }
       </div>
       <dl class="labelstrip labelstrip--open banner__strip">
-        ${pair(t('ticket.company'), esc(t(company.name)))}
+        ${pair(t('ticket.company'), companyName(company).outerHTML)}
         ${pair(t('home.today'), `<span data-cairo-date>${esc(cairoDate(now))}</span>`)}
         ${pair(t('home.cairoTime'), `<span data-cairo-time>${esc(cairoTime(now))}</span>`)}
       </dl>
@@ -287,11 +288,11 @@ function waitingCard({ company }) {
 
 function newsCard({ company }) {
   const rows = DEMO_ANNOUNCEMENTS.map((item) => {
-    const from = item.from === 'company' ? t(company.name) : t(item.from);
+    const from = item.from === 'company' ? companyName(company).outerHTML : esc(t(item.from));
     return `<li class="record">
       <dl class="labelstrip labelstrip--compact">
         ${pair(t('announcement.published'), esc(item.published))}
-        ${pair(t('home.news.from'), esc(from))}
+        ${pair(t('home.news.from'), from)}
       </dl>
       <div class="record__head">
         <h3 class="record__title"><a href="#announcements">${esc(t(item.title))}</a></h3>

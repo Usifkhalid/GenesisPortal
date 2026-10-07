@@ -126,3 +126,24 @@ DESIGN.md, docs/{PROGRESS,DECISIONS}.md.
 Open issues: not seen in a browser this session; the `image` icon in icons.js is now unused.
 
 Next: unchanged from 4b.
+
+## Session 6 — Company logos (2026-10-07)
+
+Done: Genesis and Masar logos taken from their sites, self-hosted as small tiles, and shown
+beside the company name in the switcher (rail, collapsed rail, phone top bar), the company
+menu, the account menu, Home's banner strip and a company announcement's "from". New
+`components/company-mark.js`; `.company-mark--logo`, `--sm` and `.company-name` in
+layout.css; styleguide switcher shows the logo; unused `app.companyShort` key removed. D32.
+
+Verified: headless Chrome screenshots of GEN, MSR (desktop, phone, collapsed rail in
+Arabic) and HLD fallback. `npm test` 3/3, `npm run lint` clean.
+
+Files: frontend/assets/img/companies/{gen.svg,msr.png}, assets/js/{app,demo-data}.js,
+assets/js/components/company-mark.js, assets/js/pages/home.js, assets/css/layout.css,
+assets/i18n/{en,ar}.json, styleguide.html, DESIGN.md, docs/*.
+
+Open issues: no MG Holding logo supplied (HLD shows its short name; group announcements
+show no mark); company menu and dark theme not screenshotted; logo use not cleared with
+the brand owners.
+
+Next: unchanged from 4b.

@@ -3,7 +3,6 @@
     "name": "MG Holding Portal",
     "group": "MG Holding",
     "company": "Genesis Mining",
-    "companyShort": "GEN",
     "skipToContent": "Skip to main content",
     "loadFailedTitle": "This page did not load",
     "loadFailedText": "The connection may have dropped. Nothing was lost."

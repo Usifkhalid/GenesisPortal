@@ -283,10 +283,37 @@
   overflow: hidden;
 }
 
-.company-mark img {
-  inline-size: 100%;
+/* A logo file is a finished tile with its own ground, so the mark only frames
+ * it. The tile keeps the mark's height and its own proportions: a wordmark is
+ * wider than it is tall. */
+.company-mark--logo {
+  /* A block, so the image's height resolves against the mark's own. */
+  display: block;
+  min-inline-size: 0;
+  padding-inline: 0;
+  background: none;
+  border-color: var(--rule);
+}
+
+.company-mark--logo img {
+  display: block;
+  inline-size: auto;
   block-size: 100%;
-  object-fit: contain;
+}
+
+/* Beside a company's name in running text: a menu row, a label-strip value. */
+.company-mark--sm {
+  min-inline-size: var(--space-5);
+  block-size: var(--space-5);
+  border-radius: var(--radius-xs);
+}
+
+.company-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  vertical-align: middle;
 }
 
 /* --- Rail links --------------------------------------------------------- */

@@ -10,6 +10,7 @@
 
 import { DEFAULT_LOCALE, setLocale, getLocale, t } from './i18n.js';
 import { injectSprite, icon } from './components/icons.js';
+import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { DEMO_COMPANIES, DEMO_USER, DEMO_TICKETS, ticketNumber } from './demo-data.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
@@ -101,15 +102,7 @@ function applyCompanyBranding(company) {
   document.documentElement.style.setProperty('--brand-accent', company.accentColor);
 
   for (const mark of document.querySelectorAll('[data-company-mark]')) {
-    mark.replaceChildren();
-    if (company.logoUrl) {
-      const img = document.createElement('img');
-      img.src = company.logoUrl;
-      img.alt = '';
-      mark.append(img);
-    } else {
-      mark.textContent = t(company.shortName);
-    }
+    fillCompanyMark(mark, company);
   }
 
   for (const name of document.querySelectorAll('[data-company-name]')) {
@@ -134,7 +127,8 @@ function applyCompanyBranding(company) {
 /**
  * Fills each company menu with the companies this person may work in. The
  * current one carries aria-current, the bold weight and a tick; the others
- * show their code. Each row shows the company's own colour as a swatch.
+ * show their code. Each row leads with the company's logo; a company without
+ * one shows its own colour as a swatch instead.
  */
 function renderCompanyMenus() {
   for (const menu of document.querySelectorAll('[data-company-menu]')) {
@@ -152,15 +146,20 @@ function renderCompanyMenus() {
       item.className = 'menu__item';
       item.setAttribute('aria-current', String(current));
 
-      const swatch = document.createElement('span');
-      swatch.className = 'menu__swatch';
-      swatch.style.background = company.accentColor;
-      swatch.setAttribute('aria-hidden', 'true');
+      let lead;
+      if (company.logoUrl) {
+        lead = companyMark(company, { small: true });
+      } else {
+        lead = document.createElement('span');
+        lead.className = 'menu__swatch';
+        lead.style.background = company.accentColor;
+        lead.setAttribute('aria-hidden', 'true');
+      }
 
       const name = document.createElement('span');
       name.textContent = t(company.name);
 
-      item.append(swatch, name);
+      item.append(lead, name);
       if (current) {
         item.insertAdjacentHTML('beforeend', icon('check', 'menu__item-meta menu__check'));
       } else {
@@ -200,7 +199,7 @@ function renderShellData() {
   document.getElementById('userAvatar').textContent = initials(userName);
   document.getElementById('userMenuName').textContent = userName;
   document.getElementById('menuUserName').textContent = userName;
-  document.getElementById('menuUserCompany').textContent = t(company.name);
+  document.getElementById('menuUserCompany').replaceChildren(companyName(company));
 
   const admin = isAdmin(user);
   document.getElementById('railAdminSection').hidden = !admin;

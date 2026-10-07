@@ -318,6 +318,10 @@ Precise inside, generous outside. Nothing moves unless it has something to say.
 
 24px corner, raised surface, 8px inset. The text column holds the greeting (display), one line of lead, the actions, and today's facts as an open label strip: company, date, Cairo time. The banner carries no photograph.
 
+### Company mark
+
+The company's logo, shown before its name wherever the name appears: the switcher, the company menu, the account menu, a label-strip value. A logo file is a finished tile with its own ground, so it reads the same on any surface and in either theme; the mark frames it with a hairline, keeps its height (32px, or 20px inline) and lets it be wider than tall, up to 1.6:1 so it still fits the collapsed rail. It is decorative: the name is always beside it or on its control. A company with no logo shows its short name on the accent.
+
 ### Buttons
 
 - **Shape:** `--radius-control`, 44px tall on a phone, `--control-height` on a pointer device.

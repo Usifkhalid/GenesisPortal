@@ -17,14 +17,14 @@ export const DEMO_COMPANIES = [
     name: 'demo.companies.GEN.name',
     shortName: 'demo.companies.GEN.short',
     accentColor: '#1c7a4a',
-    logoUrl: null,
+    logoUrl: 'assets/img/companies/gen.svg',
   },
   {
     code: 'MSR',
     name: 'demo.companies.MSR.name',
     shortName: 'demo.companies.MSR.short',
     accentColor: '#1e5aa8',
-    logoUrl: null,
+    logoUrl: 'assets/img/companies/msr.png',
   },
   {
     code: 'HLD',

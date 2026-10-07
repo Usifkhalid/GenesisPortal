@@ -314,3 +314,14 @@ not the real brand colours. Delete the file when the last importer has an API.
 The owner asked for the HQ/site image to go. The banner is now the text column alone at
 every width; the `.photo-slot` component, its styleguide specimen, its i18n keys and the
 demo `photoUrl` field are removed with it.
+
+### D32. A company logo is a self-contained tile, self-hosted
+
+Both supplied logos are drawn for a dark ground (Genesis gold on #181818, Masar white on
+#023E4A), so the ground is baked into the file rather than guessed by the UI. Genesis is
+its site's square favicon mark (SVG, 0.6 kB); Masar has no square mark, so its tile is the
+wordmark at 1.6:1 (PNG, 5.9 kB), the widest that fits the collapsed rail. Files live in
+`assets/img/companies/` because the CSP allows images from 'self' only; `logoUrl` on the
+Company record points at them. `components/company-mark.js` is the one place a mark or a
+name-with-mark is built. In the company menu a company without a logo keeps its colour
+swatch, since the short-name fallback is drawn on the current company's accent.
