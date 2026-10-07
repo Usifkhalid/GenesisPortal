@@ -2,6 +2,50 @@
 
 Durable choices and the reasoning behind them. Newest session last.
 
+## Session 4 — App shell (2026-10-07)
+
+### D18. Disclosure popovers, not `role="menu"`
+
+The notifications bell and the account button open a `.menu` panel that mixes static text
+with ordinary links/buttons. `role="menu"`/`"menuitem"` promises a roving-tabindex,
+arrow-key-navigable widget; `initPopover()` only wires Escape and an outside click, so the
+role was removed rather than the keyboard behaviour added — a static notification row has
+no sensible menuitem semantics anyway. `aria-haspopup`/`aria-expanded`/`aria-controls`
+already describe a disclosure correctly without it.
+
+### D19. Language switch lives in the account menu, not the top bar
+
+A standalone EN/AR segmented control in `.topbar` left too little room for the search box
+on a ~360px phone once the notification bell and account button took their share (an
+independent review caught this before shipping). Moving the two language rows into the
+account menu removes that chrome on every width, not just mobile, so the top bar carries
+one account-ish control instead of two, and `nav.account`'s button is the only
+`aria-controls` target search has to compete with.
+
+### D20. Bottom nav's four favor the site-staff audience, not a fixed list order
+
+Home, Tickets, Directory, Announcements take the four always-visible slots; Rooms moves
+into the "More" sheet. Room booking is HQ-desktop-centric (the rail has no such limit and
+keeps all five), while a site worker's two most likely one-handed lookups — an open ticket
+and a colleague's number — are exactly the two the original Home/Announcements/Rooms/
+Tickets/Directory order buried behind a tap.
+
+### D21. The rail collapses by hiding content, not by truncating it
+
+Collapsing the rail sets `--rail-width` to `var(--rail-width-collapsed)` on `:root` (so the
+grid column that already reads `var(--rail-width)` just picks up the new value) and toggles
+the existing `.u-visually-hidden` utility on each label span, rather than `display:none`.
+Position-absolute removal from flow stops the icon-only rail from overflowing without ever
+taking a link's name out of the accessibility tree. No new CSS for the hidden state was
+needed because of this reuse.
+
+### D22. `.segmented`'s 1px inset was a pitch-rule violation, not a style choice
+
+The impeccable detector flagged cramped padding on `.segmented`; its `padding:
+var(--space-px)` was the hairline token doing a spacing job. `--space-px` is documented as
+existing only for the hairline itself, so the fix was `var(--space-1)` (4px, back on the
+pitch), not a one-off exception.
+
 ## Session 3 — Design system (2026-10-07)
 
 ### D1. Visual world: "The Assay Card"

@@ -16,7 +16,11 @@
     "admin": "Company admin",
     "auditLog": "Audit log",
     "notifications": "Notifications",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "more": "More",
+    "collapseRail": "Collapse navigation",
+    "expandRail": "Expand navigation",
+    "account": "Account menu"
   },
   "lang": {
     "label": "Language",
@@ -55,7 +59,8 @@
     "retry": "Try again",
     "search": "Search",
     "saving": "Saving",
-    "more": "More actions"
+    "more": "More actions",
+    "newAnnouncement": "New announcement"
   },
   "field": {
     "required": "required",
@@ -147,6 +152,20 @@
     "author": "Published by",
     "sampleTitle": "Shuttle times change from Sunday",
     "sampleBody": "The HQ shuttle will leave fifteen minutes earlier on working days from Sunday. The last return from the Abu Tartur site moves to 17:30."
+  },
+  "notification": {
+    "unreadLabel": "Notifications, {count} unread",
+    "empty": "No new notifications.",
+    "sample1Title": "Your ticket TCK-10482 was assigned to I. Fahmy",
+    "sample1Time": "10 minutes ago",
+    "sample2Title": "Quarry meeting room booking confirmed for Sunday",
+    "sample2Time": "Yesterday"
+  },
+  "home": {
+    "title": "Home",
+    "lead": "What's happening across MG Holding today.",
+    "welcomeTitle": "You're all caught up",
+    "welcomeText": "New announcements, tickets and room bookings for your company will appear here."
   },
   "table": {
     "caption": "Open tickets assigned to the IT team, newest first.",

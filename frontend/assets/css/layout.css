@@ -63,14 +63,68 @@
   }
 }
 
+.rail__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .rail__brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
   min-block-size: var(--tap-min);
   text-decoration: none;
   color: var(--text-strong);
   border-radius: var(--radius-md);
+}
+
+.rail__toggle {
+  flex: none;
+}
+
+/* The chevron points towards the rail's own edge, so it reads as "push this
+ * side in". Collapsing flips it to point the other way. */
+.rail__toggle[aria-expanded='false'] .btn__icon {
+  transform: rotate(180deg);
+}
+
+[dir='rtl'] .rail__toggle .btn__icon {
+  transform: scaleX(-1);
+}
+
+[dir='rtl'] .rail__toggle[aria-expanded='false'] .btn__icon {
+  transform: scaleX(-1) rotate(180deg);
+}
+
+/* Collapsed: icon-only rail. The label text is pulled out of the flow with
+ * the shared visually-hidden utility, so the icon alone sets each link's
+ * width and nothing reflows except the rail's own grid column. */
+.rail__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail[data-collapsed='true'] {
+  padding-inline: var(--space-2);
+}
+
+.rail[data-collapsed='true'] .rail__top {
+  flex-direction: column;
+  align-items: center;
+}
+
+.rail[data-collapsed='true'] .rail__brand {
+  justify-content: center;
+}
+
+.rail[data-collapsed='true'] .nav-link {
+  justify-content: center;
+  padding-inline: var(--space-2);
 }
 
 /* The company mark. A Company record supplies a logo; until one is loaded the
@@ -194,6 +248,23 @@
   padding-block: var(--space-2);
   background: var(--surface-raised);
   border-block-end: var(--border-1) solid var(--rule);
+}
+
+.topbar__search {
+  flex: 1 1 auto;
+  /* Floor it above "just the icon" so it stays a usable field on a narrow
+   * phone, even once the actions beside it have taken their share. */
+  min-inline-size: var(--space-16);
+  max-inline-size: var(--search-max);
+}
+
+/* The account button carries a visible name only from 48rem up (.u-hide-sm
+ * on the name span); below that, drop its padding to icon-button size so an
+ * avatar-only button does not cost as much room as a labelled one. */
+@media (max-width: 47.99rem) {
+  .topbar__user-btn {
+    --btn-padding: var(--space-2);
+  }
 }
 
 .topbar__title {

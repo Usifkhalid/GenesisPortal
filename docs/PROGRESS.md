@@ -2,6 +2,22 @@
 
 Sessions in the order they ran. Newest last.
 
+## Session 4 — App shell (2026-10-07)
+
+Done: frontend/index.html app shell (rail w/ collapse, bottom nav "4 + More" sheet,
+top bar w/ search/notifications/account menu, reusable page header), demo data only.
+Ran `/impeccable critique` (detector + isolated sub-agent review, no browser tool) and
+fixed every finding — see D18-D22. New shared components: `.menu` popover, `.btn__count`.
+`npm test` 3/3, `npm run lint` clean; i18n en/ar key parity scripted-checked.
+
+Files: frontend/index.html, assets/js/app.js, assets/css/{layout,components,tokens}.css,
+assets/i18n/{en,ar}.json, docs/DECISIONS.md.
+
+Open issues: no router — nav links are `#` anchors; shell unverified in a real browser.
+
+Next: Company/User Prisma models, lib/scope.js, sign-in with AUTH_MODE=mock; wire shell
+to real auth/session state.
+
 ## Session 2 — Product brief (2026-10-07)
 
 Done: PRODUCT.md written and then extended (commits `f52b1eb`, `afa1ec3`) — platform,

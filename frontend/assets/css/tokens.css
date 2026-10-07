@@ -116,7 +116,9 @@
 
   /* --- Layout ------------------------------------------------------------ */
   --rail-width: 15rem;
+  --rail-width-collapsed: 5rem;
   --topbar-height: 3.5rem;
+  --search-max: 22rem;
   --bottomnav-height: 3.75rem; /* 60px: clears the 44px target plus padding */
   --tap-min: 2.75rem; /* 44px. The minimum hit area for anything tappable. */
   --page-max: 78rem;
