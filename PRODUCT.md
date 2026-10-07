@@ -69,3 +69,17 @@ None provided. Company logos, accent colours, announcements and staff data are n
 - WCAG AA required.
 - Legible in bright sun on phones, so contrast must hold up.
 - Full RTL support for Arabic readers.
+
+## Product Principles
+
+- **Task first.** Every screen exists to finish one of the main jobs (book a room, track a ticket, read an announcement, find a colleague) in as few steps as possible.
+- **Equal in both languages.** English and Arabic are designed together, not translated after the fact. Arabic-first readers get the same quality as English readers.
+- **Built for the weakest connection.** Design for a phone on weak 3G/4G first. Anything that slows that user down needs a strong reason.
+- **Neutral shell, company identity on top.** The portal never assumes a particular company, logo or accent colour. Adding a company is configuration, not redesign.
+- **Plain and trustworthy.** Short, plain words; clear status; no jargon and no hype.
+
+## Accessibility & Inclusion
+
+- WCAG AA is required, including in bright outdoor light on phones.
+- Must work at 360 px width and with keyboard-only use.
+- Full RTL support; many users read Arabic first.
