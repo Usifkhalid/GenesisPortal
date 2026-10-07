@@ -111,3 +111,18 @@ favicon 404; breadcrumb links are under 44px on phones (styleguide only so far).
 
 Next: Company/User Prisma models, lib/scope.js, sign-in with AUTH_MODE=mock; then replace
 demo-data.js card by card.
+
+## Session 5 — Remove the banner photo (2026-10-07)
+
+Done: removed the HQ/site photo slot from the Home banner, and with it the `.photo-slot`
+component, its styleguide specimen, the `home.photoPlaceholder` and
+`styleguide.variant.photoSlot` keys (en + ar) and the demo `photoUrl` field. D31
+supersedes D27. The "HQ/site photos not supplied" open issue from 4b is closed.
+
+Files: frontend/styleguide.html, assets/js/{demo-data.js,pages/home.js},
+assets/css/{components.css,pages/home.css,pages/styleguide.css}, assets/i18n/{en,ar}.json,
+DESIGN.md, docs/{PROGRESS,DECISIONS}.md.
+
+Open issues: not seen in a browser this session; the `image` icon in icons.js is now unused.
+
+Next: unchanged from 4b.

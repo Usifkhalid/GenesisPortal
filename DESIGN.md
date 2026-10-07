@@ -193,7 +193,7 @@ Warm paper, pine ink, a single company accent that is never assumed, and one fix
 
 - **Paper** (`--surface-ground`, stone-50): the page, the rail and the top bar. Warm off-white, OKLCH hue 74.
 - **Card** (`--surface-raised`, stone-0): a card, the banner, an input, a dialog. The only white on screen.
-- **Well** (`--surface-sunken`, stone-100): a table head, a read-only field, a photo slot awaiting its photo.
+- **Well** (`--surface-sunken`, stone-100): a table head, a read-only field.
 - **Hairline** (`--rule`, stone-200) and **Strong Rule** (`--rule-strong`, stone-300): every structural edge.
 - **Pine Ink** (`--text-strong`, pine-900): headings and values, 15:1 on a card.
 - **Body Ink** (`--text-body`, pine-800): running text, 12:1.
@@ -292,7 +292,7 @@ Shadow colour is the pine ink, never pure black. Both deepen in the dark theme.
 
 Soft outside, measured inside. The scale is 4px (a status badge, a swatch), 6px (compact controls), 10px (controls; compact cards and table frames), 16px (cards, dialogs, popovers), 24px (the welcome banner) and the pill (tags, round arrow buttons, the search field, switch, avatar).
 
-Nested corners are concentric: the photo slot inside the banner takes the banner's radius less its inset. A tag is a pill and names a category; a badge is a 4px chip and states a status. The two shapes are never swapped.
+A tag is a pill and names a category; a badge is a 4px chip and states a status. The two shapes are never swapped.
 
 Borders come in three weights: 1px (essentially everything), 2px (focus rings, the active-tab rule), 3px (a toast's state edge, the current nav item's marker).
 
@@ -316,7 +316,7 @@ Precise inside, generous outside. Nothing moves unless it has something to say.
 
 ### Welcome banner
 
-24px corner, raised surface, 8px inset. The text column holds the greeting (display), one line of lead, the actions, and today's facts as an open label strip: company, date, Cairo time. A photo slot takes 38% from 56rem of page width; below that there is no photograph, so a phone on 3G never waits for one. Text never sits on the photo. Until a photo is supplied the slot shows a neutral placeholder, to admins only.
+24px corner, raised surface, 8px inset. The text column holds the greeting (display), one line of lead, the actions, and today's facts as an open label strip: company, date, Cairo time. The banner carries no photograph.
 
 ### Buttons
 

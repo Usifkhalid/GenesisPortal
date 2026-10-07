@@ -308,3 +308,9 @@ the same with the rail open, collapsed or absent. The rail's scroll moved to an 
 `assets/js/demo-data.js` holds the stand-in companies, user, tickets, bookings and people,
 every display string an i18n key under `demo.`. Company accents there are placeholders,
 not the real brand colours. Delete the file when the last importer has an API.
+
+### D31. The banner has no photo (supersedes D27)
+
+The owner asked for the HQ/site image to go. The banner is now the text column alone at
+every width; the `.photo-slot` component, its styleguide specimen, its i18n keys and the
+demo `photoUrl` field are removed with it.

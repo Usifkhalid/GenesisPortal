@@ -180,19 +180,7 @@ function initials(name) {
 function banner({ company, user, admin }, now) {
   const greeting = t(greetingKey(cairoHour(now)), { name: t(user.firstName) });
 
-  // The slot shows the company's photo. Until one is supplied, only an admin
-  // sees the placeholder, because only an admin can do anything about it.
-  let photo = '';
-  if (company.photoUrl) {
-    photo = `<img src="${esc(company.photoUrl)}" alt="" loading="lazy" decoding="async" />`;
-  } else if (admin) {
-    photo = `<span class="photo-slot__placeholder">
-      ${icon('image')}
-      <span>${esc(t('home.photoPlaceholder'))}</span>
-    </span>`;
-  }
-
-  return `<section class="banner ${photo ? 'banner--photo' : ''}" aria-labelledby="homeGreeting">
+  return `<section class="banner" aria-labelledby="homeGreeting">
     <div class="banner__body">
       <div class="banner__intro">
         <h1 class="banner__greeting" id="homeGreeting">${esc(greeting)}</h1>
@@ -221,7 +209,6 @@ function banner({ company, user, admin }, now) {
         ${pair(t('home.cairoTime'), `<span data-cairo-time>${esc(cairoTime(now))}</span>`)}
       </dl>
     </div>
-    ${photo ? `<figure class="photo-slot banner__photo" aria-hidden="true">${photo}</figure>` : ''}
   </section>`;
 }
 

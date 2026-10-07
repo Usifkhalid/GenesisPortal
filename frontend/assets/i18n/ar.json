@@ -175,7 +175,6 @@
     "greetingEvening": "مساء الخير يا {name}",
     "today": "اليوم",
     "cairoTime": "توقيت القاهرة",
-    "photoPlaceholder": "صورة للمركز الرئيسي أو لأحد المواقع",
     "tickets": {
       "title": "المفتوحة الآن",
       "count": "{count} مفتوحة",
@@ -366,8 +365,7 @@
       "highlight": "إبراز",
       "quiet": "هادئ",
       "inCard": "داخل بطاقة",
-      "iconDisc": "قرص أيقونة",
-      "photoSlot": "موضع الصورة"
+      "iconDisc": "قرص أيقونة"
     },
     "demo": {
       "openDialog": "افتح نافذة الإحالة",

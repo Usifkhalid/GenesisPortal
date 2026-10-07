@@ -175,7 +175,6 @@
     "greetingEvening": "Good evening, {name}",
     "today": "Today",
     "cairoTime": "Cairo time",
-    "photoPlaceholder": "HQ or site photo",
     "tickets": {
       "title": "Open right now",
       "count": "{count} open",
@@ -366,8 +365,7 @@
       "highlight": "Highlight",
       "quiet": "Quiet",
       "inCard": "Inside a card",
-      "iconDisc": "Icon disc",
-      "photoSlot": "Photo slot"
+      "iconDisc": "Icon disc"
     },
     "demo": {
       "openDialog": "Open the assign dialog",

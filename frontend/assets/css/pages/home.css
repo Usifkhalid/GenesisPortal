@@ -10,13 +10,9 @@
 
 /* --- Welcome banner -----------------------------------------------------
  * The one large surface on the page: the greeting, the two things most people
- * came to do, and today's facts as a label strip. The photo slot sits inside
- * the banner's own frame, so its corner is the banner's corner less the inset.
- * Text never sits on the photograph, so its contrast never depends on one.
+ * came to do, and today's facts as a label strip.
  */
 .banner {
-  display: grid;
-  gap: var(--space-2);
   padding: var(--space-2);
   background: var(--surface-raised);
   border: var(--border-1) solid var(--rule);
@@ -60,30 +56,10 @@
   border-block-start: var(--border-1) solid var(--rule);
 }
 
-/* On a phone there is no photograph: a site worker on weak 3G gets the
- * greeting and the two actions, not an image to wait for. A lazy image in an
- * undisplayed slot is never fetched. */
-.banner__photo {
-  display: none;
-  border-radius: calc(var(--radius-xl) - var(--space-2));
-  min-block-size: calc(var(--space-24) * 3);
-}
-
 @container page (min-width: 44rem) {
   .banner__body {
     padding: var(--space-6);
     gap: var(--space-8);
-  }
-}
-
-@container page (min-width: 56rem) {
-  /* Two columns only when there is a photo slot to fill the second. */
-  .banner--photo {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 38%);
-  }
-
-  .banner__photo {
-    display: grid;
   }
 }
 

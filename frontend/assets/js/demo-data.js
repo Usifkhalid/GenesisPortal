@@ -18,7 +18,6 @@ export const DEMO_COMPANIES = [
     shortName: 'demo.companies.GEN.short',
     accentColor: '#1c7a4a',
     logoUrl: null,
-    photoUrl: null,
   },
   {
     code: 'MSR',
@@ -26,7 +25,6 @@ export const DEMO_COMPANIES = [
     shortName: 'demo.companies.MSR.short',
     accentColor: '#1e5aa8',
     logoUrl: null,
-    photoUrl: null,
   },
   {
     code: 'HLD',
@@ -34,7 +32,6 @@ export const DEMO_COMPANIES = [
     shortName: 'demo.companies.HLD.short',
     accentColor: '#b4552d',
     logoUrl: null,
-    photoUrl: null,
   },
 ];
 

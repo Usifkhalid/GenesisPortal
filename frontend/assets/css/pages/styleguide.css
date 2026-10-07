@@ -463,11 +463,6 @@
   min-width: 0;
 }
 
-.sg-photo {
-  min-block-size: var(--space-24);
-  inline-size: 100%;
-}
-
 /* The toaster is fixed in the app; in the sheet it is shown in place. */
 .toaster-preview .toaster {
   position: static;
