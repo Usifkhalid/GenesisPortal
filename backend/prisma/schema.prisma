@@ -174,3 +174,21 @@ model Notification {
   @@index([userId, readAt, createdAt])
   @@index([companyId])
 }
+
+/// A server-side session, written by lib/session.js for express-session. The
+/// browser holds only the signed sid. Not a business table: it has no
+/// companyId and is never read through lib/scope.js.
+model Session {
+  sid       String   @id @db.VarChar(64)
+  /// The serialised session, as JSON.
+  data      String   @db.NVarChar(Max)
+  /// End of the idle window; pushed forward by every request.
+  expiresAt DateTime
+  /// Set at sign-in, so a person's sessions can be found and ended.
+  userId    String?  @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@index([userId])
+}

@@ -1,37 +1,39 @@
 /**
  * app.js — the portal's app shell.
  *
- * Wires the top bar, the rail/bottom-nav pair and the company switcher against
- * static demo data, and mounts the Home page. There is no router and no API
- * call yet: the companies and the signed-in user come from demo-data.js, and
- * are the only things a future sign-in and company-admin module need to
- * replace.
+ * Asks the server who is signed in (GET /api/me) before it draws anything of
+ * theirs; with no session the browser is sent to the login page. The person,
+ * their company's branding, the companies they may switch between and the
+ * navigation they may see all come from that one answer. Then it wires the top
+ * bar, the rail/bottom-nav pair and the company switcher, and mounts Home.
+ * There is no router yet, and Home's cards still read demo-data.js.
  */
 
-import { DEFAULT_LOCALE, setLocale, getLocale, t } from './i18n.js';
+import { DEFAULT_LOCALE, LOCALES, setLocale, getLocale, localized, t } from './i18n.js';
+import { loadSession, signOut } from './auth.js';
 import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
-import { DEMO_COMPANIES, DEMO_USER, DEMO_TICKETS, ticketNumber } from './demo-data.js';
+import { initials } from './components/initials.js';
+import { DEMO_TICKETS, ticketNumber } from './demo-data.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
 const STORED_RAIL_KEY = 'mgp.railCollapsed';
 const STORED_COMPANY_KEY = 'mgp.company';
 
+/** Filled from GET /api/me by init(). */
 const state = {
-  user: DEMO_USER,
-  companies: DEMO_COMPANIES,
-  company: DEMO_COMPANIES[0],
+  /** @type {object | null} the signed-in person */
+  user: null,
+  /** The companies this person may work in. */
+  companies: [],
+  /** The one the shell is showing now. */
+  company: null,
+  /** @type {{ key: string, group: string }[]} what the server lets them see */
+  nav: [],
 };
 
-const isAdmin = (user) => user.role === 'HoldingAdmin' || user.role === 'CompanyAdmin';
-
-function initials(name) {
-  const parts = name.trim().split(/\s+/);
-  // Arabic initials are a single letter; two joined letters read as a word.
-  // An alef is shown bare: with its hamza, alone and small, it reads as '!'.
-  if (getLocale() === 'ar') return (parts[0]?.[0] ?? '').replace(/[أإآ]/, 'ا');
-  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase();
-}
+/** Admin navigation is the server's call: it sends the group or it does not. */
+const isAdmin = () => state.nav.some((item) => item.group === 'admin');
 
 function readStored(key) {
   try {
@@ -52,9 +54,15 @@ function writeStored(key, value) {
 
 /* -------------------------------------------------------------- language */
 
+/**
+ * A language chosen on this device wins; then the one on the person's
+ * profile; then the browser's.
+ */
 function preferredLocale() {
+  const profile = state.user?.language;
   return (
     readStored(STORED_LOCALE_KEY) ??
+    (profile in LOCALES ? profile : null) ??
     (navigator.language?.startsWith('ar') ? 'ar' : DEFAULT_LOCALE)
   );
 }
@@ -96,7 +104,7 @@ function initLanguageMenu() {
  * tokens.css is derived from it. A missing logo falls back to the company's
  * short name on that colour, so the shell is never broken by missing evidence.
  *
- * @param {{ name: string, shortName: string, accentColor: string, logoUrl: string|null }} company
+ * @param {{ code: string, nameEn: string, nameAr: string, accentColor: string, logoUrl: string|null }} company
  */
 function applyCompanyBranding(company) {
   document.documentElement.style.setProperty('--brand-accent', company.accentColor);
@@ -106,15 +114,15 @@ function applyCompanyBranding(company) {
   }
 
   for (const name of document.querySelectorAll('[data-company-name]')) {
-    name.textContent = t(company.name);
+    name.textContent = localized(company);
   }
 
   // The switcher's name says what it holds now and what pressing it does.
   // With one company there is nothing to switch, so it is not a control.
   const single = state.companies.length < 2;
   const label = single
-    ? t(company.name)
-    : t('nav.companyCurrent', { company: t(company.name) });
+    ? localized(company)
+    : t('nav.companyCurrent', { company: localized(company) });
   for (const id of ['companyBtn', 'companyBtnTop']) {
     const button = document.getElementById(id);
     button.setAttribute('aria-label', label);
@@ -157,7 +165,7 @@ function renderCompanyMenus() {
       }
 
       const name = document.createElement('span');
-      name.textContent = t(company.name);
+      name.textContent = localized(company);
 
       item.append(lead, name);
       if (current) {
@@ -191,19 +199,16 @@ function selectCompany(company) {
 /** Everything in the shell that comes from data rather than from a string. */
 function renderShellData() {
   const { user, company } = state;
-  const userName = t(user.name);
+  const userName = localized(user, 'displayName');
 
   applyCompanyBranding(company);
+  applyNav();
   renderCompanyMenus();
 
   document.getElementById('userAvatar').textContent = initials(userName);
   document.getElementById('userMenuName').textContent = userName;
   document.getElementById('menuUserName').textContent = userName;
   document.getElementById('menuUserCompany').replaceChildren(companyName(company));
-
-  const admin = isAdmin(user);
-  document.getElementById('railAdminSection').hidden = !admin;
-  document.getElementById('moreAdminSection').hidden = !admin;
 
   const toggle = document.getElementById('railToggle');
   const collapsed = toggle.getAttribute('aria-expanded') === 'false';
@@ -217,6 +222,23 @@ function renderShellData() {
     ticket: ticketNumber(company.code, DEMO_TICKETS[0].seq),
   });
   updateNotifA11y();
+}
+
+/* -------------------------------------------------------------- navigation */
+
+/**
+ * Shows only the destinations the server listed for this person. This is
+ * courtesy, not security: every route behind a link checks for itself.
+ */
+function applyNav() {
+  const allowed = new Set(state.nav.map((item) => item.key));
+  for (const link of document.querySelectorAll('[data-nav]')) {
+    link.hidden = !allowed.has(link.dataset.nav);
+  }
+
+  const admin = isAdmin();
+  document.getElementById('railAdminSection').hidden = !admin;
+  document.getElementById('moreAdminSection').hidden = !admin;
 }
 
 /* -------------------------------------------------------------------- page */
@@ -233,10 +255,11 @@ async function renderPage() {
 
   try {
     const { render } = await import('./pages/home.js');
+    const name = localized(state.user, 'displayName');
     render(page, {
       company: state.company,
-      user: state.user,
-      admin: isAdmin(state.user),
+      user: { name, firstName: name.trim().split(/\s+/)[0] ?? name },
+      admin: isAdmin(),
     });
   } catch {
     page.innerHTML = pageError();
@@ -434,19 +457,66 @@ function updateNotifA11y() {
 /* ----------------------------------------------------------------- sign out */
 
 function initSignOut() {
-  // Placeholder: no session yet to end. The real handler arrives with sign-in.
-  document.getElementById('signOutBtn')?.addEventListener('click', () => closeMenu('userMenu'));
+  const button = document.getElementById('signOutBtn');
+  const label = button.querySelector('[data-i18n]');
+
+  button.addEventListener('click', async () => {
+    if (button.getAttribute('aria-busy') === 'true') return;
+    button.setAttribute('aria-busy', 'true');
+    try {
+      // On success the page leaves for the login screen.
+      await signOut();
+    } catch {
+      // Still signed in, and the person must know it: the row says so and
+      // stays where it is, ready to be pressed again.
+      button.removeAttribute('aria-busy');
+      label.dataset.i18n = 'nav.signOutFailed';
+      label.textContent = t('nav.signOutFailed');
+    }
+  });
 }
 
 /* -------------------------------------------------------------------- boot */
 
+/**
+ * The session could not be read, and it was not a 401 (that goes to the login
+ * page): most likely there is no signal. The shell stays hidden, since there
+ * is nobody to draw it for, and the work area says what happened.
+ */
+function showBootError() {
+  const page = document.getElementById('page');
+  page.innerHTML = pageError();
+  page.querySelector('[data-retry]').addEventListener('click', () => location.reload());
+}
+
 async function init() {
   injectSprite();
 
+  // Words first, in the device's language, so that waiting and failing can
+  // both be said before anything is known about the person.
+  await setLocale(preferredLocale());
+  document.getElementById('page').innerHTML = pageSkeleton();
+
+  let me;
+  try {
+    me = await loadSession();
+  } catch {
+    showBootError();
+    return;
+  }
+
+  state.user = me.user;
+  state.nav = me.nav;
+  state.companies = me.companies;
+  // The company last worked in on this device, if they may still work in it.
   const storedCompany = readStored(STORED_COMPANY_KEY);
-  state.company = state.companies.find((c) => c.code === storedCompany) ?? state.companies[0];
+  state.company =
+    state.companies.find((c) => c.code === storedCompany) ??
+    state.companies.find((c) => c.id === me.company.id) ??
+    me.company;
 
   await applyLanguage(preferredLocale());
+  delete document.querySelector('.app').dataset.booting;
 
   initLanguageMenu();
   initRailToggle();

@@ -1,0 +1,183 @@
+/* ============================================================================
+ * pages/login.css — the sign-in page.
+ *
+ * Nobody is signed in yet, so there is no company and no shell: a hairline bar
+ * with the portal's name and the language switch, then one column on the
+ * paper ground. The accent is the token placeholder until a session supplies
+ * a company's own.
+ *
+ * Entra mode is one button. Mock mode is a picker: a card per company holding
+ * a record list of its seeded people. Tokens only, no raw values.
+ * ========================================================================= */
+
+.login {
+  display: flex;
+  flex-direction: column;
+}
+
+.login__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  padding-inline: var(--gutter);
+  border-block-end: var(--border-1) solid var(--rule);
+}
+
+.login__brand {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.login__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  inline-size: 100%;
+  padding-inline: var(--gutter);
+  padding-block: var(--space-8) var(--space-12);
+}
+
+/* Only the picker needs the page's full width. One button, or one message,
+ * sits in a reading column, centred in the height that is left: on a phone
+ * that puts the button where a thumb already is. */
+.login__main:not([data-mode='mock']) {
+  max-inline-size: var(--measure);
+  margin-block: auto;
+}
+
+.login__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.login__title,
+.login__lead {
+  margin: 0;
+}
+
+.login__lead {
+  max-inline-size: var(--measure);
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+/* --- Entra: the one action ---------------------------------------------- */
+
+.login__entra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* What is waited for is, for everyone outside development, one button and a
+ * line under it: the skeleton takes that shape, so nothing moves on arrival. */
+.login__skeleton-button {
+  block-size: var(--tap-min);
+  border-radius: var(--radius-control);
+}
+
+/* --- Mock: a card per company -------------------------------------------- */
+
+.login__companies {
+  align-items: start;
+}
+
+.login__company-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* --- A person: the whole row is the control --------------------------------
+ * The button is the person's name, so that is what a screen reader hears and
+ * what a keyboard lands on; its hit area is stretched over the row, so a thumb
+ * can land anywhere on it.
+ */
+.login__person {
+  position: relative;
+}
+
+.login__person-head {
+  align-items: center;
+}
+
+.login__pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.login__pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.login__person:hover .login__pick:enabled {
+  color: var(--brand-accent-ink);
+  text-decoration: underline;
+}
+
+.login__pick:disabled {
+  cursor: default;
+}
+
+/* The row being signed in keeps its ink; the others step back. */
+.login__pick:disabled:not([aria-busy='true']) {
+  color: var(--text-muted);
+}
+
+.login__pick[aria-busy='true'] {
+  cursor: progress;
+}
+
+/* Keyboard focus is drawn around the row the control covers, not around the
+ * name alone. Engines without :has() keep the default ring on the name. */
+@supports selector(:has(*)) {
+  .login__pick:focus-visible {
+    outline: none;
+  }
+
+  .login__person:has(.login__pick:focus-visible) {
+    outline: var(--border-2) solid var(--brand-accent-ink);
+    outline-offset: var(--space-1);
+    border-radius: var(--radius-xs);
+  }
+}
+
+/* The chevron says the row goes somewhere; while signing in it is a spinner. */
+.login__go {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  color: var(--text-muted);
+}
+
+.login__go svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+@supports selector(:has(*)) {
+  .login__person:hover:has(.login__pick:enabled) .login__go {
+    color: var(--brand-accent-ink);
+  }
+}

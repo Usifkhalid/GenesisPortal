@@ -15,12 +15,21 @@ const server = app.listen(env.PORT, () => {
     { port: env.PORT, env: env.NODE_ENV, auth: env.AUTH_MODE, graph: env.GRAPH_MODE },
     `MG Holding Portal listening on http://localhost:${env.PORT}`
   );
-  if (!env.hasDatabase) {
+  if (app.locals.inMemory) {
     logger.warn(
-      'DATABASE_URL is missing or still a placeholder: anything that needs the database will fail.'
+      'DATABASE_URL is missing or still a placeholder: users come from prisma/seed-data.js and sessions are held in memory. Both are lost on restart.'
     );
   }
 });
+
+// Expired sessions are never read; this only keeps the table small.
+const store = app.locals.sessionStore;
+if (typeof store.prune === 'function') {
+  setInterval(
+    () => store.prune().catch((err) => logger.warn({ err }, 'session prune failed')),
+    60 * 60 * 1000
+  ).unref();
+}
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {

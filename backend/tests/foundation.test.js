@@ -109,10 +109,10 @@ describe('404', () => {
     assert.doesNotMatch(res.text, /Cannot GET|<html/i);
   });
 
-  test('an unknown /api path is JSON with the request ID', async () => {
-    const res = await request(app).post('/api/nope');
-    assert.equal(res.status, 404);
-    assert.equal(res.body.error.code, 'not_found');
+  test('an /api error is JSON with the request ID', async () => {
+    const res = await request(app).get('/api/nope');
+    assert.equal(res.status, 401);
+    assert.equal(res.body.error.code, 'unauthenticated');
     assert.match(res.body.error.requestId, UUID);
   });
 });
@@ -136,8 +136,8 @@ describe('rate limiter', () => {
   test('/api answers 429 past the limit, but never for the health probe', async () => {
     const limited = createApp({ rateLimit: { limit: 2, windowMs: 60_000 } });
 
-    assert.equal((await request(limited).get('/api/a')).status, 404);
-    assert.equal((await request(limited).get('/api/b')).status, 404);
+    assert.equal((await request(limited).get('/api/a')).status, 401);
+    assert.equal((await request(limited).get('/api/b')).status, 401);
 
     const res = await request(limited).get('/api/c');
     assert.equal(res.status, 429);
@@ -148,12 +148,22 @@ describe('rate limiter', () => {
     assert.equal((await request(limited).get('/styleguide.html')).status, 200);
   });
 
-  test('/api/auth has its own stricter limit', async () => {
+  test('the sign-in routes have their own stricter limit', async () => {
     const limited = createApp({ authRateLimit: { limit: 1, windowMs: 60_000 } });
 
-    assert.equal((await request(limited).post('/api/auth/login')).status, 404);
-    assert.equal((await request(limited).post('/api/auth/login')).status, 429);
-    assert.equal((await request(limited).get('/api/other')).status, 404);
+    // No CSRF token, so the first is refused for that; the second never gets that far.
+    assert.equal((await request(limited).post('/api/auth/mock-login')).status, 403);
+    assert.equal((await request(limited).post('/api/auth/mock-login')).status, 429);
+    assert.equal((await request(limited).get('/auth/login')).status, 429);
+    assert.equal((await request(limited).get('/api/other')).status, 401);
+  });
+
+  test('drawing the login page does not count as a sign-in attempt', async () => {
+    const limited = createApp({ authRateLimit: { limit: 1, windowMs: 60_000 } });
+
+    for (let i = 0; i < 3; i += 1) {
+      assert.equal((await request(limited).get('/api/auth/config')).status, 200);
+    }
   });
 });
 
@@ -162,6 +172,7 @@ describe('config loader', () => {
     NODE_ENV: 'production',
     DATABASE_URL: 'sqlserver://db;database=x;user=u;password=p',
     SESSION_SECRET: 'a-long-enough-secret',
+    APP_BASE_URL: 'https://portal.example.com',
     AUTH_MODE: 'entra',
     ENTRA_TENANT_ID: 't',
     ENTRA_CLIENT_ID: 'c',
@@ -193,6 +204,7 @@ describe('config loader', () => {
       /SESSION_SECRET/
     );
     assert.throws(() => loadEnv({ ...production, AUTH_MODE: 'mock' }), /AUTH_MODE/);
+    assert.throws(() => loadEnv({ ...production, APP_BASE_URL: undefined }), /APP_BASE_URL/);
     assert.throws(
       () => loadEnv({ ...production, ENTRA_CLIENT_SECRET: 'CHANGE_ME' }),
       /ENTRA_CLIENT_SECRET/

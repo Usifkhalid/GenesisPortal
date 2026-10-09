@@ -2,7 +2,7 @@
  * rate-limit.js — per-IP request caps.
  *
  * Two limiters: a generous one across /api, and a strict one for the sign-in
- * routes under /api/auth. Counters are in memory, which is correct for a
+ * routes under /api/auth and /auth. Counters are in memory, which is correct for a
  * single App Service instance; scaling out needs a shared store.
  */
 
@@ -44,5 +44,8 @@ export function authLimiter(options = {}) {
   return limiter({
     windowMs: options.windowMs ?? env.AUTH_RATE_LIMIT_WINDOW_MS,
     limit: options.limit ?? env.AUTH_RATE_LIMIT_MAX,
+    // Drawing the login page is not an attempt to sign in. The paths are
+    // relative to the mount point; /auth has no GET by these names.
+    skip: (req) => req.method === 'GET' && ['/config', '/mock-users'].includes(req.path),
   });
 }

@@ -2328,6 +2328,12 @@ a.person {
   color: var(--text-strong);
 }
 
+/* The title and its sentence are one message: the paragraph gap from base.css
+ * would set them apart as two. */
+.notice__title + p {
+  margin-block-start: var(--space-1);
+}
+
 .notice--success {
   background: var(--success-surface);
   border-color: var(--success-edge);

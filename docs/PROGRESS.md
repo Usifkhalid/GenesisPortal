@@ -171,3 +171,23 @@ Rate-limit counters are in memory (single instance only). No CSRF yet (comes wit
 
 Next: install/start SQL Server, set the password in .env, `npm run db:migrate`,
 `npm run db:seed`, `npm test` (the skipped test must pass). Then sign-in with AUTH_MODE=mock.
+
+## Session 8 — Sign-in, roles and company scoping (2026-10-09; the prompt called it "Session 6")
+
+Done: express-session over a Prisma `Session` table (migration `20261009000000_sessions`), 8h
+idle, CSRF on every state-changing route, `/api` closed by default, `requireAuth`,
+`requireRole`, `req.user.scopes`, mock sign-in (development only), Entra code flow with PKCE,
+`GET /api/me`, login.html in both modes, shell wired to the real user, branding, nav and
+sign-out. `/impeccable polish` run on login.html. D39-D46. New env var `APP_BASE_URL`.
+Files: backend/src/{app,server}.js, config/env.js, lib/{session,scope}.js, middleware/{auth,
+csrf,rate-limit}.js, modules/auth/*, prisma/*, tests/*; frontend/login.html, index.html,
+assets/js/{api,auth,app,i18n}.js, js/pages/{login,home}.js, js/components/*, css/pages/login.css,
+css/{layout,components}.css, i18n/*; docs/*, .env.example.
+Verified: `npm test` 88 pass, 1 skipped; lint clean; headless Chrome (EN/AR, phone/desktop,
+light/dark) through sign-in as three roles, sign-out and every login state, 0 findings.
+Open issues: STILL NOTHING HAS RUN AGAINST SQL SERVER: the Session migration, the Prisma
+session store and modules/auth/repo.js are unproven (D42; dev and tests run in memory). Entra
+unproven against the real tenant. Auth rate limit too low for an office NAT (D45). Idle
+timeout only, no absolute lifetime. Favicon 404. Home cards still use demo data.
+Next: install SQL Server, set the .env password, `npm approve-scripts prisma @prisma/client
+@prisma/engines`, `npm run db:migrate`, `npm run db:seed`, `npm test`, sign in once. Then company admin.

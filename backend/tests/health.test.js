@@ -14,11 +14,12 @@ test('GET /api/health reports ok', async () => {
   assert.deepEqual(res.body, { status: 'ok' });
 });
 
-test('an unknown /api path is a JSON 404, not the frontend', async () => {
+test('an /api path answers in JSON, not with the frontend', async () => {
   const res = await request(app).get('/api/nothing-here');
 
-  assert.equal(res.status, 404);
-  assert.equal(res.body.error.code, 'not_found');
+  // Closed by default: without a session even a path that does not exist is 401.
+  assert.equal(res.status, 401);
+  assert.equal(res.body.error.code, 'unauthenticated');
 });
 
 test('the frontend is served as static files', async () => {

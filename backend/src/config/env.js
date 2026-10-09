@@ -42,8 +42,17 @@ const schema = z
     /** SQL Server connection string. Prisma reads this too, from .env. */
     DATABASE_URL: z.string().min(1).optional(),
 
-    /** Signs the server-side session cookie. Required once sign-in exists. */
+    /**
+     * Signs the server-side session cookie. Without one (dev and test only) a
+     * random secret is made at boot, so sessions end when the process does.
+     */
     SESSION_SECRET: z.string().min(16).optional(),
+
+    /**
+     * The portal's own public origin, e.g. https://portal.mgholding.example.
+     * Entra redirect URIs are built from it, never from the Host header.
+     */
+    APP_BASE_URL: z.url().optional(),
 
     /** Requests per IP per window across /api, and the stricter cap on /api/auth. */
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -73,6 +82,7 @@ const schema = z
     if (value.NODE_ENV === 'production') {
       require('DATABASE_URL', 'in production');
       require('SESSION_SECRET', 'in production');
+      require('APP_BASE_URL', 'in production');
       if (value.AUTH_MODE === 'mock') {
         ctx.addIssue({
           code: 'custom',
@@ -109,6 +119,7 @@ export function loadEnv(source) {
   return Object.freeze({
     ...data,
     LOG_LEVEL: data.LOG_LEVEL ?? defaultLevel[data.NODE_ENV],
+    APP_BASE_URL: (data.APP_BASE_URL ?? `http://localhost:${data.PORT}`).replace(/\/+$/, ''),
     /** False while DATABASE_URL is missing or still the .env.example placeholder. */
     hasDatabase: !isPlaceholder(data.DATABASE_URL),
   });

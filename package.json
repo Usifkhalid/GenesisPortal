@@ -18,10 +18,12 @@
     "db:seed": "node backend/prisma/seed.js"
   },
   "dependencies": {
+    "@azure/msal-node": "^7.0.1",
     "@prisma/client": "^6.1.0",
     "compression": "^1.8.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
     "helmet": "^8.0.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",

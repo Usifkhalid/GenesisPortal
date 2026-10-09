@@ -24,7 +24,8 @@
   <body>
     <a class="u-skip-link" href="#main" data-i18n="app.skipToContent">Skip to main content</a>
 
-    <div class="app">
+    <!-- data-booting hides the shell until app.js knows who is signed in. -->
+    <div class="app" data-booting>
       <!-- ==================================================== rail (desktop) === -->
       <nav class="rail" id="rail" data-i18n-attr="aria-label:nav.label">
         <div class="menu-wrap">
@@ -299,7 +300,7 @@
         </button>
       </div>
       <div class="dialog__body stack stack--tight">
-        <a class="menu__item" href="#announcements" data-dialog-close>
+        <a class="menu__item" href="#announcements" data-nav="announcements" data-dialog-close>
           <svg aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
           <span data-i18n="nav.announcements">Announcements</span>
         </a>
@@ -318,11 +319,11 @@
           >
             Administration
           </p>
-          <a class="menu__item" href="#admin" data-dialog-close>
+          <a class="menu__item" href="#admin" data-nav="admin" data-dialog-close>
             <svg aria-hidden="true" focusable="false"><use href="#i-admin" /></svg>
             <span data-i18n="nav.admin">Company admin</span>
           </a>
-          <a class="menu__item" href="#audit-log" data-dialog-close>
+          <a class="menu__item" href="#audit-log" data-nav="auditLog" data-dialog-close>
             <svg aria-hidden="true" focusable="false"><use href="#i-auditLog" /></svg>
             <span data-i18n="nav.auditLog">Audit log</span>
           </a>

@@ -25,7 +25,8 @@
     "administration": "Administration",
     "collapse": "Collapse",
     "switchCompany": "Switch company",
-    "companyCurrent": "Company: {company}. Switch company"
+    "companyCurrent": "Company: {company}. Switch company",
+    "signOutFailed": "Could not sign out. Try again"
   },
   "lang": {
     "label": "Language",
@@ -386,24 +387,6 @@
     "breadcrumbSeparator": "then"
   },
   "demo": {
-    "user": {
-      "name": "Youssef El-Shal",
-      "firstName": "Youssef"
-    },
-    "companies": {
-      "GEN": {
-        "name": "Genesis Mining",
-        "short": "GEN"
-      },
-      "MSR": {
-        "name": "Masar",
-        "short": "MSR"
-      },
-      "HLD": {
-        "name": "MG Holding",
-        "short": "HLD"
-      }
-    },
     "tickets": {
       "t1": "Weighbridge terminal will not print tickets",
       "t2": "Site office Wi-Fi drops every afternoon",
@@ -447,5 +430,46 @@
   "day": {
     "sun": "Sun",
     "thu": "Thu"
+  },
+  "login": {
+    "pageTitle": "Sign in · MG Holding Portal",
+    "title": "Sign in",
+    "mock": {
+      "lead": "Development sign-in. Pick someone to see the portal as they do. None of these people is real.",
+      "peopleCount": "{count} people",
+      "signInAs": "Sign in as {name}",
+      "offTitle": "Development sign-in is switched off",
+      "offText": "It only answers while the server runs with NODE_ENV=development."
+    },
+    "entra": {
+      "lead": "Use the Microsoft work account your company gave you.",
+      "button": "Sign in with Microsoft",
+      "note": "You will go to Microsoft to sign in, then come straight back here."
+    },
+    "field": {
+      "role": "Role",
+      "jobTitle": "Job title"
+    },
+    "role": {
+      "HoldingAdmin": "Holding admin",
+      "CompanyAdmin": "Company admin",
+      "User": "User"
+    },
+    "loading": "Loading sign-in",
+    "signingIn": "Signing in as {name}",
+    "failed": {
+      "title": "Could not sign in",
+      "text": "The connection may have dropped. Try again."
+    },
+    "error": {
+      "signin_failed": {
+        "title": "Sign-in did not finish",
+        "text": "Microsoft did not confirm who you are. Try again."
+      },
+      "not_provisioned": {
+        "title": "You are not set up on the portal yet",
+        "text": "Your Microsoft account worked, but it has no portal profile. Ask your company admin to add you."
+      }
+    }
   }
 }

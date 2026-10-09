@@ -56,6 +56,19 @@ export function t(key, vars) {
   );
 }
 
+/**
+ * A record's own text in the language in use. Records carry their words in
+ * both languages as a pair of fields: nameEn/nameAr, displayNameEn/displayNameAr.
+ *
+ * @param {Record<string, unknown> | null | undefined} record
+ * @param {string} [field]  the pair's stem
+ * @returns {string}
+ */
+export function localized(record, field = 'name') {
+  const own = record?.[`${field}${current.lang === 'ar' ? 'Ar' : 'En'}`];
+  return String(own || record?.[`${field}En`] || '');
+}
+
 /** The language in use. */
 export function getLocale() {
   return current.lang;

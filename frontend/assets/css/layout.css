@@ -765,3 +765,9 @@
     display: none;
   }
 }
+
+/* Until app.js knows who is signed in there is nobody to draw the shell for.
+ * The grid keeps its tracks, so nothing moves when the shell appears. */
+.app[data-booting] > :not(.main) {
+  visibility: hidden;
+}

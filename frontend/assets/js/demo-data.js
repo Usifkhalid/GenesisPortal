@@ -1,46 +1,14 @@
 /**
  * demo-data.js — static stand-ins for what the API will return.
  *
- * Nothing here is real: the companies' accents, the people, the tickets and
- * the bookings are placeholders so the shell and Home can be seen and reviewed
- * before sign-in and the modules exist. Every display string is an i18n key
+ * Nothing here is real: the tickets, the bookings, the news and the colleagues
+ * are placeholders so Home can be seen and reviewed before the modules exist.
+ * The signed-in person and their companies are real now: see auth.js. Every display string is an i18n key
  * under "demo.", so the demo reads properly in both languages; the real
  * records will carry their own English and Arabic values.
  *
  * Delete this file when the last module that imports it has an API.
  */
-
-/** Stands in for the Company records a session's user may work in. */
-export const DEMO_COMPANIES = [
-  {
-    code: 'GEN',
-    name: 'demo.companies.GEN.name',
-    shortName: 'demo.companies.GEN.short',
-    accentColor: '#1c7a4a',
-    logoUrl: 'assets/img/companies/gen.svg',
-  },
-  {
-    code: 'MSR',
-    name: 'demo.companies.MSR.name',
-    shortName: 'demo.companies.MSR.short',
-    accentColor: '#1e5aa8',
-    logoUrl: 'assets/img/companies/msr.png',
-  },
-  {
-    code: 'HLD',
-    name: 'demo.companies.HLD.name',
-    shortName: 'demo.companies.HLD.short',
-    accentColor: '#b4552d',
-    logoUrl: null,
-  },
-];
-
-/** Stands in for the signed-in user a real session would carry. */
-export const DEMO_USER = {
-  name: 'demo.user.name',
-  firstName: 'demo.user.firstName',
-  role: 'HoldingAdmin',
-};
 
 /**
  * The user's open tickets. `seq` becomes the ticket number, prefixed with the

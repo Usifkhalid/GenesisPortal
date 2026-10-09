@@ -1,0 +1,116 @@
+/**
+ * service.js — sign-in's logic, apart from HTTP: the mock user list, starting
+ * a session, and what GET /api/me says about the person asking.
+ */
+
+import { ROLES } from '../../lib/roles.js';
+import { regenerateSession } from '../../lib/session.js';
+import { csrfToken } from '../../middleware/csrf.js';
+
+/** Most powerful first: the one role a person is listed under. */
+const ROLE_RANK = [ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN, ROLES.USER];
+
+const rank = (role) => {
+  const index = ROLE_RANK.indexOf(role);
+  return index === -1 ? ROLE_RANK.length : index;
+};
+
+/** The branding a client needs to draw a company: names, accent, logo. */
+function companyView(company) {
+  return {
+    id: company.id,
+    code: company.code,
+    nameEn: company.nameEn,
+    nameAr: company.nameAr,
+    accentColor: company.accentColor,
+    logoUrl: company.logoUrl ?? null,
+  };
+}
+
+/**
+ * The seeded users for the mock login screen, grouped by company, each under
+ * their highest role; admins first, then by name.
+ */
+export async function listMockUsers(repo) {
+  const companies = await repo.listCompaniesWithUsers();
+
+  return companies
+    .filter((company) => company.users.length > 0)
+    .sort((a, b) => a.nameEn.localeCompare(b.nameEn))
+    .map((company) => ({
+      ...companyView(company),
+      users: company.users
+        .map((user) => ({
+          id: user.id,
+          displayNameEn: user.displayNameEn,
+          displayNameAr: user.displayNameAr,
+          jobTitle: user.jobTitle ?? null,
+          role:
+            user.roles.map((r) => r.role).sort((a, b) => rank(a) - rank(b))[0] ?? ROLES.USER,
+        }))
+        .sort(
+          (a, b) =>
+            rank(a.role) - rank(b.role) || a.displayNameEn.localeCompare(b.displayNameEn)
+        ),
+    }));
+}
+
+/**
+ * Signs `userId` in. The session id is replaced first, so an id that existed
+ * before sign-in (and could have been planted) never becomes an authenticated
+ * one. Returns the new session's CSRF token.
+ */
+export async function startSession(req, userId) {
+  await regenerateSession(req);
+  req.session.userId = userId;
+  return csrfToken(req);
+}
+
+/**
+ * The navigation this person may see. The frontend draws only these; the
+ * routes behind them enforce the same thing for themselves.
+ */
+export function navFor(user) {
+  const nav = ['home', 'announcements', 'rooms', 'tickets', 'directory'].map((key) => ({
+    key,
+    group: 'main',
+  }));
+
+  const { adminCompanyIds } = user.scopes;
+  if (adminCompanyIds === null || adminCompanyIds.length > 0) {
+    nav.push({ key: 'admin', group: 'admin' }, { key: 'auditLog', group: 'admin' });
+  }
+  return nav;
+}
+
+/** The body of GET /api/me. */
+export async function describeMe(req, repo, config) {
+  const { user, account } = req;
+
+  // The companies this person may work in: their own first.
+  const companies = (await repo.listCompanies(user.scopes.companyIds))
+    .sort(
+      (a, b) =>
+        (b.id === user.companyId) - (a.id === user.companyId) ||
+        a.nameEn.localeCompare(b.nameEn)
+    )
+    .map(companyView);
+
+  return {
+    user: {
+      id: account.id,
+      email: account.email,
+      displayNameEn: account.displayNameEn,
+      displayNameAr: account.displayNameAr,
+      jobTitle: account.jobTitle ?? null,
+      language: account.language,
+      department: account.department ?? null,
+    },
+    company: companyView(account.company),
+    companies,
+    roles: user.roles,
+    nav: navFor(user),
+    authMode: config.AUTH_MODE,
+    csrfToken: csrfToken(req),
+  };
+}

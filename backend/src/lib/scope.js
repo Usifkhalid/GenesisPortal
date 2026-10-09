@@ -5,9 +5,10 @@
  * The scope comes from `req.user`, which the session middleware builds from
  * UserProfile and its RoleAssignments:
  *
- *   { id, companyId, roles: [{ role, scopeCompanyId }] }
+ *   { id, companyId, roles: [{ role, scopeCompanyId }], scopes }
  *
- * and never from anything the client sent. A companyId in a path, query or
+ * (`scopes` is scopesOf(user): the same answers worked out once, for callers
+ * that only need to look) and never from anything the client sent. A companyId in a path, query or
  * body is only a request; pass it through resolveCompanyId or
  * assertCompanyAccess before using it.
  *
@@ -32,11 +33,24 @@ export function requireUser(req) {
 
 const rolesOf = (user) => (Array.isArray(user.roles) ? user.roles : []);
 
+/**
+ * Does the user hold this role in a form that counts? A HoldingAdmin
+ * assignment must be holding-wide and a CompanyAdmin one must name a company.
+ * @param {{ roles?: { role: string, scopeCompanyId: string | null }[] }} user
+ * @param {string} role
+ */
+export function hasRole(user, role) {
+  return rolesOf(user).some((r) => {
+    if (r.role !== role) return false;
+    if (role === ROLES.HOLDING_ADMIN) return r.scopeCompanyId == null;
+    if (role === ROLES.COMPANY_ADMIN) return Boolean(r.scopeCompanyId);
+    return true;
+  });
+}
+
 /** A HoldingAdmin assignment counts only when it is holding-wide. */
 export function isHoldingAdmin(req) {
-  return rolesOf(requireUser(req)).some(
-    (r) => r.role === ROLES.HOLDING_ADMIN && r.scopeCompanyId == null
-  );
+  return hasRole(requireUser(req), ROLES.HOLDING_ADMIN);
 }
 
 /**
@@ -67,6 +81,21 @@ export function adminCompanyIdsFor(req) {
         .map((r) => r.scopeCompanyId)
     ),
   ];
+}
+
+/**
+ * What a user may reach, worked out once from their role assignments. The
+ * session middleware puts this on req.user.scopes.
+ * @param {{ id: string, companyId: string, roles: object[] }} user
+ * @returns {{ holdingAdmin: boolean, companyIds: string[] | null, adminCompanyIds: string[] | null }}
+ */
+export function scopesOf(user) {
+  const req = { user };
+  return Object.freeze({
+    holdingAdmin: isHoldingAdmin(req),
+    companyIds: companyIdsFor(req),
+    adminCompanyIds: adminCompanyIdsFor(req),
+  });
 }
 
 /**

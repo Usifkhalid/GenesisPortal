@@ -4,14 +4,17 @@
  * The mark is the Company record's logo. A logo file is a finished tile: it
  * carries its own ground, so it reads the same on any surface and in either
  * theme, and it may be wider than it is tall. Without a logo the mark falls
- * back to the company's short name on the current accent, so it is only
- * correct for the company the session is working in.
+ * back to the company's code on the current accent, so it is only correct for
+ * the company the session is working in.
+ *
+ * A company here is the record the API returns:
+ * { code, nameEn, nameAr, accentColor, logoUrl }.
  */
 
-import { t } from '../i18n.js';
+import { localized } from '../i18n.js';
 
 /**
- * @param {{ shortName: string, logoUrl: string|null }} company
+ * @param {{ code: string, logoUrl: string|null }} company
  * @param {{ small?: boolean }} [options] small sits inline beside running text.
  * @returns {HTMLSpanElement}
  */
@@ -38,21 +41,21 @@ export function fillCompanyMark(mark, company, { small = false } = {}) {
     img.decoding = 'async';
     mark.append(img);
   } else {
-    mark.textContent = t(company.shortName);
+    mark.textContent = company.code;
   }
 }
 
 /**
  * The company's name with its mark before it, for running text.
  *
- * @param {{ name: string, shortName: string, logoUrl: string|null }} company
+ * @param {{ code: string, nameEn: string, nameAr: string, logoUrl: string|null }} company
  * @returns {HTMLSpanElement}
  */
 export function companyName(company) {
   const wrap = document.createElement('span');
   wrap.className = 'company-name';
   const name = document.createElement('span');
-  name.textContent = t(company.name);
+  name.textContent = localized(company);
   wrap.append(companyMark(company, { small: true }), name);
   return wrap;
 }

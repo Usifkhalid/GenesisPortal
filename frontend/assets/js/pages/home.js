@@ -2,14 +2,15 @@
  * pages/home.js — the Home page.
  *
  * A welcome banner over a bento grid of the four jobs: tickets, rooms,
- * announcements and the directory. Loaded on demand by app.js. Everything it
- * shows is static demo data for now; the markup is the shape the real modules
+ * announcements and the directory. Loaded on demand by app.js. The person and
+ * the company are the session's; everything else is static demo data for now; the markup is the shape the real modules
  * will fill, including what each card says when it has nothing to show.
  */
 
 import { t, getLocale } from '../i18n.js';
 import { icon } from '../components/icons.js';
 import { companyName } from '../components/company-mark.js';
+import { initials } from '../components/initials.js';
 import {
   DEMO_TICKETS,
   DEMO_BOOKINGS,
@@ -168,18 +169,10 @@ function ticketRow(company, ticket) {
   </li>`;
 }
 
-function initials(name) {
-  const parts = name.trim().split(/\s+/);
-  // Arabic initials are a single letter; two joined letters read as a word.
-  // An alef is shown bare: with its hamza, alone and small, it reads as '!'.
-  if (getLocale() === 'ar') return (parts[0]?.[0] ?? '').replace(/[أإآ]/, 'ا');
-  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase();
-}
-
 /* ---------------------------------------------------------------- banner */
 
 function banner({ company, user, admin }, now) {
-  const greeting = t(greetingKey(cairoHour(now)), { name: t(user.firstName) });
+  const greeting = t(greetingKey(cairoHour(now)), { name: user.firstName });
 
   return `<section class="banner" aria-labelledby="homeGreeting">
     <div class="banner__body">
@@ -373,7 +366,8 @@ function peopleCard() {
  * company simply renders the page afresh.
  *
  * @param {HTMLElement} root
- * @param {{ company: object, user: object, admin: boolean }} ctx
+ * @param {{ company: object, user: { name: string, firstName: string }, admin: boolean }} ctx
+ *   company is the API's record; the user's names are already in the language in use
  */
 export function render(root, ctx) {
   const now = new Date();

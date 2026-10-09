@@ -366,3 +366,67 @@ CompanyAdmin of a second company reads both.
 key. Tests run the seed against an in-memory fake that enforces the unique keys, and once
 more against the real database when one is configured and migrated (skipped otherwise).
 HLD's mail domain is the placeholder `mgholding.example` until the real one is supplied.
+
+## Session 8 — Sign-in, roles and company scoping (2026-10-09)
+
+### D39. `/api` is closed by default
+
+`app.js` mounts the sign-in routes, then `loadUser` + `requireAuth` on `/api`, then every
+other route. A module cannot forget to ask for a session. The cost: an unauthenticated
+request to a path that does not exist is `401`, not `404` (three older tests were changed to
+say so). Static files, `/api/health` and the sign-in routes stay public.
+
+### D40. Our own session store and CSRF check, no extra packages
+
+`lib/session.js` is a ~60-line express-session store over the `Session` table (the
+maintained Prisma store packages lag Prisma 6). CSRF is a synchroniser token kept in the
+session and sent in `X-CSRF-Token`; `csurf` is deprecated. The token is checked on every
+non-GET under `/api` and `/auth`, sign-in and sign-out included. The session is only
+mounted on `/api` and `/auth`, so static files never touch the database.
+
+### D41. `req.user` is rebuilt on every request
+
+The session holds only a user id. Roles, company and active flags are read fresh each time
+(one query), so revoking a role or deactivating a person works immediately. `scopes` on
+`req.user` is `scopesOf(user)` from `lib/scope.js`; scope.js still derives from `roles`, so
+there is one source of truth.
+
+### D42. Without SQL Server, development and tests run in memory
+
+When `DATABASE_URL` is missing or a placeholder (and always under `NODE_ENV=test`), users
+come from `prisma/seed-data.js` through `modules/auth/repo-memory.js` and sessions use
+express-session's MemoryStore. The server logs a warning. Production cannot boot without a
+database. This is why sign-in could be built and seen before SQL Server is installed; the
+Prisma repo and store have the same interface but have not yet run against a real database.
+
+### D43. Mock sign-in answers 404 outside development
+
+`GET /api/auth/mock-users` and `POST /api/auth/mock-login` need both `AUTH_MODE=mock` and
+`NODE_ENV=development`, checked per request. Tests pass `config: { NODE_ENV: 'development' }`
+to `createApp` to sign in, and prove the refusal with the real test environment.
+
+### D44. Entra: PKCE, state and nonce made by us; redirect URI from `APP_BASE_URL`
+
+MSAL builds the URL and redeems the code; the verifier, state and nonce are generated with
+`node:crypto` and kept in the session, single use. The redirect URI comes from the new
+`APP_BASE_URL` variable (required in production), never from the Host header. A profile is
+matched by `entraObjectId`, then by `preferred_username`/`email`; an email match writes the
+real object id onto the profile, because seeded and pre-created profiles carry a made-up
+one. Tokens are dropped after the claims are read. Sign-out is a POST (CSRF-protected) that
+returns Entra's sign-out URL for the browser to follow, since CSP `form-action` would block
+a form redirect.
+
+### D45. The auth rate limit does not count drawing the login page
+
+`GET /api/auth/config` and `GET /api/auth/mock-users` are exempt; sign-in attempts and the
+Entra routes are counted. Open: 20 per 15 minutes per IP is too low for an office behind one
+NAT address in Entra mode (two requests per sign-in); raise `AUTH_RATE_LIMIT_MAX` before
+going live.
+
+### D46. Login page: one button for real users, a record list for mock
+
+Entra mode is a heading, one primary button and one line, in a reading column centred in
+the viewport; the loading skeleton has that shape. Mock mode is a card per company holding
+a record list (label strip of role and job title over the name), the whole row being the
+button. The page uses the token placeholder accent, since no company is known before
+sign-in. `.notice__title + p` was tightened in components.css for every notice.
