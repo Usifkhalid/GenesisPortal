@@ -641,3 +641,52 @@ Drop, create, migrate, seed. It refuses unless `NODE_ENV` is `development` (the 
 the host is local and the name is not `*_test`. It exists because test and e2e runs used to
 leave companies, sessions and audit rows in the development database, and AuditLog cannot
 be pruned by hand.
+
+### D70. Announcement status is derived from two dates, never stored
+
+Draft = no `publishAt`; Expired = `expiresAt` has passed; Scheduled = `publishAt` ahead;
+otherwise Published (rules in `modules/announcements/rules.js`, mirrored as Prisma
+`where`s in the store). Nothing has to run for a scheduled post to appear or an expired one
+to leave, and unpublishing is just `publishAt = NULL`: a draft again, with its read rows
+kept. A published post is never deleted; only drafts are (D71 below on reads).
+
+### D71. Reads are one row per person and post; "read by X of Y" counts active people
+
+`AnnouncementRead` is unique on (userId, announcementId), written when the detail is
+opened and idempotent under two tabs (P2002 is swallowed). Y is the active people of the
+audience (the company, or everyone for a holding-wide post); X the active people with a
+read row. People deactivated since reading drop out of both. Reads are not audited: they
+are not an admin action.
+
+### D72. One Markdown renderer, shared by server and editor; sanitised on save and on render
+
+`frontend/assets/js/markdown.js` has no DOM and is imported by the backend too (as
+`accent.js` already is), so the preview an author sees is the server's output. It
+escapes every text before placing it in markup and writes only an escaped `href`, `target`
+and `rel`. Link addresses are checked against an allowlist anchored at the address as typed
+(http(s), mailto, `/path`, `#hash`), with nothing decoded first; anything else becomes its
+text. `sanitizeMarkdown` runs on save: tags, comments, control and bidi-override characters
+go, so stored text is clean too. No Markdown library: 30 kB budget (CLAUDE.md 6), and the
+subset is small.
+
+### D73. Cover alt text is required in each language that has a title
+
+The prompt says alt text is required when an image is set. Requiring both languages even
+when a post is written in one would make single-language posts a chore, so the rule is
+"every language that has a title", at least one. The cover cannot be saved, or the alt
+blanked, otherwise (`cover_alt_required`).
+
+### D74. Editing audience, and who runs what
+
+Readers see their own company plus holding-wide (not the companies they merely administer;
+a holding admin reads as a person of HLD). Admins write for the companies they administer;
+holding-wide is the holding admin's. A company admin gets 403 on a holding-wide post and
+404 on another company's (D67 reasoning). The admin list of a company admin leaves
+holding-wide posts out: they are not theirs to run.
+
+### D75. The editor saves in a sequence, so a failure leaves something sensible
+
+Text first (a draft exists from then on), then the cover, then publishing. A cover being
+removed goes before the text so its alt text can be cleared in the same save. `expiresAt`
+is sent only when changed, so the text of an expired post can still be edited. Times are
+entered and shown as Cairo time whatever the device's zone (`format.js` converts).

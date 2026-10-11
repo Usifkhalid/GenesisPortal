@@ -186,7 +186,48 @@ Audit actions written by this module: `company.create`, `company.update`,
 `department.reactivate`, `role.assign`, `role.remove`, `audit.export`. A role entry is
 filed under the company it administers, so that company's admin sees it.
 
+### Announcements (`/api/announcements`, `/api/admin/announcements`)
+
+Readers (any signed-in person) see published, unexpired announcements for their own
+company and holding-wide ones, nothing else, whatever the query says. An announcement of
+another company answers 404, never 403. Status is derived, never stored: **Draft**
+(no `publishAt`), **Scheduled** (`publishAt` ahead), **Published**, **Expired**
+(`expiresAt` passed).
+
+| Method and path | Who | Notes |
+|---|---|---|
+| `GET /api/announcements?category=&unread=true&page=&pageSize=` | everyone | `{ items[], total, page, pageSize, unreadCount }`. Pinned first, then newest. `pageSize` 1–50 (12). Items carry both languages (`titleEn/Ar`, `summaryEn/Ar` - the start of the body when no summary was written), `languages: { en, ar }` (a language is complete with a title and a body), `isRead`, `company` (null = all MG Holding), `coverUrl`, `coverAltEn/Ar`, `author`. Never the storage key. |
+| `GET /api/announcements/unread-count` | everyone | `{ count }` |
+| `GET /api/announcements/:id` | everyone | the item plus `bodyHtmlEn/Ar`, rendered and sanitised by the server. **Marks it read** (once). |
+| `GET /api/announcements/:id/cover` | readers who may see it; admins who run it | the image, `Cache-Control: private, max-age=31536000, immutable` (`?v=` changes on replace) |
+| `GET /api/admin/announcements?status=&category=&companyId=&page=&pageSize=` | HA all; CA their companies | every status. Items add `status`, `translationMissing: { en, ar }`, `readStats: { read, audience }` ("read by X of Y": active people of the audience), `updatedAt`. `companyId` is a company id or `holding`. Newest change first. |
+| `POST /api/admin/announcements` | HA any company or holding-wide; CA own company | `{ companyId (guid or null), titleEn?, titleAr?, summaryEn?, summaryAr?, bodyEn?, bodyAr?, category, coverAltEn?, coverAltAr?, isPinned?, publishAt?, expiresAt? }` → 201 |
+| `GET /api/admin/announcements/:id` | HA, CA | the admin item plus raw `bodyEn/Ar` |
+| `PATCH /api/admin/announcements/:id` | HA, CA | `{ updatedAt, ...any of the above, companyId? }` |
+| `POST /api/admin/announcements/:id/publish` | HA, CA | `{ updatedAt, publishAt? }`: now, or at a future instant |
+| `POST /api/admin/announcements/:id/unpublish` | HA, CA | `{ updatedAt }`: back to a draft; nothing is deleted |
+| `POST /api/admin/announcements/:id/duplicate` | HA, CA | → 201, an unpinned draft with its own copy of the cover |
+| `DELETE /api/admin/announcements/:id` | HA, CA | drafts only; anything else is 409 `not_a_draft` |
+| `PUT /api/admin/announcements/:id/cover?updatedAt=` | HA, CA | raw PNG, JPEG or WebP (by signature), max 2 MB. SVG is refused. |
+| `DELETE /api/admin/announcements/:id/cover?updatedAt=` | HA, CA | removes the image and its alt text |
+
+A company admin gets 403 on a holding-wide announcement (they can read it, not run it) and
+404 on another company's. Markdown is limited to headings, bold, italic, lists and links;
+markup is stripped on save and escaped on render, and a link outside http(s), mailto, a
+site path or an in-page hash is reduced to its text; external links open with
+`rel="noopener noreferrer"`.
+
+Error codes: `stale_record` (409), `title_required`, `language_incomplete`
+(publishing needs one language with title and body), `cover_alt_required` (`details.languages`:
+alt text in each language that has a title), `expiry_before_publish`, `expiry_in_past`,
+`unknown_company`, `nothing_to_change` (400), `not_a_draft` (409), `cover_too_large` (413),
+`unsupported_image` (415), `empty_upload` (400).
+
+Audit actions: `announcement.create`, `.update`, `.publish`, `.unpublish`,
+`.duplicate`, `.delete`, `.cover.update`, `.cover.remove`. Filed under the
+announcement's company; holding-wide ones under no company. Reads are not audited.
+
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-announcements, directory, room booking, support tickets and notifications.
+directory, room booking, support tickets and notifications.

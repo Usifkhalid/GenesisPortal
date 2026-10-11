@@ -265,3 +265,11 @@ companies from e2e runs accumulate (filtered out by default); departments cannot
 or users moved yet; Entra and directory sync still unproven; logos are local files (Azure Blob
 adapter not written).
 Next: announcements module, or directory sync to fill people from Graph.
+
+## Session 13 — Test database, announcements (2026-10-11; the prompt called it "Session 9")
+
+Done: **A** tests and e2e run on `mgportal_test` (created, migrated, emptied before each run; D68), `npm run db:reset` (D69), /impeccable polish of the admin pages. **B** announcements end to end: migration `20261011040000_announcements`, module with Prisma and in-memory stores, 8 audited admin actions, covers (2 MB, signature-checked), reads and "read by X of Y", shared Markdown renderer (D72), board / detail / manage / editor with live bilingual preview, Home news card and nav unread count on real data. D70-D75. API.md updated.
+Files: backend/{scripts/*,src/config/{env,test-db}.js,src/app.js,src/modules/announcements/*,prisma/{schema.prisma,migrations/*}}, backend/tests/{announcements,test-db}.test.js, frontend/assets/{js/{markdown,format,app,router}.js,js/pages/{announcements.js,announcements/*,home.js},css/pages/announcements.css,i18n/*}, tests/e2e/{announcements.spec,admin.spec}.js, playwright.config.js, docs/*.
+Verified: `npm test` 174 pass; `npm run test:e2e` 24 pass twice running (EN/AR, 1440/360); lint clean; polish pass: detector clean, screenshots reviewed at 1440/360 EN/AR.
+Open issues: CSP now allows `blob:` images (previews of a chosen file; the company logo preview needed it too). Editor not keyboard-walked by a person; no rich-text help beyond the hint. `prisma generate` failed with EPERM while the dev server held the engine DLL: stop `npm run dev` and run `npm run db:generate`. The dev database still holds old test junk: `npm run db:reset` clears it. Scheduled posts appear by date only: no notification yet.
+Next: directory sync from Graph, or room booking.

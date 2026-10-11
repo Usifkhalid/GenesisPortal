@@ -40,8 +40,10 @@ function toaster() {
  * @param {'success'|'warning'|'danger'|'info'} [options.tone]
  * @param {string} options.titleKey  an i18n key
  * @param {string} [options.textKey]  an i18n key
+ * @param {string} [options.text]  a sentence already in the language in use, for
+ *   what only the caller knows (a server's reason); textKey wins when both are given
  */
-export function showToast({ tone = 'info', titleKey, textKey }) {
+export function showToast({ tone = 'info', titleKey, textKey, text }) {
   const region = toaster();
 
   // Five cards failing on one dropped connection is one piece of news.
@@ -56,7 +58,7 @@ export function showToast({ tone = 'info', titleKey, textKey }) {
     ${icon(ICONS[tone] ?? ICONS.info, 'toast__icon')}
     <div class="toast__content">
       <p class="toast__title">${esc(t(titleKey))}</p>
-      ${textKey ? `<p class="toast__text">${esc(t(textKey))}</p>` : ''}
+      ${textKey || text ? `<p class="toast__text">${esc(textKey ? t(textKey) : text)}</p>` : ''}
     </div>
     <button type="button" class="btn btn--ghost btn--sm btn--icon toast__close"
             aria-label="${esc(t('a11y.dismissToast'))}">

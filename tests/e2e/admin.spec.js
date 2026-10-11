@@ -130,12 +130,15 @@ for (const lang of LANGUAGES) {
       await page.goto('/#admin/departments');
       // Choosing a company redraws the page when its departments arrive, which
       // would wipe anything typed before then.
+      await page.locator('#add-nameEn').evaluate((el) => el.setAttribute('data-stale', ''));
       await Promise.all([
         page.waitForResponse((res) =>
           res.url().includes(`/api/admin/departments?companyId=${company.id}`)
         ),
         page.locator('#companyPick').selectOption({ value: company.id }),
       ]);
+      // The redraw has happened once the form we marked is gone.
+      await expect(page.locator('#add-nameEn[data-stale]')).toHaveCount(0);
       await expect(page.locator('#add-nameEn')).toBeVisible();
       await page.locator('#add-nameEn').fill(deptEn);
       await page.locator('#add-nameAr').fill(deptAr);

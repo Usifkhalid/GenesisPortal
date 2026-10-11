@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="assets/css/components.css" />
     <link rel="stylesheet" href="assets/css/pages/home.css" />
     <link rel="stylesheet" href="assets/css/pages/admin.css" />
+    <link rel="stylesheet" href="assets/css/pages/announcements.css" />
   </head>
 
   <body>
@@ -65,6 +66,12 @@
               <span class="rail__label" data-rail-text data-i18n="nav.announcements"
                 >Announcements</span
               >
+              <span
+                class="nav-link__count"
+                data-rail-text
+                data-announcement-count
+                hidden
+              ></span>
             </a>
             <a class="nav-link" href="#rooms" data-nav="rooms">
               <svg class="nav-link__icon" aria-hidden="true" focusable="false">
@@ -304,6 +311,7 @@
         <a class="menu__item" href="#announcements" data-nav="announcements" data-dialog-close>
           <svg aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
           <span data-i18n="nav.announcements">Announcements</span>
+          <span class="nav-link__count" data-announcement-count hidden></span>
         </a>
         <div
           class="stack stack--tight"

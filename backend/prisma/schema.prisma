@@ -50,12 +50,14 @@ model Company {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  domains         CompanyDomain[]
-  departments     Department[]
-  users           UserProfile[]
-  roleAssignments RoleAssignment[]
-  auditLogs       AuditLog[]
-  notifications   Notification[]
+  domains           CompanyDomain[]
+  departments       Department[]
+  users             UserProfile[]
+  roleAssignments   RoleAssignment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  announcements     Announcement[]
+  announcementReads AnnouncementRead[]
 }
 
 /// Every mail domain a company owns, the primary one included (it is also
@@ -115,9 +117,11 @@ model UserProfile {
   manager    UserProfile?  @relation("Manager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reports    UserProfile[] @relation("Manager")
 
-  roleAssignments RoleAssignment[]
-  auditLogs       AuditLog[]
-  notifications   Notification[]
+  roleAssignments   RoleAssignment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  announcements     Announcement[]
+  announcementReads AnnouncementRead[]
 
   @@index([companyId, isActive])
   @@index([departmentId])
@@ -216,4 +220,60 @@ model Session {
 
   @@index([expiresAt])
   @@index([userId])
+}
+
+/// A news item. companyId NULL is a holding-wide post, visible to every
+/// company; otherwise it is that company's. Either language may be empty, but
+/// not both (service.js). Status is not stored: it is derived from
+/// publishAt and expiresAt (draft when publishAt is NULL, scheduled while it
+/// lies ahead, expired once expiresAt has passed). Body text is limited
+/// Markdown (frontend/assets/js/markdown.js).
+model Announcement {
+  id         String    @id @default(uuid()) @db.NVarChar(36)
+  companyId  String?   @db.NVarChar(36)
+  titleEn    String    @default("") @db.NVarChar(200)
+  titleAr    String    @default("") @db.NVarChar(200)
+  summaryEn  String    @default("") @db.NVarChar(400)
+  summaryAr  String    @default("") @db.NVarChar(400)
+  bodyEn     String    @default("") @db.NVarChar(Max)
+  bodyAr     String    @default("") @db.NVarChar(Max)
+  /// General | HR | IT | HSE | Events | Policy.
+  category   String    @db.NVarChar(20)
+  /// Storage key of the cover image (lib/storage.js); coverUrl is derived from it.
+  coverKey   String?   @db.NVarChar(200)
+  coverUrl   String?   @db.NVarChar(500)
+  coverAltEn String    @default("") @db.NVarChar(300)
+  coverAltAr String    @default("") @db.NVarChar(300)
+  isPinned   Boolean   @default(false)
+  publishAt  DateTime?
+  expiresAt  DateTime?
+  authorId   String    @db.NVarChar(36)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  company Company?           @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  author  UserProfile        @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reads   AnnouncementRead[]
+
+  @@index([companyId, publishAt])
+  @@index([publishAt])
+}
+
+/// Who has opened which announcement, once. companyId is the reader's company.
+model AnnouncementRead {
+  id             String   @id @default(uuid()) @db.NVarChar(36)
+  userId         String   @db.NVarChar(36)
+  announcementId String   @db.NVarChar(36)
+  companyId      String   @db.NVarChar(36)
+  readAt         DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         UserProfile  @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, announcementId])
+  @@index([announcementId])
+  @@index([companyId])
 }

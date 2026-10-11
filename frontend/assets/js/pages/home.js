@@ -7,14 +7,18 @@
  * Real: the person, the company and the Cairo date and time, all from the
  * session (GET /api/me). They are on screen at once.
  *
- * DEMO: the five cards. None of their modules has an API yet, so each card's
- * `load` below hands back demo-data.js. Everything around `load` is already
- * the real thing: a card shows a skeleton while its list loads, then its rows,
- * its own one-line empty state, or its own failure with a retry. Replacing a
- * `load` with an api() call is the whole of wiring a card up.
+ * Real: the news card (announcements). DEMO: the other four cards, whose
+ * modules have no API yet, so each `load` below hands back demo-data.js.
+ * Everything around `load` is already the real thing: a card shows a skeleton
+ * while its list loads, then its rows, its own one-line empty state, or its own
+ * failure with a retry. Replacing a `load` with an api() call is the whole of
+ * wiring a card up.
  */
 
+import { api } from '../api.js';
+import { formatDate } from '../format.js';
 import { t, getLocale } from '../i18n.js';
+import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
 import { icon } from '../components/icons.js';
 import { companyName } from '../components/company-mark.js';
@@ -23,7 +27,6 @@ import { recordSkeleton } from '../components/skeleton.js';
 import {
   DEMO_TICKETS,
   DEMO_BOOKINGS,
-  DEMO_ANNOUNCEMENTS,
   DEMO_PEOPLE,
   DEMO_WAITING,
   ticketNumber,
@@ -197,24 +200,27 @@ function bookingRow({ company }, booking) {
   </li>`;
 }
 
-function newsRow({ company }, item) {
-  const from = item.from === 'company' ? companyName(company).outerHTML : esc(t(item.from));
+function newsRow(_ctx, item) {
+  const lang = shownLanguage(item);
+  const summary = textOf(item, 'summary', lang);
   return `<li class="record">
     <dl class="labelstrip labelstrip--compact">
-      ${pair(t('announcement.published'), esc(item.published))}
-      ${pair(t('home.news.from'), from)}
+      ${pair(t('announcement.published'), esc(formatDate(item.publishAt)))}
+      ${pair(t('home.news.from'), esc(audienceLabel(item)))}
     </dl>
     <div class="record__head">
-      <h3 class="record__title"><a href="#announcements">${esc(t(item.title))}</a></h3>
+      <h3 class="record__title" lang="${lang}" dir="${dirOf(lang)}"><a href="#announcements/${esc(
+        item.id
+      )}">${esc(textOf(item, 'title', lang))}</a></h3>
       ${
-        item.isNew
+        item.isRead === false
           ? `<span class="record__aside">
-               <span class="tag tag--highlight">${esc(t('home.news.new'))}</span>
+               <span class="tag tag--highlight">${esc(t('ann.card.unread'))}</span>
              </span>`
           : ''
       }
     </div>
-    ${item.body ? `<p class="record__text">${esc(t(item.body))}</p>` : ''}
+    ${summary ? `<p class="record__text" lang="${lang}" dir="${dirOf(lang)}">${esc(summary)}</p>` : ''}
   </li>`;
 }
 
@@ -353,7 +359,8 @@ const CARDS = [
     title: 'home.news.title',
     href: '#announcements',
     openLabel: 'home.news.openAll',
-    load: async () => DEMO_ANNOUNCEMENTS, // DEMO
+    // The three newest for this person, pinned first (the server orders them).
+    load: async () => (await api('/api/announcements?pageSize=3', { quiet: true })).items,
     row: newsRow,
     empty: { title: 'home.news.emptyTitle', text: 'home.news.emptyText' },
   },

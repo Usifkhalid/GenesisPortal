@@ -753,13 +753,26 @@
       },
       "audit": {
         "export": "Audit log exported"
+      },
+      "announcement": {
+        "create": "Announcement created",
+        "update": "Announcement edited",
+        "publish": "Announcement published",
+        "unpublish": "Announcement unpublished",
+        "duplicate": "Announcement duplicated",
+        "delete": "Announcement draft deleted",
+        "cover": {
+          "update": "Cover image replaced",
+          "remove": "Cover image removed"
+        }
       }
     },
     "entity": {
       "Company": "Company",
       "Department": "Department",
       "RoleAssignment": "Administrator role",
-      "AuditLog": "Audit log"
+      "AuditLog": "Audit log",
+      "Announcement": "Announcement"
     },
     "field": {
       "code": "Code",
@@ -776,7 +789,205 @@
       "scopeCompanyId": "Company scope",
       "filter": "Filter used",
       "rows": "Rows exported",
-      "truncated": "Cut short"
+      "truncated": "Cut short",
+      "titleEn": "Title in English",
+      "titleAr": "Title in Arabic",
+      "summaryEn": "Summary in English",
+      "summaryAr": "Summary in Arabic",
+      "bodyEn": "Text in English",
+      "bodyAr": "Text in Arabic",
+      "category": "Category",
+      "status": "Status",
+      "coverUrl": "Cover image",
+      "coverAltEn": "Image description in English",
+      "coverAltAr": "Image description in Arabic",
+      "isPinned": "Pinned",
+      "publishAt": "Publishes at",
+      "expiresAt": "Expires at",
+      "copiedFrom": "Copied from"
+    }
+  },
+  "ann": {
+    "title": "Announcements",
+    "lead": "News and notices from your company and from MG Holding.",
+    "new": "New announcement",
+    "manage": "Manage",
+    "navCount": "{count} unread",
+    "filters": {
+      "label": "Filter announcements",
+      "category": "Category",
+      "categoryAll": "All categories",
+      "show": "Show",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "category": {
+      "General": "General",
+      "HR": "HR",
+      "IT": "IT",
+      "HSE": "Health and safety",
+      "Events": "Events",
+      "Policy": "Policy"
+    },
+    "card": {
+      "unread": "Unread",
+      "pinned": "Pinned",
+      "allGroup": "All MG Holding",
+      "from": "From",
+      "published": "Published",
+      "translationNote": "Shown in {language}"
+    },
+    "count": "{count} announcements",
+    "status": "Showing {from}–{to} of {total}",
+    "pagination": "Announcement pages",
+    "empty": {
+      "title": "No announcements yet",
+      "text": "News from your company and from MG Holding will appear here.",
+      "unreadTitle": "You have read everything",
+      "unreadText": "New announcements will appear here as soon as they are published.",
+      "categoryTitle": "Nothing in this category",
+      "categoryText": "Try another category, or show all announcements.",
+      "showAll": "Show all"
+    },
+    "detail": {
+      "back": "Announcements",
+      "category": "Category",
+      "company": "For",
+      "published": "Published",
+      "author": "Published by",
+      "expires": "Visible until",
+      "fallback": "This announcement has not been translated. It is shown in {language}.",
+      "goneTitle": "This announcement is not available",
+      "goneText": "It may have expired, been withdrawn, or be meant for another company.",
+      "coverMissing": "Cover image"
+    },
+    "lang": {
+      "en": "English",
+      "ar": "Arabic"
+    },
+    "admin": {
+      "title": "Manage announcements",
+      "lead": "Write, schedule and withdraw announcements for your company.",
+      "view": "Back to announcements",
+      "statusFilter": "Status",
+      "statusAll": "All statuses",
+      "companyFilter": "Audience",
+      "companyAll": "All audiences",
+      "status": {
+        "Draft": "Draft",
+        "Scheduled": "Scheduled",
+        "Published": "Published",
+        "Expired": "Expired"
+      },
+      "col": {
+        "title": "Announcement",
+        "audience": "Audience",
+        "status": "Status",
+        "when": "Publishes",
+        "reads": "Read by",
+        "actions": "Actions"
+      },
+      "caption": "Announcements you can manage",
+      "readBy": "{read} of {total}",
+      "readByLong": "Read by {read} of {total}",
+      "missing": "{language} missing",
+      "untitled": "Untitled draft",
+      "empty": "No announcements here yet.",
+      "emptyFiltered": "No announcements match these filters.",
+      "pinned": "Pinned",
+      "expiresOn": "Expires {date}",
+      "noDate": "—",
+      "action": {
+        "edit": "Edit",
+        "duplicate": "Duplicate",
+        "publish": "Publish now",
+        "unpublish": "Unpublish",
+        "delete": "Delete draft",
+        "named": "{action}: {title}"
+      }
+    },
+    "editor": {
+      "newTitle": "New announcement",
+      "editTitle": "Edit announcement",
+      "lead": "Write it in one language or both. Readers see their own language and fall back to the other.",
+      "formLabel": "Announcement",
+      "tabs": "Language of the text",
+      "tab": {
+        "en": "English",
+        "ar": "Arabic"
+      },
+      "incomplete": "Needs a title and a body",
+      "title": "Title",
+      "summary": "Summary",
+      "summaryHelp": "One or two sentences for the card. Left empty, the start of the text is used.",
+      "body": "Text",
+      "bodyHelp": "Headings with #, **bold**, *italic*, lists with - or 1., links as [text](https://…).",
+      "previewTitle": "Preview",
+      "previewIn": "Preview in {language}",
+      "previewEmpty": "Nothing written in this language yet.",
+      "previewCard": "On the list",
+      "previewPage": "On its page",
+      "cover": "Cover image",
+      "coverHelp": "PNG, JPEG or WebP, up to 2 MB. Optional.",
+      "coverRemove": "Remove cover",
+      "coverKeep": "Current cover",
+      "altEn": "Describe the image (English)",
+      "altAr": "Describe the image (Arabic)",
+      "altHelp": "For people who cannot see the image. Required in each language that has a title.",
+      "category": "Category",
+      "audience": "Audience",
+      "audienceHolding": "All MG Holding",
+      "audienceHelp": "Who will see it. A company admin can write for their own company only.",
+      "pin": "Pin to the top",
+      "pinHelp": "Pinned announcements are listed first.",
+      "when": "When",
+      "whenDraft": "Keep as a draft",
+      "whenNow": "Publish now",
+      "whenLater": "Publish at a set time",
+      "publishAt": "Publish at",
+      "expiresAt": "Take down at",
+      "expiresHelp": "Optional. Times are Cairo time.",
+      "saveDraft": "Save draft",
+      "saveChanges": "Save changes",
+      "publishNow": "Publish now",
+      "schedule": "Schedule",
+      "cancel": "Cancel",
+      "statusNow": "Status",
+      "whenKeep": "Leave as it is",
+      "whenUnpublish": "Unpublish (back to a draft)",
+      "saving": "Saving…",
+      "removeUndo": "Cover will be removed when you save."
+    },
+    "confirm": {
+      "unpublishTitle": "Unpublish this announcement?",
+      "unpublishBody": "It disappears for readers at once and becomes a draft. Nothing is deleted, and you can publish it again.",
+      "unpublish": "Unpublish",
+      "deleteTitle": "Delete this draft?",
+      "deleteBody": "The draft and its cover image are removed for good.",
+      "delete": "Delete draft"
+    },
+    "toast": {
+      "created": "Draft saved",
+      "saved": "Announcement saved",
+      "published": "Announcement published",
+      "scheduled": "Announcement scheduled",
+      "unpublished": "Announcement unpublished",
+      "duplicated": "Copy made as a draft",
+      "deleted": "Draft deleted",
+      "coverFailed": "Saved, but the cover image was not"
+    },
+    "error": {
+      "title": "Could not save",
+      "title_required": "Give the announcement a title in at least one language.",
+      "language_incomplete": "To publish, at least one language needs both a title and a text.",
+      "cover_alt_required": "Describe the cover image in each language that has a title.",
+      "expiry_before_publish": "The take-down time must be after the publish time.",
+      "expiry_in_past": "The take-down time has already passed.",
+      "not_a_draft": "Only drafts can be deleted. Unpublish it first.",
+      "cover_too_large": "The cover image is larger than 2 MB. Use a smaller image.",
+      "unsupported_image": "The cover must be a PNG, JPEG or WebP image.",
+      "empty_upload": "No file was sent.",
+      "unknown_company": "That company does not exist."
     }
   }
 }

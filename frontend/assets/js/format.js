@@ -47,3 +47,67 @@ export function cairoToday() {
 export function formatNumber(value) {
   return new Intl.NumberFormat(locale()).format(value);
 }
+
+/** "11 Oct 2026" */
+export function formatDate(value) {
+  return new Intl.DateTimeFormat(locale(), {
+    timeZone: CAIRO,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+const cairoParts = new Intl.DateTimeFormat('en-GB', {
+  timeZone: CAIRO,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+function cairoFields(instantMs) {
+  return Object.fromEntries(
+    cairoParts
+      .formatToParts(new Date(instantMs))
+      .map(({ type, value }) => [type, Number(value)])
+  );
+}
+
+/** Cairo's offset from UTC at an instant, in ms (Cairo observes DST). */
+function cairoOffsetMs(instantMs) {
+  const p = cairoFields(instantMs);
+  const wall = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return wall - Math.floor(instantMs / 1000) * 1000;
+}
+
+/**
+ * An instant as the value of a datetime-local input, in Cairo time: the
+ * input's own zone would be the device's, which on a phone may be anything.
+ * @param {string | Date | null | undefined} value
+ */
+export function toCairoInput(value) {
+  if (!value) return '';
+  const p = cairoFields(new Date(value).getTime());
+  const two = (n) => String(n).padStart(2, '0');
+  return `${p.year}-${two(p.month)}-${two(p.day)}T${two(p.hour)}:${two(p.minute)}`;
+}
+
+/**
+ * A datetime-local value read as Cairo time, as an ISO instant.
+ * @param {string} local  "2026-10-12T14:30"
+ * @returns {string | null}
+ */
+export function fromCairoInput(local) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local ?? '');
+  if (!match) return null;
+  const [y, mo, d, h, mi] = match.slice(1).map(Number);
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  // Two passes settle the nights on which the offset itself changes.
+  let guess = wall - cairoOffsetMs(wall);
+  guess = wall - cairoOffsetMs(guess);
+  return new Date(guess).toISOString();
+}

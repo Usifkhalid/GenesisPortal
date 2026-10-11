@@ -29,6 +29,10 @@ import { adminRoutes, logoRoutes } from './modules/admin/routes.js';
 import { createAdminService } from './modules/admin/service.js';
 import { createMemoryAdminStore } from './modules/admin/store-memory.js';
 import { createPrismaAdminStore } from './modules/admin/store-prisma.js';
+import { adminAnnouncementRoutes, readerRoutes } from './modules/announcements/routes.js';
+import { createAnnouncementService } from './modules/announcements/service.js';
+import { createMemoryAnnouncementStore } from './modules/announcements/store-memory.js';
+import { createPrismaAnnouncementStore } from './modules/announcements/store-prisma.js';
 import { createMemoryUserRepo } from './modules/auth/repo-memory.js';
 import { createPrismaUserRepo } from './modules/auth/repo.js';
 import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
@@ -44,7 +48,9 @@ import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
  * @param {Partial<typeof env>} [options.config]  overrides of the environment, for tests
  * @param {object} [options.userRepo]  see modules/auth/repo.js
  * @param {object} [options.adminStore]  see modules/admin/store-prisma.js
- * @param {object} [options.storage]  see lib/storage.js; the logo folder by default
+ * @param {object} [options.announcementStore]  see modules/announcements/store-prisma.js
+ * @param {object} [options.storage]  see lib/storage.js; the upload folder by default
+ * @param {() => Date} [options.now]  the clock the announcements module reads, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  */
@@ -71,6 +77,13 @@ export function createApp(options = {}) {
     store: adminStore,
     storage: options.storage ?? defaultStorage(),
   });
+  const announcements = createAnnouncementService({
+    store:
+      options.announcementStore ??
+      (repo.companies ? createMemoryAnnouncementStore(repo) : createPrismaAnnouncementStore()),
+    storage: options.storage ?? defaultStorage(),
+    now: options.now,
+  });
   app.locals.sessionStore = store;
   app.locals.inMemory = !useDatabase;
 
@@ -95,7 +108,9 @@ export function createApp(options = {}) {
           // Nothing is loaded from outside: helmet's default allowance of any
           // https: origin for stylesheets is dropped.
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:'],
+          // blob: only for the preview of a file the person just chose (a
+          // logo, an announcement cover), made by the page itself.
+          imgSrc: ["'self'", 'data:', 'blob:'],
           fontSrc: ["'self'"],
           connectSrc: ["'self'"],
           objectSrc: ["'none'"],
@@ -147,8 +162,10 @@ export function createApp(options = {}) {
   app.use('/api/admin', adminRoutes(admin));
   app.use(logoRoutes(admin));
 
-  // Module routers mount here as they are built:
-  //   app.use('/api/announcements', announcementRoutes);
+  app.use('/api/admin/announcements', adminAnnouncementRoutes(announcements));
+  app.use('/api/announcements', readerRoutes(announcements));
+
+  // Module routers mount here as they are built.
   options.protectedRoutes?.(app);
 
   app.use(apiNotFound);

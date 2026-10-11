@@ -13,6 +13,7 @@
  */
 
 import { DEFAULT_LOCALE, LOCALES, setLocale, getLocale, localized, t } from './i18n.js';
+import { api } from './api.js';
 import { loadSession, signOut } from './auth.js';
 import { createRouter } from './router.js';
 import { loadFailedNotice } from './components/notice.js';
@@ -84,6 +85,7 @@ async function applyLanguage(lang) {
   // names and counts that come from data, and state such as the current
   // language or company.
   renderShellData();
+  drawAnnouncementCount();
   updateLanguageMenu();
   await router?.refresh();
 }
@@ -232,6 +234,31 @@ function renderShellData() {
     ticket: ticketNumber(company.code, DEMO_TICKETS[0].seq),
   });
   updateNotifA11y();
+}
+
+/* ------------------------------------------------------ announcement count */
+
+let unreadAnnouncements = 0;
+
+/** Draws the unread count on the Announcements nav item, if there is one. */
+function drawAnnouncementCount() {
+  for (const el of document.querySelectorAll('[data-announcement-count]')) {
+    el.hidden = unreadAnnouncements === 0;
+    el.textContent = unreadAnnouncements > 99 ? '99+' : String(unreadAnnouncements);
+    el.setAttribute('aria-label', t('ann.navCount', { count: unreadAnnouncements }));
+  }
+}
+
+/** Asks the server how many announcements this person has not opened. */
+async function refreshAnnouncementCount() {
+  try {
+    const { count } = await api('/api/announcements/unread-count', { quiet: true });
+    unreadAnnouncements = count;
+  } catch {
+    // The nav is a convenience: no count is better than a wrong one.
+    unreadAnnouncements = 0;
+  }
+  drawAnnouncementCount();
 }
 
 /* -------------------------------------------------------------- navigation */
@@ -527,6 +554,8 @@ async function init() {
   initSearchShortcut();
   initSignOut();
   initSkipLink();
+  document.addEventListener('announcements:changed', refreshAnnouncementCount);
+  refreshAnnouncementCount();
   NARROW.addEventListener('change', updateSearchPlaceholder);
 }
 
