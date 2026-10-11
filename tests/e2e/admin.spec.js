@@ -52,7 +52,8 @@ async function pickPlainUser(page) {
     const held = new Set(
       [...admins.holding, ...admins.companies.flatMap((g) => g.admins)].map((a) => a.user.id)
     );
-    const candidates = people.items.filter((p) => !held.has(p.id));
+    // People a directory sync added have no Arabic name to search for.
+    const candidates = people.items.filter((p) => !held.has(p.id) && p.displayNameAr);
     if (candidates.length > 0) {
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
@@ -195,7 +196,8 @@ for (const lang of LANGUAGES) {
       expect(me.nav.some((item) => item.key === 'admin')).toBe(true);
 
       await page.goto('/#admin');
-      await expect(page.locator('.subnav__link')).toHaveCount(1);
+      // Departments, and the data-quality report for their own company.
+      await expect(page.locator('.subnav__link')).toHaveCount(2);
       // Parallel runs may have made this same person admin of another test
       // company too, so the picker may list several, but only test companies.
       const picker = page.locator('#companyPick');

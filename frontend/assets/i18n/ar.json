@@ -91,7 +91,7 @@
     "offlineMode": "أبقِ هذه الصفحة متاحة دون اتصال",
     "offlineModeHelp": "تُحفظ آخر نسخة على هذا الجهاز. مفيدة في المواقع التي لا تصل إليها الشبكة.",
     "selectPlaceholder": "اختر واحدًا",
-    "searchPlaceholder": "ابحث عن شخص أو قاعة أو طلب",
+    "searchPlaceholder": "ابحث عن الأشخاص",
     "shift": "الوردية",
     "searchShort": "بحث"
   },
@@ -537,7 +537,9 @@
       "label": "أقسام الإدارة",
       "companies": "الشركات",
       "departments": "الأقسام",
-      "admins": "المسؤولون"
+      "admins": "المسؤولون",
+      "quality": "جودة البيانات",
+      "sync": "مزامنة الدليل"
     },
     "filter": {
       "all": "الكل",
@@ -590,7 +592,10 @@
       "deactivateTitle": "إيقاف {name}؟",
       "deactivateBody": "سيُسجَّل خروج كل من في هذه الشركة ولن يتمكنوا من الدخول حتى تُعاد تفعيلها. لا يُحذف أي شيء.",
       "reactivateTitle": "إعادة تفعيل {name}؟",
-      "reactivateBody": "سيتمكن أفراد هذه الشركة من تسجيل الدخول مرة أخرى."
+      "reactivateBody": "سيتمكن أفراد هذه الشركة من تسجيل الدخول مرة أخرى.",
+      "directoryTitle": "الدليل",
+      "showMobile": "إظهار أرقام الجوال في الدليل",
+      "showMobileHelp": "متوقف افتراضيًا. عند تشغيله يرى زملاء هذه الشركة أرقام جوالات بعضهم. يظهر هاتف العمل والبريد الإلكتروني دائمًا."
     },
     "preview": {
       "title": "معاينة",
@@ -676,6 +681,91 @@
       "departmentAdded": "تمت إضافة القسم",
       "adminAdded": "تمت إضافة المسؤول",
       "adminRemoved": "تمت إزالة المسؤول"
+    },
+    "quality": {
+      "lead": "ما ينقص سجلات كل شركة، وفق آخر مزامنة للدليل.",
+      "companyLabel": "الشركة",
+      "allCompanies": "كل الشركات",
+      "export": "تصدير CSV",
+      "lastRun": "آخر مزامنة",
+      "never": "لم تتم مزامنة الدليل بعد.",
+      "people": "{count} من الأشخاص النشطين",
+      "none": "لا شيء",
+      "issue": {
+        "missingCompany": "لا يوجد اسم شركة في Graph",
+        "missingDepartment": "بلا قسم",
+        "missingJobTitle": "بلا مسمى وظيفي",
+        "missingManager": "بلا مدير",
+        "missingBusinessPhone": "بلا هاتف عمل",
+        "missingArabicName": "بلا اسم عربي"
+      },
+      "issueCount": "{label}: {count}",
+      "more": "عرض أول {shown} من {count}. يتضمن ملف CSV الجميع.",
+      "unmatchedTitle": "أسماء أقسام بلا مطابقة",
+      "unmatchedHelp": "يذكر Graph قسمًا لا يوجد في هذه الشركة. أضفه من صفحة الأقسام، أو صحح الاسم في Entra.",
+      "unmatchedNone": "تمت مطابقة كل أسماء الأقسام.",
+      "unmatchedCount": "{count} من الأشخاص",
+      "unplacedTitle": "أشخاص بلا شركة",
+      "unplacedHelp": "أعاد Graph هؤلاء الأشخاص، لكن لا اسم شركتهم ولا نطاق بريدهم يطابق شركة. لذلك لم يُضافوا إلى البوابة.",
+      "unplacedNone": "تم إسناد الجميع إلى شركات.",
+      "col": {
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "title": "المسمى الوظيفي",
+        "department": "القسم في Graph",
+        "domain": "نطاق البريد",
+        "company": "الشركة في Graph",
+        "count": "الأشخاص"
+      },
+      "loadFailed": "تعذر تحميل التقرير."
+    },
+    "sync": {
+      "lead": "يُنسخ الأشخاص من Microsoft Entra كل ليلة الساعة 02:00 بتوقيت القاهرة. شغّل المزامنة الآن بعد أي تغيير.",
+      "runNow": "تشغيل المزامنة الآن",
+      "running": "المزامنة قيد التشغيل",
+      "runningNote": "قد يستغرق ذلك دقيقة. تتحدث القائمة تلقائيًا.",
+      "started": "بدأت المزامنة",
+      "inProgress": "هناك مزامنة قيد التشغيل بالفعل. انتظر حتى تنتهي.",
+      "latest": "آخر تشغيل",
+      "history": "سجل التشغيل",
+      "historyEmpty": "لم تُشغَّل أي مزامنة بعد.",
+      "col": {
+        "started": "البدء",
+        "source": "بدأها",
+        "status": "النتيجة",
+        "created": "جديد",
+        "updated": "محدّث",
+        "deactivated": "معطّل",
+        "warnings": "التحذيرات"
+      },
+      "source": {
+        "schedule": "الجدول الليلي",
+        "manual": "يدوي"
+      },
+      "status": {
+        "running": "قيد التشغيل",
+        "success": "نجحت",
+        "failed": "فشلت"
+      },
+      "warningsTitle": "تحذيرات آخر تشغيل",
+      "warningsNone": "لم يكن في آخر تشغيل أي تحذيرات.",
+      "allowTitle": "السماح بتعطيل عدد كبير؟",
+      "allowBody": "سيعطّل هذا التشغيل {count} من {active} شخصًا نشطًا. لا يستطيع المعطّلون تسجيل الدخول، ويبقى سجلهم محفوظًا. تحقق من Entra أولًا.",
+      "allowConfirm": "تشغيل مع السماح",
+      "allowButton": "إعادة التشغيل مع السماح",
+      "warn": {
+        "deactivation_limit": "توقفت المزامنة دون أي تغيير: سيتم تعطيل {wouldDeactivate} من {active} شخصًا نشطًا، أي أكثر من 20٪.",
+        "graph_empty": "توقفت المزامنة دون أي تغيير: لم يُرجع Microsoft Entra أي أشخاص.",
+        "error": "فشل التشغيل: {message}",
+        "unmatched_department": "القسم «{name}» في {companyCode} لا يطابق أيًا من أقسامها ({count} من الأشخاص).",
+        "unplaced_user": "لم يُستورد {email}: لا توجد شركة تطابق «{domain}».",
+        "duplicate_email": "يظهر {email} مرتين في Graph. استُخدم الأول فقط.",
+        "missing_email": "شخص في Graph بلا بريد إلكتروني (المعرّف {id}).",
+        "manager_unresolved": "مدير {email} غير موجود في البوابة.",
+        "manager_lookup_failed": "تعذر البحث عن مدير أحد الأشخاص (المعرّف {id}).",
+        "other": "تحذير: {code}"
+      },
+      "loadFailed": "تعذر تحميل سجل المزامنة."
     }
   },
   "audit": {
@@ -991,6 +1081,59 @@
       "unsupported_image": "يجب أن يكون الغلاف صورة PNG أو JPEG أو WebP.",
       "empty_upload": "لم يُرسل أي ملف.",
       "unknown_company": "هذه الشركة غير موجودة."
+    }
+  },
+  "search": {
+    "results": "نتائج البحث",
+    "count": "تم العثور على {count} شخصًا",
+    "none": "لا يوجد أشخاص يطابقون «{query}»",
+    "all": "عرض كل النتائج لـ «{query}»",
+    "group": {
+      "people": "الأشخاص"
+    },
+    "searching": "جارٍ البحث",
+    "failed": "البحث غير متاح حاليًا."
+  },
+  "directory": {
+    "title": "الدليل",
+    "lead": "ابحث عن زميل وطرق التواصل معه.",
+    "searchLabel": "الاسم أو المسمى الوظيفي أو البريد الإلكتروني",
+    "filtersLabel": "تضييق نتائج الدليل",
+    "company": "الشركة",
+    "companyAll": "كل الشركات",
+    "department": "القسم",
+    "departmentAll": "كل الأقسام",
+    "clear": "مسح البحث والتصفية",
+    "status": "عرض {shown} من {total} شخصًا",
+    "loadMore": "عرض المزيد",
+    "loading": "جارٍ تحميل الأشخاص",
+    "list": "الأشخاص",
+    "emptyTitle": "لا توجد نتائج مطابقة",
+    "emptyText": "تحقق من الإملاء، أو استخدم كلمات أقل، أو امسح التصفية.",
+    "noneTitle": "الدليل فارغ",
+    "noneText": "يظهر الأشخاص هنا بعد أول مزامنة للدليل.",
+    "openPerson": "فتح تفاصيل {name}",
+    "panel": {
+      "email": "بريد إلكتروني",
+      "call": "اتصال",
+      "callMobile": "اتصال بالجوال",
+      "teams": "محادثة في Teams",
+      "teamsNew": "محادثة في Teams (تفتح في تبويب جديد)",
+      "actions": "التواصل",
+      "department": "القسم",
+      "company": "الشركة",
+      "office": "المكتب",
+      "phone": "هاتف العمل",
+      "mobile": "الجوال",
+      "emailKey": "البريد الإلكتروني",
+      "manager": "يتبع",
+      "reports": "المرؤوسون المباشرون",
+      "noManager": "لا يوجد مدير مسجل.",
+      "noReports": "لا يوجد مرؤوسون مباشرون.",
+      "notListed": "غير مسجل",
+      "loading": "جارٍ التحميل",
+      "failed": "تعذر تحميل بيانات هذا الشخص.",
+      "retry": "حاول مرة أخرى"
     }
   }
 }

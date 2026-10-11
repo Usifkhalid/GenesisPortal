@@ -91,7 +91,7 @@
     "offlineMode": "Keep this page available offline",
     "offlineModeHelp": "Stores the last version on this device. Useful at sites with no signal.",
     "selectPlaceholder": "Choose one",
-    "searchPlaceholder": "Search people, rooms or tickets",
+    "searchPlaceholder": "Search people",
     "shift": "Shift",
     "searchShort": "Search"
   },
@@ -537,7 +537,9 @@
       "label": "Administration sections",
       "companies": "Companies",
       "departments": "Departments",
-      "admins": "Administrators"
+      "admins": "Administrators",
+      "quality": "Data quality",
+      "sync": "Directory sync"
     },
     "filter": {
       "all": "All",
@@ -590,7 +592,10 @@
       "deactivateTitle": "Deactivate {name}?",
       "deactivateBody": "Everyone in this company is signed out and cannot sign in until it is reactivated. Nothing is deleted.",
       "reactivateTitle": "Reactivate {name}?",
-      "reactivateBody": "People of this company can sign in again."
+      "reactivateBody": "People of this company can sign in again.",
+      "directoryTitle": "Directory",
+      "showMobile": "Show mobile numbers in the directory",
+      "showMobileHelp": "Off by default. When on, colleagues of this company can see each other’s mobile numbers. Business phone and email are always shown."
     },
     "preview": {
       "title": "Preview",
@@ -676,6 +681,91 @@
       "departmentAdded": "Department added",
       "adminAdded": "Administrator added",
       "adminRemoved": "Administrator removed"
+    },
+    "quality": {
+      "lead": "What is missing in each company’s records, as reported by the last directory sync.",
+      "companyLabel": "Company",
+      "allCompanies": "All companies",
+      "export": "Export CSV",
+      "lastRun": "Last sync",
+      "never": "The directory has not been synced yet.",
+      "people": "{count} active people",
+      "none": "None",
+      "issue": {
+        "missingCompany": "No company name in Graph",
+        "missingDepartment": "No department",
+        "missingJobTitle": "No job title",
+        "missingManager": "No manager",
+        "missingBusinessPhone": "No business phone",
+        "missingArabicName": "No Arabic name"
+      },
+      "issueCount": "{label}: {count}",
+      "more": "Showing the first {shown} of {count}. The CSV export lists everyone.",
+      "unmatchedTitle": "Department names with no match",
+      "unmatchedHelp": "Graph names a department this company does not have. Add it under Departments, or fix the name in Entra.",
+      "unmatchedNone": "Every department name matched.",
+      "unmatchedCount": "{count} people",
+      "unplacedTitle": "People in no company",
+      "unplacedHelp": "Graph returned these people, but neither their company name nor their mail domain matches a company. They are not in the portal.",
+      "unplacedNone": "Everyone was placed in a company.",
+      "col": {
+        "name": "Name",
+        "email": "Email",
+        "title": "Job title",
+        "department": "Department in Graph",
+        "domain": "Mail domain",
+        "company": "Company in Graph",
+        "count": "People"
+      },
+      "loadFailed": "The report could not be loaded."
+    },
+    "sync": {
+      "lead": "People are copied from Microsoft Entra every night at 02:00 Cairo time. Run it now after a change.",
+      "runNow": "Run sync now",
+      "running": "Sync running",
+      "runningNote": "This can take a minute. The list updates by itself.",
+      "started": "Sync started",
+      "inProgress": "A sync is already running. Wait for it to finish.",
+      "latest": "Latest run",
+      "history": "Run history",
+      "historyEmpty": "No sync has run yet.",
+      "col": {
+        "started": "Started",
+        "source": "Started by",
+        "status": "Result",
+        "created": "Created",
+        "updated": "Updated",
+        "deactivated": "Deactivated",
+        "warnings": "Warnings"
+      },
+      "source": {
+        "schedule": "Nightly schedule",
+        "manual": "Manual"
+      },
+      "status": {
+        "running": "Running",
+        "success": "Succeeded",
+        "failed": "Failed"
+      },
+      "warningsTitle": "Warnings from the latest run",
+      "warningsNone": "The latest run had no warnings.",
+      "allowTitle": "Allow a large deactivation?",
+      "allowBody": "This run would deactivate {count} of {active} active people. Deactivated people cannot sign in. Their history is kept. Check Entra first.",
+      "allowConfirm": "Run and allow",
+      "allowButton": "Run again and allow it",
+      "warn": {
+        "deactivation_limit": "Stopped, nothing changed: {wouldDeactivate} of {active} active people would be deactivated, more than 20%.",
+        "graph_empty": "Stopped, nothing changed: Microsoft Entra returned no people.",
+        "error": "The run failed: {message}",
+        "unmatched_department": "Department “{name}” in {companyCode} matches none of its departments ({count} people).",
+        "unplaced_user": "{email} was not imported: no company matches “{domain}”.",
+        "duplicate_email": "{email} appears twice in Graph. Only the first was used.",
+        "missing_email": "A person in Graph has no email address (id {id}).",
+        "manager_unresolved": "The manager of {email} is not in the portal.",
+        "manager_lookup_failed": "The manager of a person could not be looked up (id {id}).",
+        "other": "Warning: {code}"
+      },
+      "loadFailed": "The sync history could not be loaded."
     }
   },
   "audit": {
@@ -991,6 +1081,59 @@
       "unsupported_image": "The cover must be a PNG, JPEG or WebP image.",
       "empty_upload": "No file was sent.",
       "unknown_company": "That company does not exist."
+    }
+  },
+  "search": {
+    "results": "Search results",
+    "count": "{count} people found",
+    "none": "No people match “{query}”",
+    "all": "See all results for “{query}”",
+    "group": {
+      "people": "People"
+    },
+    "searching": "Searching",
+    "failed": "Search is not available right now."
+  },
+  "directory": {
+    "title": "Directory",
+    "lead": "Find a colleague and how to reach them.",
+    "searchLabel": "Name, job title or email",
+    "filtersLabel": "Narrow the directory",
+    "company": "Company",
+    "companyAll": "All companies",
+    "department": "Department",
+    "departmentAll": "All departments",
+    "clear": "Clear search and filters",
+    "status": "Showing {shown} of {total} people",
+    "loadMore": "Show more people",
+    "loading": "Loading people",
+    "list": "People",
+    "emptyTitle": "No one matches",
+    "emptyText": "Check the spelling, try fewer words, or clear the filters.",
+    "noneTitle": "The directory is empty",
+    "noneText": "People appear here after the first directory sync.",
+    "openPerson": "Open details for {name}",
+    "panel": {
+      "email": "Email",
+      "call": "Call",
+      "callMobile": "Call mobile",
+      "teams": "Chat in Teams",
+      "teamsNew": "Chat in Teams (opens in a new tab)",
+      "actions": "Contact",
+      "department": "Department",
+      "company": "Company",
+      "office": "Office",
+      "phone": "Business phone",
+      "mobile": "Mobile",
+      "emailKey": "Email",
+      "manager": "Reports to",
+      "reports": "Direct reports",
+      "noManager": "No manager listed.",
+      "noReports": "No direct reports.",
+      "notListed": "Not listed",
+      "loading": "Loading",
+      "failed": "This person could not be loaded.",
+      "retry": "Try again"
     }
   }
 }

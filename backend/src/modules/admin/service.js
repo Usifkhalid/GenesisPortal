@@ -45,6 +45,7 @@ const companySnapshot = (c) => ({
   domains: c.domains,
   accentColor: c.accentColor,
   logoUrl: c.logoUrl,
+  showMobileInDirectory: c.showMobileInDirectory,
   isActive: c.isActive,
 });
 

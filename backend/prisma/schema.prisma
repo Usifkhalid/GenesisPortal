@@ -32,23 +32,26 @@ datasource db {
 /// A member of the group. HLD is the holding itself. New companies are rows,
 /// never code.
 model Company {
-  id          String   @id @default(uuid()) @db.NVarChar(36)
+  id                    String   @id @default(uuid()) @db.NVarChar(36)
   /// Short stable code: HLD, GEN, MSR. Prefixes ticket numbers.
-  code        String   @unique @db.NVarChar(10)
-  nameEn      String   @db.NVarChar(200)
-  nameAr      String   @db.NVarChar(200)
+  code                  String   @unique @db.NVarChar(10)
+  nameEn                String   @db.NVarChar(200)
+  nameAr                String   @db.NVarChar(200)
   /// Email domain, used to place a signed-in Entra user in a company.
-  domain      String   @unique @db.NVarChar(255)
+  domain                String   @unique @db.NVarChar(255)
   /// "#rrggbb". Becomes the --brand-accent CSS variable at runtime.
-  accentColor String   @db.Char(7)
-  logoUrl     String?  @db.NVarChar(500)
+  accentColor           String   @db.Char(7)
+  logoUrl               String?  @db.NVarChar(500)
   /// Storage key of an uploaded logo (backend/src/lib/storage.js); NULL for a
   /// logo that is a static file, like the seeded ones. logoUrl is derived
   /// from it on upload.
-  logoKey     String?  @db.NVarChar(200)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  logoKey               String?  @db.NVarChar(200)
+  isActive              Boolean  @default(true)
+  /// Whether a colleague's mobile number appears in the directory. Off unless
+  /// the company's HoldingAdmin turns it on; business phone is always shown.
+  showMobileInDirectory Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   domains           CompanyDomain[]
   departments       Department[]
@@ -93,24 +96,33 @@ model Department {
 /// A person, mirrored from Entra ID. Graph sync owns the directory fields;
 /// lastSyncedAt says when they were last refreshed.
 model UserProfile {
-  id             String    @id @default(uuid()) @db.NVarChar(36)
+  id               String    @id @default(uuid()) @db.NVarChar(36)
   /// The Entra object id (oid claim). Mock users carry a made-up one.
-  entraObjectId  String    @unique @db.NVarChar(36)
-  email          String    @unique @db.NVarChar(320)
-  companyId      String    @db.NVarChar(36)
-  departmentId   String?   @db.NVarChar(36)
-  displayNameEn  String    @db.NVarChar(200)
-  displayNameAr  String    @db.NVarChar(200)
-  jobTitle       String?   @db.NVarChar(200)
-  managerId      String?   @db.NVarChar(36)
-  officeLocation String?   @db.NVarChar(200)
-  phone          String?   @db.VarChar(50)
+  entraObjectId    String    @unique @db.NVarChar(36)
+  email            String    @unique @db.NVarChar(320)
+  companyId        String    @db.NVarChar(36)
+  departmentId     String?   @db.NVarChar(36)
+  displayNameEn    String    @db.NVarChar(200)
+  displayNameAr    String    @db.NVarChar(200)
+  jobTitle         String?   @db.NVarChar(200)
+  managerId        String?   @db.NVarChar(36)
+  officeLocation   String?   @db.NVarChar(200)
+  /// Business phone (Graph businessPhones[0]).
+  phone            String?   @db.VarChar(50)
+  mobilePhone      String?   @db.VarChar(50)
+  /// What Graph said, kept so the data-quality report can show names that did
+  /// not match a department or company. Sync owns them.
+  graphDepartment  String?   @db.NVarChar(200)
+  graphCompanyName String?   @db.NVarChar(200)
+  /// Normalised name, email and title (lib/text-search.js) that directory
+  /// search reads. Written wherever those fields are.
+  searchKey        String    @default("") @db.NVarChar(1000)
   /// Interface language: "en" or "ar".
-  language       String    @default("en") @db.VarChar(5)
-  isActive       Boolean   @default(true)
-  lastSyncedAt   DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  language         String    @default("en") @db.VarChar(5)
+  isActive         Boolean   @default(true)
+  lastSyncedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   company    Company       @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department Department?   @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -122,6 +134,7 @@ model UserProfile {
   notifications     Notification[]
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
+  syncRuns          SyncRun[]
 
   @@index([companyId, isActive])
   @@index([departmentId])
@@ -276,4 +289,30 @@ model AnnouncementRead {
   @@unique([userId, announcementId])
   @@index([announcementId])
   @@index([companyId])
+}
+
+/// One run of the Graph user sync (backend/src/jobs/syncUsers.js). Holding-wide
+/// and not a business table: it has no companyId and only HoldingAdmins read it.
+model SyncRun {
+  id            String    @id @default(uuid()) @db.NVarChar(36)
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  /// running | success | failed. A run left 'running' by a crash is ignored
+  /// after 30 minutes.
+  status        String    @db.VarChar(20)
+  /// schedule | manual.
+  source        String    @db.VarChar(20)
+  requestedById String?   @db.NVarChar(36)
+  created       Int       @default(0)
+  updated       Int       @default(0)
+  deactivated   Int       @default(0)
+  /// JSON: unmatched departments, people no company could be found for,
+  /// duplicate emails, and the failure message of a failed run.
+  warnings      String    @default("[]") @db.NVarChar(Max)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  requestedBy UserProfile? @relation(fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([startedAt])
 }

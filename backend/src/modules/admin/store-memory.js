@@ -45,6 +45,7 @@ export function createMemoryAdminStore(repo) {
     accentColor: row.accentColor,
     logoUrl: row.logoUrl ?? null,
     logoKey: row.logoKey ?? null,
+    showMobileInDirectory: row.showMobileInDirectory === true,
     isActive: row.isActive,
     userCount: users.filter((u) => u.companyId === row.id && u.isActive).length,
     createdAt: row.createdAt,

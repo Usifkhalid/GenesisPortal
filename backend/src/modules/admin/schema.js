@@ -51,6 +51,7 @@ export const companyUpdateBody = z.strictObject({
   nameAr: trimmed(200).optional(),
   domains: domains.optional(),
   accentColor: accent.optional(),
+  showMobileInDirectory: z.boolean().optional(),
 });
 
 /** Deactivate, reactivate and the logo carry only what they were loaded at. */

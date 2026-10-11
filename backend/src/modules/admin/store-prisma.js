@@ -31,6 +31,7 @@ function companyView(row) {
     accentColor: row.accentColor,
     logoUrl: row.logoUrl,
     logoKey: row.logoKey,
+    showMobileInDirectory: row.showMobileInDirectory,
     isActive: row.isActive,
     userCount: row._count?.users ?? 0,
     createdAt: row.createdAt,

@@ -227,7 +227,37 @@ Audit actions: `announcement.create`, `.update`, `.publish`, `.unpublish`,
 `.duplicate`, `.delete`, `.cover.update`, `.cover.remove`. Filed under the
 announcement's company; holding-wide ones under no company. Reads are not audited.
 
+### Directory (`/api/directory`, `/api/admin/directory`)
+
+Any signed-in person reads the directory, limited to their companies (their own, plus
+any they administer; a HoldingAdmin reads all). It returns work information only.
+
+| Route | Who | Notes |
+|---|---|---|
+| `GET /api/directory/people?q=&companyId=&departmentId=&lang=&page=&pageSize=` | any | active people; `q` is matched word by word (every word) against English and Arabic name, email and job title, ignoring case, Arabic diacritics and the letter variants أ إ آ ا, ى ي, ة ه. Sorted by name in `lang` (the English name where there is no Arabic one). `pageSize` max 50. → `{ items, total, page, pageSize }`. A `companyId` outside scope is 404. |
+| `GET /api/directory/people/:id` | any | the person: names in both languages, job title, department, company, `officeLocation`, `phone` (business), `email`, `manager`, `directReports`. `mobilePhone` is `null` unless the person's company has `showMobileInDirectory` on. Another company's person, or an inactive one, is 404. |
+| `GET /api/directory/filters` | any | the companies and active departments the reader may filter by |
+| `GET /api/admin/directory/quality?companyId=` | HA, CA | per company: `activeUsers`, `counts` and `lists` (capped at 200) for `missingCompany`, `missingDepartment`, `missingJobTitle`, `missingManager`, `missingBusinessPhone`, `missingArabicName`; `unmatchedDepartments` (Graph names no department matched, with people counts). `unplaced` (people no company could be found for, from the last successful run) is HoldingAdmin only. A CompanyAdmin gets their own companies; another company is 404. |
+| `GET /api/admin/directory/quality/export.csv?companyId=` | HA, CA | the same gaps, one row per person and issue; audited as `directory.quality.export` |
+| `GET /api/admin/directory/sync` | HA | the last 20 runs; the newest carries its `warnings`, the others only `warningCount` |
+| `POST /api/admin/directory/sync` | HA | `{ allowLargeDeactivation?: boolean }` → 202 with the run (`status: running`); it continues in the background. One at a time: a second request is 409 `sync_in_progress`. |
+
+The mobile setting is `showMobileInDirectory` on `PATCH /api/admin/companies/:id` (audited
+as part of `company.update`).
+
+**Sync.** Nightly at 02:00 Cairo time and on demand. Company: Graph `companyName` against a
+company's English name, Arabic name or code, else the mail domain against its domains.
+Department: by name within the company, either language; a name with no match is recorded
+as a warning (`unmatched_department`) and never created. Someone no company can be found
+for is not imported (`unplaced_user`). Manager links come from Graph. People missing from
+Graph or disabled become inactive, never deleted. The Arabic display name belongs to the
+portal: a new person has none, and sync never writes it. Two safety stops record a
+`failed` run and change nothing: Graph returning no people (`graph_empty`) and a run that
+would deactivate more than 20% of the active people (`deactivation_limit`; rerun with
+`allowLargeDeactivation`). Each run writes one audit entry, `directory.sync` or
+`directory.sync.failed`, with its counts, filed under no company.
+
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-directory, room booking, support tickets and notifications.
+room booking, support tickets and notifications.

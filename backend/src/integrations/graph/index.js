@@ -6,14 +6,33 @@
  * feature written against the mock works unchanged against the real tenant.
  *
  * Real tenant access is not granted yet, so `mock` is the dev default and the
- * real client is a stub until it is.
+ * real client is proven only in session 19.
  */
 
 import { env } from '../../config/env.js';
 
 /**
+ * A user as Graph returns it, limited to the fields the portal reads.
+ * @typedef {object} GraphUser
+ * @property {string} id  the Entra object id
+ * @property {string | null} displayName
+ * @property {string | null} mail
+ * @property {string | null} userPrincipalName
+ * @property {string | null} jobTitle
+ * @property {string | null} department
+ * @property {string | null} companyName
+ * @property {string | null} officeLocation
+ * @property {string[]} businessPhones
+ * @property {string | null} mobilePhone
+ * @property {boolean} accountEnabled
+ */
+
+/**
  * @typedef {object} GraphClient
  * @property {string} mode
+ * @property {() => Promise<GraphUser[]>} listUsers  every user, all pages
+ * @property {(userId: string) => Promise<{ id: string } | null>} getManager
+ *   the user's manager, or null when they have none
  */
 
 /** @type {GraphClient | undefined} */

@@ -31,7 +31,9 @@ for (const lang of LANGUAGES) {
       await expect(page).toHaveTitle(t(lang, 'login.pageTitle'));
       await expect(page.locator('.login__title')).toHaveText(t(lang, 'login.title'));
       await expect(page.locator('.login__company')).toHaveCount(3);
-      await expect(page.locator('[data-user-id]')).toHaveCount(12);
+      // The twelve seeded people, and more once a directory sync has run.
+      await expect(page.locator('[data-user-id]').first()).toBeVisible();
+      expect(await page.locator('[data-user-id]').count()).toBeGreaterThanOrEqual(12);
       await expectNoSidewaysScroll(page);
     });
 
@@ -66,7 +68,8 @@ for (const lang of LANGUAGES) {
 
         await signOut(page);
         await expectLanguage(page, lang);
-        await expect(page.locator('[data-user-id]')).toHaveCount(12);
+        await expect(page.locator('[data-user-id]').first()).toBeVisible();
+        expect(await page.locator('[data-user-id]').count()).toBeGreaterThanOrEqual(12);
 
         // The session is gone: the API says so and the portal sends you back.
         expect((await page.request.get('/api/me')).status()).toBe(401);

@@ -34,6 +34,15 @@ import { createAnnouncementService } from './modules/announcements/service.js';
 import { createMemoryAnnouncementStore } from './modules/announcements/store-memory.js';
 import { createPrismaAnnouncementStore } from './modules/announcements/store-prisma.js';
 import { createMemoryUserRepo } from './modules/auth/repo-memory.js';
+import {
+  adminDirectoryRoutes,
+  readerRoutes as directoryRoutes,
+} from './modules/directory/routes.js';
+import { createDirectoryService } from './modules/directory/service.js';
+import { createMemoryDirectoryStore } from './modules/directory/store-memory.js';
+import { createPrismaDirectoryStore } from './modules/directory/store-prisma.js';
+import { graph } from './integrations/graph/index.js';
+import { createSyncRunner } from './jobs/syncUsers.js';
 import { createPrismaUserRepo } from './modules/auth/repo.js';
 import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
 
@@ -50,7 +59,9 @@ import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
  * @param {object} [options.adminStore]  see modules/admin/store-prisma.js
  * @param {object} [options.announcementStore]  see modules/announcements/store-prisma.js
  * @param {object} [options.storage]  see lib/storage.js; the upload folder by default
- * @param {() => Date} [options.now]  the clock the announcements module reads, for tests
+ * @param {object} [options.directoryStore]  see modules/directory/store-prisma.js
+ * @param {object} [options.graph]  a Graph client in place of the configured one, for tests
+ * @param {() => Date} [options.now]  the clock the announcements module and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  */
@@ -84,7 +95,17 @@ export function createApp(options = {}) {
     storage: options.storage ?? defaultStorage(),
     now: options.now,
   });
+  const directoryStore =
+    options.directoryStore ??
+    (repo.companies ? createMemoryDirectoryStore(repo) : createPrismaDirectoryStore());
+  const syncRunner = createSyncRunner({
+    store: directoryStore,
+    getGraph: options.graph ? async () => options.graph : graph,
+    now: options.now,
+  });
+  const directory = createDirectoryService({ store: directoryStore, syncRunner });
   app.locals.sessionStore = store;
+  app.locals.syncRunner = syncRunner;
   app.locals.inMemory = !useDatabase;
 
   // Behind Azure App Service's proxy: needed for correct protocol detection on
@@ -164,6 +185,9 @@ export function createApp(options = {}) {
 
   app.use('/api/admin/announcements', adminAnnouncementRoutes(announcements));
   app.use('/api/announcements', readerRoutes(announcements));
+
+  app.use('/api/admin/directory', adminDirectoryRoutes(directory));
+  app.use('/api/directory', directoryRoutes(directory));
 
   // Module routers mount here as they are built.
   options.protectedRoutes?.(app);

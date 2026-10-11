@@ -21,6 +21,9 @@ const IGNORED_ERRORS = [
   // By design: the shell asks who is signed in, and Chromium logs the 401 that
   // sends a signed-out visitor to the login page.
   /status of 401 .*\/api\/me\)$/,
+  // By design: a second sync request while one runs answers 409 and the page
+  // says so. Two projects share one database, so a test can meet it.
+  /status of 409 .*\/api\/admin\/directory\/sync\)$/,
 ];
 
 export const test = base.extend({
@@ -87,7 +90,9 @@ export async function findUser(page, { company, role = 'User' }) {
 
   const { companies } = await response.json();
   const home = companies.find((c) => c.code === company);
-  const person = home?.users.find((u) => u.role === role);
+  // A directory sync (directory.spec) adds people with no Arabic name; the
+  // seeded ones have one, so they stay the ones every other spec signs in as.
+  const person = home?.users.find((u) => u.role === role && u.displayNameAr);
   if (!person) throw new Error(`No seeded ${role} in ${company}`);
   return { ...person, company: home };
 }

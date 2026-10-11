@@ -8,6 +8,7 @@
 
 import { COMPANIES, DEPARTMENTS, USERS, fakeEntraObjectId } from '../../../prisma/seed-data.js';
 import { ROLES } from '../../lib/roles.js';
+import { searchKeyOf } from '../../lib/text-search.js';
 
 /** A stable id for the nth row of a table, shaped like the UUIDs Prisma makes. */
 const fakeId = (table, index) =>
@@ -20,6 +21,7 @@ export function createMemoryUserRepo() {
     ...company,
     domains: [company.domain],
     logoKey: null,
+    showMobileInDirectory: false,
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -50,6 +52,13 @@ export function createMemoryUserRepo() {
       displayNameEn: user.displayNameEn,
       displayNameAr: user.displayNameAr,
       jobTitle: user.jobTitle,
+      officeLocation: user.officeLocation ?? null,
+      phone: user.phone ?? null,
+      mobilePhone: null,
+      managerId: null,
+      graphDepartment: null,
+      graphCompanyName: null,
+      searchKey: searchKeyOf(user),
       language: user.language,
       isActive: true,
       company,
@@ -66,6 +75,12 @@ export function createMemoryUserRepo() {
     };
   });
 
+  // Managers are another seeded user's email in seed-data.js.
+  const byEmail = new Map(users.map((u) => [u.email, u]));
+  USERS.forEach((seed, i) => {
+    users[i].managerId = seed.manager ? byEmail.get(seed.manager).id : null;
+  });
+
   const brief = (user) => (user ? { id: user.id, isActive: user.isActive } : null);
 
   return {
@@ -75,6 +90,8 @@ export function createMemoryUserRepo() {
     departments,
     /** Rows written by the admin module, for tests and development. */
     auditLogs: [],
+    /** Directory sync runs (modules/directory/store-memory.js). */
+    syncRuns: [],
 
     async listCompaniesWithUsers() {
       return companies

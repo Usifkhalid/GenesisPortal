@@ -74,6 +74,14 @@ const PATHS = {
    * The empty-state mark: a specimen label with nothing written on it. Drawn
    * geometry from the design's own idea, not an illustration.
    */
+  mail: '<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="m4.5 7.5 7.5 5.5 7.5-5.5"/>',
+  phone:
+    '<path d="M6.5 4.5h3l1.5 4-2 1.2a10 10 0 0 0 5.3 5.3l1.2-2 4 1.5v3a1.5 1.5 0 0 1-1.5 1.5A14.5 14.5 0 0 1 5 6a1.5 1.5 0 0 1 1.5-1.5Z"/>',
+  chat: '<path d="M5 5.5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5v-3.5H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z"/>',
+  download:
+    '<path d="M12 5v10"/><path d="M7.5 11 12 15.5 16.5 11"/><path d="M5 19h14"/>',
+  refresh:
+    '<path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M19 5v4.5h-4.5"/>',
   blankLabel:
     '<path d="M5 6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5v11A1.5 1.5 0 0 1 17.5 19h-11A1.5 1.5 0 0 1 5 17.5Z"/><path d="M5 10.5h14"/><path d="M8 14h3"/>',
 };

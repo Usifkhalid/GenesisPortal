@@ -21,6 +21,8 @@ const SECTIONS = [
   { key: 'companies', label: 'admin.nav.companies', holdingOnly: true },
   { key: 'departments', label: 'admin.nav.departments', holdingOnly: false },
   { key: 'admins', label: 'admin.nav.admins', holdingOnly: true },
+  { key: 'quality', label: 'admin.nav.quality', holdingOnly: false },
+  { key: 'sync', label: 'admin.nav.sync', holdingOnly: true },
 ];
 
 /**

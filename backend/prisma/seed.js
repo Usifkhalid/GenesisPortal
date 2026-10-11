@@ -10,6 +10,7 @@
 import { isProduction } from '../src/config/env.js';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma.js';
 import { ROLES } from '../src/lib/roles.js';
+import { searchKeyOf } from '../src/lib/text-search.js';
 import { COMPANIES, DEPARTMENTS, USERS, fakeEntraObjectId } from './seed-data.js';
 
 /**
@@ -58,6 +59,7 @@ export async function seed(prisma) {
       language: user.language,
       companyId: companyIds.get(company),
       departmentId: departmentIds.get(`${company}/${department}`),
+      searchKey: searchKeyOf(user),
       lastSyncedAt: new Date(),
     };
     const row = await prisma.userProfile.upsert({

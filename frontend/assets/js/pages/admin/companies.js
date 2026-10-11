@@ -165,6 +165,7 @@ function renderForm(root, ctx, company) {
     nameAr: company?.nameAr ?? '',
     domains: (company?.domains ?? []).join('\n'),
     accentColor: company?.accentColor ?? DEFAULT_ACCENT,
+    showMobile: company?.showMobileInDirectory === true,
   };
   /** The logo a person picked and has not saved yet. */
   let pendingLogo = null;
@@ -275,6 +276,19 @@ function renderForm(root, ctx, company) {
           isNew
             ? ''
             : `<fieldset class="card admin-fieldset">
+                <legend class="card__title">${esc(t('admin.companies.directoryTitle'))}</legend>
+                <label class="switch">
+                  <input class="switch__input" type="checkbox" id="f-showMobile"
+                    aria-describedby="f-showMobile-help" ${initial.showMobile ? 'checked' : ''} />
+                  <span class="switch__track"><span class="switch__knob"></span></span>
+                  <span class="switch__text">${esc(t('admin.companies.showMobile'))}</span>
+                </label>
+                <p class="field__help" id="f-showMobile-help">${esc(
+                  t('admin.companies.showMobileHelp')
+                )}</p>
+              </fieldset>
+
+              <fieldset class="card admin-fieldset">
                 <legend class="card__title">${esc(t('status.label'))}</legend>
                 <div class="cluster cluster--between">
                   <p>${statusBadge(company.isActive)}
@@ -610,6 +624,10 @@ function renderForm(root, ctx, company) {
         if (accentColor !== company.accentColor) changes.accentColor = accentColor;
         if (JSON.stringify(domains) !== JSON.stringify(company.domains))
           changes.domains = domains;
+        const showMobile = $('f-showMobile').checked;
+        if (showMobile !== (company.showMobileInDirectory === true)) {
+          changes.showMobileInDirectory = showMobile;
+        }
 
         if (Object.keys(changes).length) {
           saved = await api(`/api/admin/companies/${company.id}`, {

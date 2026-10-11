@@ -21,6 +21,7 @@ import { pageSkeleton } from './components/skeleton.js';
 import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { initials } from './components/initials.js';
+import { initPeopleSearch } from './components/people-search.js';
 import { DEMO_TICKETS, ticketNumber } from './demo-data.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
@@ -552,6 +553,7 @@ async function init() {
   initPopover('userMenuBtn', 'userMenu');
   initMoreSheet();
   initSearchShortcut();
+  initPeopleSearch(document.getElementById('globalSearch'));
   initSignOut();
   initSkipLink();
   document.addEventListener('announcements:changed', refreshAnnouncementCount);

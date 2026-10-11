@@ -690,3 +690,50 @@ Text first (a draft exists from then on), then the cover, then publishing. A cov
 removed goes before the text so its alt text can be cleared in the same save. `expiresAt`
 is sent only when changed, so the text of an expired post can still be edited. Times are
 entered and shown as Cairo time whatever the device's zone (`format.js` converts).
+
+### D76. The directory is scoped like every other table
+
+CLAUDE.md rule 1 puts every read of a company's records behind `lib/scope.js`, and a
+person is a record of their company. So a user finds colleagues of their own company (plus
+those they administer); a HoldingAdmin finds everyone. The company filter therefore appears
+only for someone who can see more than one. A group-wide directory is a product decision
+and one function (`companyIdsFor` in the directory service); it was not taken here.
+
+### D77. Search matches a stored, normalised key
+
+Search is word-by-word `contains` over `UserProfile.searchKey`: English and Arabic name,
+email and title, folded by `lib/text-search.js` (case, Latin accents, Arabic diacritics,
+tatweel, أ إ آ ٱ → ا, ى → ي, ة → ه, Arabic-Indic digits). SQL Server collations cannot do
+the Arabic folding, so the key is written by sync and seed and the query is folded the same
+way. A scan, not an index: fine for thousands of people. Sorting is done in JS with
+`Intl.Collator` over the matching ids so Arabic order and the English-name fallback are right.
+
+### D78. Sync is a plan, then batches; a run is one row and one audit entry
+
+`planSync` is pure (Graph's users + the portal's rows → creates, updates, deactivations,
+manager links, warnings), so the mapping is tested without a database. Applying it is
+idempotent and goes in batches of 50, not one transaction (thousands of rows would outlive
+the transaction timeout); the run's result and its audit entry are the one transaction.
+A failed manager lookup keeps the existing link. People with no email, or a duplicate one,
+are skipped with a warning.
+
+### D79. Arabic names are portal-owned and may be empty
+
+Graph has no Arabic name, so a person created by sync has an empty `displayNameAr` and sync
+never writes it. Every screen shows the English name where Arabic is empty (the other
+language beneath only when it exists), and the data-quality report counts the gap. The
+column stays NOT NULL (empty string), so existing code that reads it keeps working.
+
+### D80. Two safety stops, and one run at a time
+
+A run that gets no users, or would deactivate more than 20% of the active people, is
+recorded as failed and applies nothing; a HoldingAdmin can rerun with an explicit
+confirmation. One run at a time: an in-process flag and a `running` SyncRun row less than
+30 minutes old (a crash does not block forever). Two instances racing past both checks
+in the same instant is possible and harmless: the runs are idempotent.
+
+### D81. Run now answers 202; the page follows
+
+A real run asks Graph for each person's manager and may take minutes, longer than a
+request should live. The route returns the run and the work continues; the Sync page asks
+for the history every two seconds while the newest run is running.
