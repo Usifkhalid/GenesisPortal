@@ -5,12 +5,18 @@
  * theirs; with no session the browser is sent to the login page. The person,
  * their company's branding, the companies they may switch between and the
  * navigation they may see all come from that one answer. Then it wires the top
- * bar, the rail/bottom-nav pair and the company switcher, and mounts Home.
- * There is no router yet, and Home's cards still read demo-data.js.
+ * bar, the rail/bottom-nav pair and the company switcher, and hands the work
+ * area to router.js, which draws the page the address names.
+ *
+ * DEMO: the ticket count in the nav and the two notifications in the bell
+ * still come from demo-data.js, until those modules have an API.
  */
 
 import { DEFAULT_LOCALE, LOCALES, setLocale, getLocale, localized, t } from './i18n.js';
 import { loadSession, signOut } from './auth.js';
+import { createRouter } from './router.js';
+import { loadFailedNotice } from './components/notice.js';
+import { pageSkeleton } from './components/skeleton.js';
 import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { initials } from './components/initials.js';
@@ -31,6 +37,9 @@ const state = {
   /** @type {{ key: string, group: string }[]} what the server lets them see */
   nav: [],
 };
+
+/** Draws the page the address names. Made by init(), once the session is known. */
+let router = null;
 
 /** Admin navigation is the server's call: it sends the group or it does not. */
 const isAdmin = () => state.nav.some((item) => item.group === 'admin');
@@ -76,7 +85,7 @@ async function applyLanguage(lang) {
   // language or company.
   renderShellData();
   updateLanguageMenu();
-  await renderPage();
+  await router?.refresh();
 }
 
 /** Marks the active language in the account menu's language rows. */
@@ -191,7 +200,7 @@ function selectCompany(company) {
   state.company = company;
   writeStored(STORED_COMPANY_KEY, company.code);
   renderShellData();
-  renderPage();
+  router.refresh();
 }
 
 /* ------------------------------------------------------------- shell data */
@@ -214,6 +223,7 @@ function renderShellData() {
   const collapsed = toggle.getAttribute('aria-expanded') === 'false';
   toggle.setAttribute('aria-label', t(collapsed ? 'nav.expandRail' : 'nav.collapseRail'));
 
+  // DEMO: the open-ticket count and the first notification.
   for (const count of document.querySelectorAll('[data-ticket-count]')) {
     count.textContent = String(DEMO_TICKETS.length);
   }
@@ -243,66 +253,47 @@ function applyNav() {
 
 /* -------------------------------------------------------------------- page */
 
+/** What every page is handed: who is asking, and for which company. */
+function pageContext() {
+  const name = localized(state.user, 'displayName');
+  return {
+    company: state.company,
+    user: { name, firstName: name.trim().split(/\s+/)[0] ?? name },
+    admin: isAdmin(),
+  };
+}
+
 /**
- * Mounts the current page. Page modules are loaded on demand, so the shell
- * paints first on a weak connection. Home is the only page so far.
+ * The router has picked a page: say where we are in the nav, the top bar and
+ * the tab's title, and put away anything that was open over the last page.
+ *
+ * @param {import('./router.js').Match} match
  */
-async function renderPage() {
-  const page = document.getElementById('page');
-  // On weak 3G the module can take seconds. Say so, in the shape of what is
-  // coming, rather than leaving the work area blank.
-  if (!page.firstElementChild) page.innerHTML = pageSkeleton();
-
-  try {
-    const { render } = await import('./pages/home.js');
-    const name = localized(state.user, 'displayName');
-    render(page, {
-      company: state.company,
-      user: { name, firstName: name.trim().split(/\s+/)[0] ?? name },
-      admin: isAdmin(),
-    });
-  } catch {
-    page.innerHTML = pageError();
-    page.querySelector('[data-retry]').addEventListener('click', () => {
-      page.replaceChildren();
-      renderPage();
-    });
+function markLocation(match) {
+  for (const link of document.querySelectorAll('[data-nav]')) {
+    if (link.dataset.nav === match.nav) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
   }
+
+  const title = document.getElementById('topbarTitle');
+  title.dataset.i18n = match.title;
+  title.textContent = t(match.title);
+  document.title = t('page.title', { page: t(match.title), app: t('app.name') });
+
+  for (const menu of document.querySelectorAll('.menu')) closeMenu(menu.id);
+  const sheet = document.getElementById('moreSheet');
+  if (sheet.open) sheet.close();
 }
 
-function pageSkeleton() {
-  const card = `<div class="skeleton-card">
-    <div class="skeleton-card__strip">
-      <div class="skeleton-card__pair">
-        <span class="skeleton skeleton--text skeleton--line-short"></span>
-        <span class="skeleton skeleton--value"></span>
-      </div>
-      <div class="skeleton-card__pair">
-        <span class="skeleton skeleton--text skeleton--line-short"></span>
-        <span class="skeleton skeleton--value"></span>
-      </div>
-    </div>
-    <span class="skeleton skeleton--title"></span>
-    <span class="skeleton skeleton--text skeleton--line-long"></span>
-  </div>`;
-  return `<div class="stack" role="status" aria-busy="true" aria-label="${t('loading.page')}">
-    ${card}${card}
-  </div>`;
-}
-
-function pageError() {
-  return `<div class="notice notice--danger" role="alert">
-    ${icon('statusOverdue', 'notice__icon')}
-    <div class="notice__content stack stack--tight">
-      <p class="notice__title">${t('app.loadFailedTitle')}</p>
-      <p>${t('app.loadFailedText')}</p>
-      <div>
-        <button type="button" class="btn btn--secondary" data-retry>
-          <span class="btn__label">${t('action.retry')}</span>
-        </button>
-      </div>
-    </div>
-  </div>`;
+/**
+ * "Skip to main content" is a link to #main, and the address belongs to the
+ * router: move focus by hand and leave the hash alone.
+ */
+function initSkipLink() {
+  document.querySelector('.u-skip-link').addEventListener('click', (event) => {
+    event.preventDefault();
+    document.getElementById('main').focus();
+  });
 }
 
 /* ------------------------------------------------------------ rail collapse */
@@ -485,7 +476,7 @@ function initSignOut() {
  */
 function showBootError() {
   const page = document.getElementById('page');
-  page.innerHTML = pageError();
+  page.innerHTML = loadFailedNotice();
   page.querySelector('[data-retry]').addEventListener('click', () => location.reload());
 }
 
@@ -515,6 +506,14 @@ async function init() {
     state.companies.find((c) => c.id === me.company.id) ??
     me.company;
 
+  router = createRouter({
+    root: document.getElementById('page'),
+    canAccess: (navKey) => state.nav.some((item) => item.key === navKey),
+    context: pageContext,
+    onNavigate: markLocation,
+  });
+
+  // Draws the shell's data and, through the router, the first page.
   await applyLanguage(preferredLocale());
   delete document.querySelector('.app').dataset.booting;
 
@@ -527,6 +526,7 @@ async function init() {
   initMoreSheet();
   initSearchShortcut();
   initSignOut();
+  initSkipLink();
   NARROW.addEventListener('change', updateSearchPlaceholder);
 }
 

@@ -11,7 +11,8 @@ import { api, setCsrfToken } from './api.js';
 
 /**
  * Loads the session. Without one, api() sends the browser to the login page
- * and this never returns.
+ * and this never returns. A failure is the caller's to show: before the
+ * session there is no shell for a toast to sit over.
  *
  * @returns {Promise<{
  *   user: { id: string, email: string, displayNameEn: string, displayNameAr: string,
@@ -26,19 +27,21 @@ import { api, setCsrfToken } from './api.js';
  *             accentColor: string, logoUrl: string|null }} Company
  */
 export async function loadSession() {
-  const me = await api('/api/me');
+  const me = await api('/api/me', { quiet: true });
   setCsrfToken(me.csrfToken);
   return me;
 }
 
 /**
  * Ends the session, then goes where the server says: the login page, or
- * Entra's own sign-out when that is how the person signed in.
+ * Entra's own sign-out when that is how the person signed in. A failure is
+ * the caller's to show, on the control that was pressed.
  */
 export async function signOut() {
   const { redirectTo } = await api('/api/auth/logout', {
     method: 'POST',
     redirectOn401: false,
+    quiet: true,
   });
   location.assign(redirectTo);
 }

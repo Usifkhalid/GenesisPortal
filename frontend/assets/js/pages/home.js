@@ -2,15 +2,24 @@
  * pages/home.js — the Home page.
  *
  * A welcome banner over a bento grid of the four jobs: tickets, rooms,
- * announcements and the directory. Loaded on demand by app.js. The person and
- * the company are the session's; everything else is static demo data for now; the markup is the shape the real modules
- * will fill, including what each card says when it has nothing to show.
+ * announcements and the directory. Loaded on demand by router.js.
+ *
+ * Real: the person, the company and the Cairo date and time, all from the
+ * session (GET /api/me). They are on screen at once.
+ *
+ * DEMO: the five cards. None of their modules has an API yet, so each card's
+ * `load` below hands back demo-data.js. Everything around `load` is already
+ * the real thing: a card shows a skeleton while its list loads, then its rows,
+ * its own one-line empty state, or its own failure with a retry. Replacing a
+ * `load` with an api() call is the whole of wiring a card up.
  */
 
 import { t, getLocale } from '../i18n.js';
+import { esc } from '../html.js';
 import { icon } from '../components/icons.js';
 import { companyName } from '../components/company-mark.js';
 import { initials } from '../components/initials.js';
+import { recordSkeleton } from '../components/skeleton.js';
 import {
   DEMO_TICKETS,
   DEMO_BOOKINGS,
@@ -33,14 +42,6 @@ const STATUS = {
   resolved: { tone: 'badge--success', icon: 'statusResolved' },
   overdue: { tone: 'badge--danger', icon: 'statusOverdue' },
 };
-
-let clockTimer = null;
-
-const esc = (value) =>
-  String(value).replace(
-    /[&<>"']/g,
-    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
-  );
 
 /* ------------------------------------------------------------- Cairo time */
 
@@ -125,13 +126,27 @@ function cardHead({ id, tag, title, count = '', href = '', openLabel = '' }) {
  * What a card says when its list is empty: one line, in place, at the card's
  * own size. Home never swaps itself for a page-sized empty state.
  */
-function emptyLine(titleKey, textKey, mark = 'blankLabel') {
+function emptyLine({ title, text, mark = 'blankLabel' }) {
   return `<div class="empty empty--inline">
     ${icon(mark, 'empty__mark')}
     <div class="empty__copy">
-      <p class="empty__title">${esc(t(titleKey))}</p>
-      <p class="empty__text">${esc(t(textKey))}</p>
+      <p class="empty__title">${esc(t(title))}</p>
+      <p class="empty__text">${esc(t(text))}</p>
     </div>
+  </div>`;
+}
+
+/** What a card says when its list could not be fetched: the same line, and a way back. */
+function failedLine() {
+  return `<div class="empty empty--inline home__failed" role="status">
+    ${icon('statusOverdue', 'empty__mark')}
+    <div class="empty__copy">
+      <p class="empty__title">${esc(t('home.failed.title'))}</p>
+      <p class="empty__text">${esc(t('home.failed.text'))}</p>
+    </div>
+    <button type="button" class="btn btn--secondary btn--sm" data-retry>
+      <span class="btn__label">${esc(t('action.retry'))}</span>
+    </button>
   </div>`;
 }
 
@@ -146,7 +161,7 @@ function recordList(rows, href) {
     }`;
 }
 
-function ticketRow(company, ticket) {
+function ticketRow({ company }, ticket) {
   const number = ticketNumber(company.code, ticket.seq);
   const status = STATUS[ticket.status];
   return `<li class="record">
@@ -166,6 +181,55 @@ function ticketRow(company, ticket) {
         </span>
       </span>
     </div>
+  </li>`;
+}
+
+function bookingRow({ company }, booking) {
+  const room = `${company.code}-${booking.room}`;
+  const day = booking.today ? t('home.today') : t(`day.${booking.day}`);
+  return `<li class="record">
+    <dl class="labelstrip labelstrip--compact">
+      ${pair(t('room.name'), esc(room))}
+      ${pair(t('home.rooms.when'), `${esc(day)} ${esc(booking.time)}`)}
+      ${pair(t('room.floor'), esc(booking.floor))}
+    </dl>
+    <h3 class="record__title"><a href="#rooms/${esc(room)}">${esc(t(booking.title))}</a></h3>
+  </li>`;
+}
+
+function newsRow({ company }, item) {
+  const from = item.from === 'company' ? companyName(company).outerHTML : esc(t(item.from));
+  return `<li class="record">
+    <dl class="labelstrip labelstrip--compact">
+      ${pair(t('announcement.published'), esc(item.published))}
+      ${pair(t('home.news.from'), from)}
+    </dl>
+    <div class="record__head">
+      <h3 class="record__title"><a href="#announcements">${esc(t(item.title))}</a></h3>
+      ${
+        item.isNew
+          ? `<span class="record__aside">
+               <span class="tag tag--highlight">${esc(t('home.news.new'))}</span>
+             </span>`
+          : ''
+      }
+    </div>
+    ${item.body ? `<p class="record__text">${esc(t(item.body))}</p>` : ''}
+  </li>`;
+}
+
+function personRow(_ctx, person) {
+  const name = t(person.name);
+  return `<li class="record">
+    <a class="person home__person" href="#directory">
+      <span class="avatar" aria-hidden="true">${esc(initials(name))}</span>
+      <span class="home__person-text">
+        <span class="person__name">${esc(name)}</span>
+        <span class="person__role">${esc(
+          t('home.people.roleAt', { role: t(person.role), site: t(person.site) })
+        )}</span>
+      </span>
+    </a>
   </li>`;
 }
 
@@ -208,155 +272,168 @@ function banner({ company, user, admin }, now) {
 
 /* ----------------------------------------------------------------- cards */
 
-function ticketsCard({ company }) {
-  // What is late comes first; after that, the order the queue gave them.
-  const tickets = [...DEMO_TICKETS].sort(
-    (a, b) => (b.status === 'overdue') - (a.status === 'overdue')
+/**
+ * The search is real markup with nowhere real to go yet: it hands the words
+ * to the directory's address, which that module will read.
+ */
+function peopleSearch() {
+  return `<form class="field" role="search" data-people-search>
+    <label class="field__label" for="homePeopleSearch">${esc(t('home.people.label'))}</label>
+    <div class="input-group">
+      ${icon('search', 'input-group__icon')}
+      <input class="input" type="search" id="homePeopleSearch" name="q" autocomplete="off" />
+    </div>
+  </form>`;
+}
+
+/**
+ * Home's cards, in reading order: what is waiting on the person, where they
+ * have to be next, what they have open, then the two things they come to look
+ * up. On a phone that is the order down the page. For each:
+ *   load(ctx)  → a promise of the card's records (DEMO for all five, see top)
+ *   row        → one record's markup
+ *   empty      → what the card says with no records; absent when the card
+ *                has something else to offer, as the directory has its search
+ */
+const CARDS = [
+  {
+    key: 'waiting',
+    tag: 'nav.tickets',
+    title: 'home.waiting.title',
+    more: '#tickets',
+    load: async () => DEMO_WAITING, // DEMO
+    row: ticketRow,
+    skeletonRows: 1,
+    empty: {
+      title: 'home.waiting.emptyTitle',
+      text: 'home.waiting.emptyText',
+      mark: 'statusResolved',
+    },
+  },
+  {
+    key: 'rooms',
+    tag: 'nav.rooms',
+    title: 'home.rooms.title',
+    href: '#rooms',
+    openLabel: 'home.rooms.openAll',
+    load: async () => DEMO_BOOKINGS, // DEMO
+    row: bookingRow,
+    skeletonRows: 2,
+    empty: { title: 'home.rooms.emptyTitle', text: 'home.rooms.emptyText' },
+  },
+  {
+    key: 'tickets',
+    tag: 'nav.tickets',
+    title: 'home.tickets.title',
+    count: 'home.tickets.count',
+    href: '#tickets',
+    openLabel: 'home.tickets.openAll',
+    // DEMO. What is late comes first; after that, the order the queue gave them.
+    load: async () =>
+      [...DEMO_TICKETS].sort((a, b) => (b.status === 'overdue') - (a.status === 'overdue')),
+    row: ticketRow,
+    empty: { title: 'home.tickets.emptyTitle', text: 'home.tickets.emptyText' },
+  },
+  {
+    key: 'people',
+    tag: 'nav.directory',
+    title: 'home.people.title',
+    href: '#directory',
+    openLabel: 'home.people.openAll',
+    lead: peopleSearch,
+    listLabel: 'home.people.recent',
+    load: async () => DEMO_PEOPLE, // DEMO
+    row: personRow,
+    skeletonRows: 3,
+    skeletonShape: 'person',
+  },
+  {
+    key: 'news',
+    tag: 'nav.announcements',
+    title: 'home.news.title',
+    href: '#announcements',
+    openLabel: 'home.news.openAll',
+    load: async () => DEMO_ANNOUNCEMENTS, // DEMO
+    row: newsRow,
+    empty: { title: 'home.news.emptyTitle', text: 'home.news.emptyText' },
+  },
+];
+
+/**
+ * @typedef {{ status: 'loading' } | { status: 'failed' }
+ *   | { status: 'ready', records: object[] }} CardState
+ */
+
+/** @param {(typeof CARDS)[number]} card  @param {CardState} state */
+function headHtml(card, state) {
+  const count = state.status === 'ready' ? state.records.length : 0;
+  return cardHead({
+    id: `home-${card.key}-title`,
+    tag: t(card.tag),
+    title: t(card.title),
+    count: card.count && count ? t(card.count, { count }) : '',
+    href: card.href,
+    openLabel: card.openLabel ? t(card.openLabel) : '',
+  });
+}
+
+/** A card's list in one of its states: loading, failed, empty or filled. */
+function bodyHtml(card, ctx, state) {
+  if (state.status === 'loading') {
+    return `<p class="u-visually-hidden">${esc(t('loading.label'))}</p>
+      ${recordSkeleton(card.skeletonRows ?? 3, card.skeletonShape)}`;
+  }
+  if (state.status === 'failed') return failedLine();
+  if (state.records.length === 0) return card.empty ? emptyLine(card.empty) : '';
+
+  const list = recordList(
+    state.records.map((record) => card.row(ctx, record)),
+    card.more ?? card.href
   );
-  const rows = tickets.map((ticket) => ticketRow(company, ticket));
-
-  return `<section class="card home__tickets" aria-labelledby="homeTicketsTitle">
-    ${cardHead({
-      id: 'homeTicketsTitle',
-      tag: t('nav.tickets'),
-      title: t('home.tickets.title'),
-      count: rows.length ? t('home.tickets.count', { count: rows.length }) : '',
-      href: '#tickets',
-      openLabel: t('home.tickets.openAll'),
-    })}
-    ${
-      rows.length
-        ? recordList(rows, '#tickets')
-        : emptyLine('home.tickets.emptyTitle', 'home.tickets.emptyText')
-    }
-  </section>`;
-}
-
-function roomsCard({ company }) {
-  const rows = DEMO_BOOKINGS.map((booking) => {
-    const room = `${company.code}-${booking.room}`;
-    const day = booking.today ? t('home.today') : t(`day.${booking.day}`);
-    return `<li class="record">
-      <dl class="labelstrip labelstrip--compact">
-        ${pair(t('room.name'), esc(room))}
-        ${pair(t('home.rooms.when'), `${esc(day)} ${esc(booking.time)}`)}
-        ${pair(t('room.floor'), esc(booking.floor))}
-      </dl>
-      <h3 class="record__title"><a href="#rooms/${esc(room)}">${esc(t(booking.title))}</a></h3>
-    </li>`;
-  });
-
-  return `<section class="card home__rooms" aria-labelledby="homeRoomsTitle">
-    ${cardHead({
-      id: 'homeRoomsTitle',
-      tag: t('nav.rooms'),
-      title: t('home.rooms.title'),
-      href: '#rooms',
-      openLabel: t('home.rooms.openAll'),
-    })}
-    ${
-      rows.length
-        ? recordList(rows, '#rooms')
-        : emptyLine('home.rooms.emptyTitle', 'home.rooms.emptyText')
-    }
-  </section>`;
-}
-
-function waitingCard({ company }) {
-  const rows = DEMO_WAITING.map((ticket) => ticketRow(company, ticket));
-
-  return `<section class="card home__waiting" aria-labelledby="homeWaitingTitle">
-    ${cardHead({
-      id: 'homeWaitingTitle',
-      tag: t('nav.tickets'),
-      title: t('home.waiting.title'),
-    })}
-    ${
-      rows.length
-        ? recordList(rows, '#tickets')
-        : emptyLine('home.waiting.emptyTitle', 'home.waiting.emptyText', 'statusResolved')
-    }
-  </section>`;
-}
-
-function newsCard({ company }) {
-  const rows = DEMO_ANNOUNCEMENTS.map((item) => {
-    const from = item.from === 'company' ? companyName(company).outerHTML : esc(t(item.from));
-    return `<li class="record">
-      <dl class="labelstrip labelstrip--compact">
-        ${pair(t('announcement.published'), esc(item.published))}
-        ${pair(t('home.news.from'), from)}
-      </dl>
-      <div class="record__head">
-        <h3 class="record__title"><a href="#announcements">${esc(t(item.title))}</a></h3>
-        ${
-          item.isNew
-            ? `<span class="record__aside">
-                 <span class="tag tag--highlight">${esc(t('home.news.new'))}</span>
-               </span>`
-            : ''
-        }
-      </div>
-      ${item.body ? `<p class="record__text">${esc(t(item.body))}</p>` : ''}
-    </li>`;
-  });
-
-  return `<section class="card home__news" aria-labelledby="homeNewsTitle">
-    ${cardHead({
-      id: 'homeNewsTitle',
-      tag: t('nav.announcements'),
-      title: t('home.news.title'),
-      href: '#announcements',
-      openLabel: t('home.news.openAll'),
-    })}
-    ${
-      rows.length
-        ? recordList(rows, '#announcements')
-        : emptyLine('home.news.emptyTitle', 'home.news.emptyText')
-    }
-  </section>`;
-}
-
-function peopleCard() {
-  const rows = DEMO_PEOPLE.map((person) => {
-    const name = t(person.name);
-    return `<li class="record">
-      <a class="person home__person" href="#directory">
-        <span class="avatar" aria-hidden="true">${esc(initials(name))}</span>
-        <span class="home__person-text">
-          <span class="person__name">${esc(name)}</span>
-          <span class="person__role">${esc(t(person.role))}, ${esc(t(person.site))}</span>
-        </span>
-      </a>
-    </li>`;
-  });
-
-  // With nobody looked up yet the card is simply the search: no empty state,
-  // because the field already says what to do.
-  const recent = rows.length
+  return card.listLabel
     ? `<div class="stack stack--tight">
-         <p class="u-microlabel">${esc(t('home.people.recent'))}</p>
-         ${recordList(rows, '#directory')}
+         <p class="u-microlabel">${esc(t(card.listLabel))}</p>
+         ${list}
        </div>`
-    : '';
+    : list;
+}
 
-  return `<section class="card home__people" aria-labelledby="homePeopleTitle">
-    ${cardHead({
-      id: 'homePeopleTitle',
-      tag: t('nav.directory'),
-      title: t('home.people.title'),
-      href: '#directory',
-      openLabel: t('home.people.openAll'),
-    })}
-    <form class="field" role="search" data-demo-form>
-      <label class="field__label" for="homePeopleSearch">${esc(t('home.people.label'))}</label>
-      <div class="input-group">
-        ${icon('search', 'input-group__icon')}
-        <input class="input" type="search" id="homePeopleSearch" autocomplete="off" />
-      </div>
-    </form>
-    ${recent}
+function cardHtml(card, ctx, state) {
+  return `<section class="card home__${card.key}" data-card="${card.key}" tabindex="-1"
+      aria-labelledby="home-${card.key}-title" aria-busy="${state.status === 'loading'}">
+    ${headHtml(card, state)}
+    ${card.lead ? card.lead() : ''}
+    <div class="home__body" data-card-body>${bodyHtml(card, ctx, state)}</div>
   </section>`;
+}
+
+/**
+ * Loads one card's records and redraws its head and its list in place; what
+ * sits between them (the directory's search) is left alone, with whatever has
+ * been typed into it. Each card is on its own: a slow or failed list never
+ * holds up the others.
+ */
+async function fillCard(home, card, ctx) {
+  const shown = home.querySelector(`[data-card="${card.key}"]`);
+
+  /** @param {CardState} state */
+  const show = (state) => {
+    shown.setAttribute('aria-busy', String(state.status === 'loading'));
+    shown.querySelector('.card__header').outerHTML = headHtml(card, state);
+    shown.querySelector('[data-card-body]').innerHTML = bodyHtml(card, ctx, state);
+  };
+
+  try {
+    show({ status: 'ready', records: await card.load(ctx) });
+  } catch {
+    show({ status: 'failed' });
+    shown.querySelector('[data-retry]').addEventListener('click', () => {
+      // The button is about to be redrawn away: keep the keyboard on its card.
+      shown.focus();
+      show({ status: 'loading' });
+      fillCard(home, card, ctx);
+    });
+  }
 }
 
 /* ---------------------------------------------------------------- render */
@@ -368,34 +445,32 @@ function peopleCard() {
  * @param {HTMLElement} root
  * @param {{ company: object, user: { name: string, firstName: string }, admin: boolean }} ctx
  *   company is the API's record; the user's names are already in the language in use
+ * @returns {() => void} stops the clock when the page is left
  */
 export function render(root, ctx) {
   const now = new Date();
-  root.innerHTML = `<div class="bento home">
-    ${banner(ctx, now)}
-    ${ticketsCard(ctx)}
-    ${roomsCard(ctx)}
-    ${waitingCard(ctx)}
-    ${newsCard(ctx)}
-    ${peopleCard()}
-  </div>`;
+  const home = document.createElement('div');
+  home.className = 'bento home';
+  home.innerHTML =
+    banner(ctx, now) + CARDS.map((card) => cardHtml(card, ctx, { status: 'loading' })).join('');
+  root.replaceChildren(home);
 
-  // The search has nowhere to go until the directory exists.
-  root
-    .querySelector('[data-demo-form]')
-    ?.addEventListener('submit', (event) => event.preventDefault());
+  home.addEventListener('submit', (event) => {
+    const form = event.target.closest('[data-people-search]');
+    if (!form) return;
+    event.preventDefault();
+    const words = new FormData(form).get('q').trim();
+    location.hash = words ? `#directory?q=${encodeURIComponent(words)}` : '#directory';
+  });
+
+  for (const card of CARDS) fillCard(home, card, ctx);
 
   // Keep the Cairo clock honest while the page stays open.
-  clearInterval(clockTimer);
-  clockTimer = setInterval(() => {
+  const clock = setInterval(() => {
     const tick = new Date();
-    const time = root.querySelector('[data-cairo-time]');
-    const date = root.querySelector('[data-cairo-date]');
-    if (!time || !date) {
-      clearInterval(clockTimer);
-      return;
-    }
-    time.textContent = cairoTime(tick);
-    date.textContent = cairoDate(tick);
+    home.querySelector('[data-cairo-time]').textContent = cairoTime(tick);
+    home.querySelector('[data-cairo-date]').textContent = cairoDate(tick);
   }, 30_000);
+
+  return () => clearInterval(clock);
 }

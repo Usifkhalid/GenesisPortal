@@ -8,7 +8,8 @@
  */
 
 import { setLocale, apply, t, getLocale, LOCALES } from '../i18n.js';
-import { injectSprite, icon } from '../components/icons.js';
+import { injectSprite } from '../components/icons.js';
+import { showToast } from '../components/toast.js';
 
 const STORE = 'mgp.styleguide';
 
@@ -146,42 +147,10 @@ function initDialogs() {
 
 /* ------------------------------------------------------------------ toasts */
 
-const TOAST_ICON = {
-  success: 'statusResolved',
-  warning: 'statusOverdue',
-  danger: 'statusOverdue',
-  info: 'info',
-};
-
-/**
- * Adds a toast to the live region. The container carries aria-live, so the
- * message is announced without moving focus away from the visitor's task.
- */
-function showToast(toaster, { tone = 'info', titleKey, textKey }) {
-  const el = document.createElement('div');
-  el.className = `toast toast--${tone}`;
-  el.innerHTML = `
-    ${icon(TOAST_ICON[tone] ?? 'info', 'toast__icon')}
-    <div class="toast__content">
-      <p class="toast__title">${t(titleKey)}</p>
-      ${textKey ? `<p class="toast__text">${t(textKey)}</p>` : ''}
-    </div>
-    <button type="button" class="btn btn--ghost btn--sm btn--icon toast__close"
-            aria-label="${t('a11y.dismissToast')}">
-      ${icon('x', 'btn__icon')}
-    </button>`;
-  el.querySelector('.toast__close').addEventListener('click', () => el.remove());
-  toaster.append(el);
-  // Long enough to read a two-line message in either language.
-  setTimeout(() => el.remove(), 6000);
-}
-
 function initToasts() {
-  const toaster = document.getElementById('toaster');
-  if (!toaster) return;
   for (const trigger of document.querySelectorAll('[data-toast]')) {
     trigger.addEventListener('click', () => {
-      showToast(toaster, {
+      showToast({
         tone: trigger.dataset.toast,
         titleKey: trigger.dataset.toastTitle,
         textKey: trigger.dataset.toastText,

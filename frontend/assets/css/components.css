@@ -1341,10 +1341,22 @@
   }
 
   .record .labelstrip__key,
-  .record .badge,
-  .record .person__role,
-  .record-list__more {
+  .record .badge {
     font-size: var(--text-2xs);
+  }
+
+  /* Sentences and links are read, not glanced at: they do not go under the
+   * small body size, and the link takes a thumb. */
+  .record .person__role,
+  .empty--inline .empty__text {
+    font-size: var(--text-sm);
+  }
+
+  .record-list__more {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    font-size: var(--text-sm);
   }
 }
 

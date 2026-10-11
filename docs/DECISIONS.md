@@ -430,3 +430,46 @@ the viewport; the loading skeleton has that shape. Mock mode is a card per compa
 a record list (label strip of role and job title over the name), the whole row being the
 button. The page uses the token placeholder accent, since no company is known before
 sign-in. `.notice__title + p` was tightened in components.css for every notice.
+
+## Session 9 — Frontend core (2026-10-11)
+
+### D47. Hash router with one route table
+
+`router.js` reads `#route/params?query` and lazy-loads `pages/<name>.js`, which exports
+`render(root, ctx)` and may return a clean-up function. Hashes, not the History API, so the
+server only ever serves `index.html`. The route table lists every address the portal has;
+three outcomes never reach a module of their own and are drawn by `pages/status.js`: no such
+route (404), a route whose nav key `GET /api/me` did not list (no access), and a route whose
+module is not built yet ("not open yet", a placeholder that goes with the last module).
+"No access" is courtesy; every API route still checks the session itself.
+
+### D48. Navigation moves focus to `<main>`; the skip link is handled by hand
+
+After a hash change the work area scrolls to the top and `<main tabindex="-1">` takes focus,
+so a keyboard or screen-reader user starts at the new page. `href="#main"` would be read as
+a route, so the skip link's click is intercepted and focuses `<main>` without touching the
+address.
+
+### D49. `api()` announces failures itself; reads retry once, writes never
+
+A failed request raises a toast in the language in use, chosen by HTTP status under
+`error.*` (the server's English message is never shown), then throws. A caller that shows
+the failure in place passes `quiet: true` (boot, login, sign-out, Home's cards). A GET that
+never reached the server is retried once after 600 ms; a POST/PUT/DELETE is not, because it
+may have arrived. The same toast is not stacked twice.
+
+### D50. Home's cards load on their own
+
+The banner (person, company, Cairo date) is real and paints at once. Each card has a `load`
+that returns its records and is drawn as skeleton, rows, one-line empty state, or an inline
+failure with its own retry; one slow or failed list never blocks the others. All five
+`load`s return `demo-data.js` for now and are marked `DEMO`; wiring a card to its module is
+replacing that one function. Only the card's head and list are redrawn, so the directory
+search keeps what was typed.
+
+### D51. One notice, one toast, one escape
+
+`components/notice.js`, `components/toast.js`, `components/skeleton.js` and `html.js` replace
+the copies in app.js, login.js, home.js and styleguide.js. This also settles the login
+notice-spacing fix from session 8: the shell's "did not load" notice had kept the old 12px
+gap between title and sentence; every notice now has the login page's 4px.

@@ -8,10 +8,20 @@
  *
  * A 401 means the session is gone (signed out, timed out after eight idle
  * hours, or the person was deactivated): the browser goes to the login page.
+ *
+ * A read that never reached the server is tried once more, because on site a
+ * dropped packet is ordinary. A write is not: it may have arrived.
+ *
+ * Any other failure is said in a toast, in the language in use, and then
+ * thrown, so the caller can still put its own screen right. A caller that
+ * shows the failure in place passes `quiet: true`.
  */
+
+import { showToast } from './components/toast.js';
 
 const LOGIN_PAGE = 'login.html';
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
+const RETRY_AFTER_MS = 600;
 
 let csrfToken = null;
 
@@ -33,20 +43,70 @@ export function setCsrfToken(token) {
   csrfToken = token ?? null;
 }
 
+/* ---------------------------------------------------------------- messages */
+
+/** Where a status has a sentence of its own, under "error." in the strings. */
+const MESSAGE_BY_STATUS = {
+  0: 'network',
+  400: 'invalid',
+  403: 'forbidden',
+  404: 'notFound',
+  409: 'conflict',
+  413: 'tooLarge',
+  422: 'invalid',
+  429: 'rateLimited',
+};
+
+/**
+ * The i18n key stem for a failure: `${stem}.title` and `${stem}.text`.
+ * Exported for callers that show the failure in place instead of in a toast.
+ *
+ * @param {unknown} err
+ */
+export function errorKey(err) {
+  const status = err instanceof ApiError ? err.status : -1;
+  const name = MESSAGE_BY_STATUS[status] ?? (status >= 500 ? 'server' : 'unknown');
+  return `error.${name}`;
+}
+
+function announce(err) {
+  const key = errorKey(err);
+  showToast({
+    // No signal is the site's weather, not a fault: a warning, not an alarm.
+    tone: err.status === 0 ? 'warning' : 'danger',
+    titleKey: `${key}.title`,
+    textKey: `${key}.text`,
+  });
+}
+
+/* ---------------------------------------------------------------- requests */
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function send(path, method, body) {
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!SAFE_METHODS.has(method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-  try {
-    return await fetch(path, {
+  const attempt = () =>
+    fetch(path, {
       method,
       headers,
       credentials: 'same-origin',
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+
+  try {
+    return await attempt();
   } catch {
     // No signal, DNS, a dropped connection: common on site.
+    if (method !== 'GET') throw new ApiError(0, 'network');
+  }
+
+  await wait(RETRY_AFTER_MS);
+  try {
+    return await attempt();
+  } catch {
     throw new ApiError(0, 'network');
   }
 }
@@ -66,15 +126,7 @@ async function refreshCsrfToken() {
   setCsrfToken((await res.json()).csrfToken);
 }
 
-/**
- * @param {string} path  e.g. '/api/me'
- * @param {object} [options]
- * @param {string} [options.method]
- * @param {unknown} [options.body]  sent as JSON
- * @param {boolean} [options.redirectOn401]  false on the login page itself
- * @returns {Promise<any>} the parsed JSON body, or null for an empty one
- */
-export async function api(path, { method = 'GET', body, redirectOn401 = true } = {}) {
+async function request(path, { method, body, redirectOn401 }) {
   const changesState = !SAFE_METHODS.has(method);
   if (changesState && !csrfToken) await refreshCsrfToken();
 
@@ -98,5 +150,32 @@ export async function api(path, { method = 'GET', body, redirectOn401 = true } =
 
   if (!res.ok) throw new ApiError(res.status, await readError(res));
   if (res.status === 204) return null;
-  return res.json();
+
+  try {
+    return await res.json();
+  } catch {
+    // A 200 that is not JSON: a captive portal or a proxy answered for us.
+    throw new ApiError(res.status, 'unknown');
+  }
+}
+
+/**
+ * @param {string} path  e.g. '/api/me'
+ * @param {object} [options]
+ * @param {string} [options.method]
+ * @param {unknown} [options.body]  sent as JSON
+ * @param {boolean} [options.redirectOn401]  false on the login page itself
+ * @param {boolean} [options.quiet]  true when the caller shows the failure itself
+ * @returns {Promise<any>} the parsed JSON body, or null for an empty one
+ */
+export async function api(
+  path,
+  { method = 'GET', body, redirectOn401 = true, quiet = false } = {}
+) {
+  try {
+    return await request(path, { method, body, redirectOn401 });
+  } catch (err) {
+    if (!quiet && err instanceof ApiError) announce(err);
+    throw err;
+  }
 }

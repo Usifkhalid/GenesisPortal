@@ -26,7 +26,8 @@
     "collapse": "Collapse",
     "switchCompany": "Switch company",
     "companyCurrent": "Company: {company}. Switch company",
-    "signOutFailed": "Could not sign out. Try again"
+    "signOutFailed": "Could not sign out. Try again",
+    "roomsShort": "Rooms"
   },
   "lang": {
     "label": "Language",
@@ -205,10 +206,15 @@
     "people": {
       "title": "Find a colleague",
       "label": "Name, job or site",
-      "recent": "Recently viewed",
-      "openAll": "Open the directory"
+      "recent": "Recently looked up",
+      "openAll": "Open the directory",
+      "roleAt": "{role}, {site}"
     },
-    "more": "{count} more"
+    "more": "{count} more",
+    "failed": {
+      "title": "This did not load",
+      "text": "Check your signal and try again."
+    }
   },
   "table": {
     "caption": "Open tickets assigned to the IT team, newest first.",
@@ -470,6 +476,59 @@
         "title": "You are not set up on the portal yet",
         "text": "Your Microsoft account worked, but it has no portal profile. Ask your company admin to add you."
       }
+    }
+  },
+  "page": {
+    "title": "{page} · {app}",
+    "backHome": "Go to Home",
+    "notFound": {
+      "title": "Page not found",
+      "text": "There is no page at this address. It may have moved, or the link may be mistyped."
+    },
+    "noAccess": {
+      "title": "You do not have access to this page",
+      "text": "Your role does not include it. If you need it for your work, ask your company admin."
+    },
+    "pending": {
+      "text": "This part of the portal is not open yet. It will appear here when it is ready."
+    }
+  },
+  "error": {
+    "network": {
+      "title": "No connection",
+      "text": "The request did not get through. Check your signal and try again."
+    },
+    "forbidden": {
+      "title": "You do not have access to this",
+      "text": "Your role does not allow it. Ask your company admin if you need it."
+    },
+    "notFound": {
+      "title": "This could not be found",
+      "text": "It may have been removed, or it belongs to another company."
+    },
+    "invalid": {
+      "title": "Some details are not valid",
+      "text": "Check what you entered and try again."
+    },
+    "conflict": {
+      "title": "This conflicts with an existing record",
+      "text": "Reload to see the latest version, then try again."
+    },
+    "tooLarge": {
+      "title": "That is too large to send",
+      "text": "Try a smaller file, or send fewer at a time."
+    },
+    "rateLimited": {
+      "title": "Too many requests",
+      "text": "Wait a minute, then try again."
+    },
+    "server": {
+      "title": "Something went wrong on our side",
+      "text": "Try again in a moment. If it keeps happening, tell IT support."
+    },
+    "unknown": {
+      "title": "That did not work",
+      "text": "Try again in a moment."
     }
   }
 }

@@ -191,3 +191,21 @@ unproven against the real tenant. Auth rate limit too low for an office NAT (D45
 timeout only, no absolute lifetime. Favicon 404. Home cards still use demo data.
 Next: install SQL Server, set the .env password, `npm approve-scripts prisma @prisma/client
 @prisma/engines`, `npm run db:migrate`, `npm run db:seed`, `npm test`, sign in once. Then company admin.
+
+## Session 9 — Frontend core (2026-10-11; the prompt called it "Session 7")
+
+Done: hash router (lazy pages; 404, no-access and "not open yet" pages); api.js with bilingual
+error toasts, one GET retry, CSRF header, 401 redirect; shared notice/toast/skeleton/esc;
+Home banner on session data, five cards loading independently (skeleton, empty, failed +
+retry) from loaders marked DEMO; shell notice gap matched to the login fix. `/impeccable
+critique` on Home 26/40 (0 P0, 2 P1): fixed card order, phone records, page skeleton, Arabic
+comma and nav label, focus after retry. D47-D51.
+Files: frontend/assets/js/{router,api,auth,app,html,demo-data}.js, js/pages/{home,status,
+login,styleguide}.js, js/components/{notice,toast,skeleton}.js, css/*, i18n/*, index.html,
+DESIGN.md, docs/*, .impeccable/critique/*.
+Verified: headless Chrome 39/39 (EN/AR, 1440/360, routes, API, card states, login notice);
+`npm test` 88 pass, 1 skipped; lint clean.
+Open issues: Home cards, nav ticket count and bell are demo data; no automated frontend
+tests (Playwright not installed); top-bar search does nothing yet; no help entry point; SQL
+Server and Entra still unproven.
+Next: install SQL Server and migrate (see session 8), then company admin as the first real page.

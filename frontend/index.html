@@ -51,7 +51,7 @@
 
         <div class="rail__scroll">
           <div class="rail__nav">
-            <a class="nav-link" href="#home" data-nav="home" aria-current="page">
+            <a class="nav-link" href="#home" data-nav="home">
               <svg class="nav-link__icon" aria-hidden="true" focusable="false">
                 <use href="#i-home" />
               </svg>
@@ -159,7 +159,7 @@
             <div class="menu menu--start" id="companyMenuTop" data-company-menu hidden></div>
           </div>
 
-          <p class="topbar__title" data-i18n="nav.home">Home</p>
+          <p class="topbar__title" id="topbarTitle" data-i18n="nav.home">Home</p>
 
           <div class="input-group topbar__search" role="search">
             <svg class="input-group__icon" aria-hidden="true" focusable="false">
@@ -246,14 +246,14 @@
       </header>
 
       <!-- ====================================================== main area === -->
-      <main class="main" id="main">
-        <!-- The page module renders here. See assets/js/pages/. -->
+      <main class="main" id="main" tabindex="-1">
+        <!-- router.js renders the page the address names here. See assets/js/pages/. -->
         <div class="page" id="page"></div>
       </main>
 
       <!-- ================================================ bottom nav (phone) === -->
       <nav class="bottomnav" data-i18n-attr="aria-label:nav.label">
-        <a class="bottomnav__link" href="#home" data-nav="home" aria-current="page">
+        <a class="bottomnav__link" href="#home" data-nav="home">
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
             <use href="#i-home" />
           </svg>
@@ -269,7 +269,7 @@
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
             <use href="#i-rooms" />
           </svg>
-          <span class="bottomnav__label" data-i18n="nav.rooms">Rooms</span>
+          <span class="bottomnav__label" data-i18n="nav.roomsShort">Rooms</span>
         </a>
         <a class="bottomnav__link" href="#directory" data-nav="directory">
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
@@ -330,6 +330,15 @@
         </div>
       </div>
     </dialog>
+
+    <!-- The live region toasts are appended to. Announced without taking focus. -->
+    <div
+      class="toaster"
+      id="toaster"
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+    ></div>
 
     <script type="module" src="assets/js/app.js"></script>
   </body>

@@ -252,7 +252,7 @@ The shell is a company rail, a top bar and one work area, all on the paper groun
 - **Top bar:** three zones, with the search centred between two equal tracks: where you are, the search, your own controls. No width leaves a one-sided gap.
 - **Bottom nav** (<48rem): Home, Tickets, Rooms, Directory, More. Both primary actions on Home have a destination in thumb reach.
 
-**Bento.** `.bento` is one column on a phone, six tracks from 44rem and twelve from 68rem. It answers to the page container, not the viewport, so it is the same whether the rail is open, collapsed or absent. The grid supplies tracks; each page says how many its cards span. On Home: banner 12; tickets 7 across two rows beside bookings and "waiting on you" at 5; news 7 and directory 5.
+**Bento.** `.bento` is one column on a phone, six tracks from 44rem and twelve from 68rem. It answers to the page container, not the viewport, so it is the same whether the rail is open, collapsed or absent. The grid supplies tracks; each page says how many its cards span. On Home the cards come in reading order (waiting on you, next bookings, open tickets, directory, news): banner 12; "waiting on you" and bookings stacked at 5 beside tickets at 7 across two rows; directory 5 and news 7.
 
 **Density.** Components read semantic tokens (`--radius-control`, `--radius-card`, `--control-height`, `--pad-card`, `--pad-cell-*`, `--pad-row-block`, `--text-cell`), never the raw scale. `[data-density='compact']` on any ancestor swaps the set.
 

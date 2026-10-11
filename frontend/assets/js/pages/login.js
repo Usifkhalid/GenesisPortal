@@ -10,9 +10,11 @@
  */
 
 import { ApiError, api, setCsrfToken } from '../api.js';
+import { esc } from '../html.js';
 import { companyMark } from '../components/company-mark.js';
 import { icon, injectSprite } from '../components/icons.js';
 import { initials } from '../components/initials.js';
+import { loadFailedNotice, notice } from '../components/notice.js';
 import { DEFAULT_LOCALE, getLocale, localized, setLocale, t } from '../i18n.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
@@ -32,12 +34,6 @@ const state = {
 };
 
 const el = (id) => document.getElementById(id);
-
-const esc = (value) =>
-  String(value).replace(
-    /[&<>"']/g,
-    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
-  );
 
 /* -------------------------------------------------------------- language */
 
@@ -74,27 +70,6 @@ function initLanguageSwitch() {
 }
 
 /* ---------------------------------------------------------------- pieces */
-
-function notice(tone, mark, titleKey, textKey, retry = false) {
-  return `<div class="notice notice--${tone}" role="alert">
-    ${icon(mark, 'notice__icon')}
-    <div class="notice__content stack">
-      <div>
-        <p class="notice__title">${esc(t(titleKey))}</p>
-        <p>${esc(t(textKey))}</p>
-      </div>
-      ${
-        retry
-          ? `<div>
-               <button type="button" class="btn btn--secondary" data-retry>
-                 <span class="btn__label">${esc(t('action.retry'))}</span>
-               </button>
-             </div>`
-          : ''
-      }
-    </div>
-  </div>`;
-}
 
 /** The shape of what is coming for a real user: the button and its note. */
 function skeleton() {
@@ -174,22 +149,26 @@ function render() {
   const noticeBox = el('loginNotice');
   noticeBox.hidden = !state.notice;
   noticeBox.innerHTML = state.notice
-    ? notice('danger', 'statusOverdue', `${state.notice}.title`, `${state.notice}.text`)
+    ? notice({
+        tone: 'danger',
+        mark: 'statusOverdue',
+        titleKey: `${state.notice}.title`,
+        textKey: `${state.notice}.text`,
+      })
     : '';
 
   if (state.view === 'loading') {
     body.innerHTML = skeleton();
   } else if (state.view === 'loadFailed') {
-    body.innerHTML = notice(
-      'danger',
-      'statusOverdue',
-      'app.loadFailedTitle',
-      'app.loadFailedText',
-      true
-    );
+    body.innerHTML = loadFailedNotice();
     body.querySelector('[data-retry]').addEventListener('click', load);
   } else if (state.view === 'mockOff') {
-    body.innerHTML = notice('warning', 'info', 'login.mock.offTitle', 'login.mock.offText');
+    body.innerHTML = notice({
+      tone: 'warning',
+      mark: 'info',
+      titleKey: 'login.mock.offTitle',
+      textKey: 'login.mock.offText',
+    });
   } else if (state.view === 'entra') {
     body.innerHTML = `<div class="login__entra">
       <a class="btn btn--primary btn--lg btn--block" href="/auth/login">
@@ -230,6 +209,7 @@ async function signInAs(userId) {
       method: 'POST',
       body: { userId },
       redirectOn401: false,
+      quiet: true,
     });
     // The row stays busy: the page is leaving.
     location.assign(redirectTo);
@@ -248,7 +228,7 @@ async function load() {
   render();
 
   try {
-    const config = await api('/api/auth/config', { redirectOn401: false });
+    const config = await api('/api/auth/config', { redirectOn401: false, quiet: true });
     setCsrfToken(config.csrfToken);
 
     if (config.signedIn) {
@@ -261,7 +241,7 @@ async function load() {
     } else {
       try {
         state.companies = (
-          await api('/api/auth/mock-users', { redirectOn401: false })
+          await api('/api/auth/mock-users', { redirectOn401: false, quiet: true })
         ).companies;
         state.view = 'mock';
       } catch (err) {

@@ -540,6 +540,12 @@
   }
 }
 
+/* The work area takes focus when the page changes or the skip link is used,
+ * so reading starts at its top. It is a place, not a control: no ring. */
+.main:focus {
+  outline: none;
+}
+
 /* Clear the bottom nav on a phone, including the home-gesture inset. */
 @media (max-width: 47.99rem) {
   .main {

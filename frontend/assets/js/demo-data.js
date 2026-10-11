@@ -17,7 +17,14 @@
  */
 export const DEMO_TICKETS = [
   { seq: 42, priority: 'P2', due: '14:30', subject: 'demo.tickets.t1', status: 'inProgress' },
-  { seq: 39, priority: 'P1', due: '12:00', subject: 'demo.tickets.t2', status: 'overdue' },
+  {
+    seq: 39,
+    priority: 'P1',
+    due: '12:00',
+    day: 'thu',
+    subject: 'demo.tickets.t2',
+    status: 'overdue',
+  },
   {
     seq: 31,
     priority: 'P3',
