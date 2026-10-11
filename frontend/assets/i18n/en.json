@@ -908,6 +908,9 @@
     },
     "editor": {
       "newTitle": "New announcement",
+      "leaveTitle": "Leave without saving?",
+      "leaveBody": "Your changes to this announcement have not been saved and will be lost.",
+      "leaveConfirm": "Leave",
       "editTitle": "Edit announcement",
       "lead": "Write it in one language or both. Readers see their own language and fall back to the other.",
       "formLabel": "Announcement",

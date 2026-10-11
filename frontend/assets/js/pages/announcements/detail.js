@@ -89,7 +89,6 @@ export async function render(root, ctx) {
       </div>
       <h1 class="ann-detail__title" lang="${lang}" dir="${dirOf(lang)}">${esc(title)}</h1>
       <dl class="labelstrip labelstrip--open">
-        ${pair(t('ann.detail.category'), esc(categoryLabel(item.category)))}
         ${pair(t('ann.detail.company'), esc(audienceLabel(item)))}
         ${pair(
           t('ann.detail.published'),

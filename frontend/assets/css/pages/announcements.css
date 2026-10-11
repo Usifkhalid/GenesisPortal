@@ -203,6 +203,7 @@
 .ann-detail__cover img {
   display: block;
   inline-size: 100%;
+  aspect-ratio: 16 / 9;
   max-block-size: 28rem;
   object-fit: cover;
 }

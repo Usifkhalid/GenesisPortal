@@ -13,6 +13,7 @@
  */
 
 import { ApiError, api } from '../../api.js';
+import { confirmDialog } from '../../components/dialog.js';
 import { loadFailedNotice } from '../../components/notice.js';
 import {
   describedBy,
@@ -404,7 +405,33 @@ export async function render(root, ctx) {
     $('altFields').hidden = !shown;
   }
 
+  /* ---- unsaved changes: a reload or close, and a click on any in-app link */
+  let dirty = false;
+  const markDirty = () => {
+    dirty = true;
+  };
+  const warnOnClose = (event) => {
+    if (dirty) event.preventDefault();
+  };
+  const guardLinks = async (event) => {
+    const link = event.target.closest?.('a[href^="#"]');
+    if (!dirty || !link || link.getAttribute('href') === location.hash) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const ok = await confirmDialog({
+      title: t('ann.editor.leaveTitle'),
+      body: t('ann.editor.leaveBody'),
+      confirmLabel: t('ann.editor.leaveConfirm'),
+    });
+    if (!ok) return;
+    dirty = false;
+    location.hash = link.getAttribute('href');
+  };
+  window.addEventListener('beforeunload', warnOnClose);
+  document.addEventListener('click', guardLinks, true);
+
   const refresh = () => {
+    markDirty();
     drawFlags();
     drawPreview();
   };
@@ -655,6 +682,7 @@ export async function render(root, ctx) {
               ? 'ann.toast.saved'
               : 'ann.toast.created',
     });
+    dirty = false;
     announceChange();
     location.hash = '#announcements/manage';
   });
@@ -663,7 +691,12 @@ export async function render(root, ctx) {
   drawFlags();
   drawPreview();
 
+  // Opening the form is not an edit; the first real input is.
+  dirty = false;
+
   return () => {
+    window.removeEventListener('beforeunload', warnOnClose);
+    document.removeEventListener('click', guardLinks, true);
     if (pendingUrl) URL.revokeObjectURL(pendingUrl);
   };
 }
