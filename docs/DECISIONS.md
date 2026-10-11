@@ -473,3 +473,46 @@ search keeps what was typed.
 the copies in app.js, login.js, home.js and styleguide.js. This also settles the login
 notice-spacing fix from session 8: the shell's "did not load" notice had kept the old 12px
 gap between title and sentence; every notice now has the login page's 4px.
+
+### D52. AuditLog is append-only in the database too (closes the gap in D36)
+
+Migration `20261011000000_audit_log_append_only` adds `AuditLog_append_only`, an
+`INSTEAD OF UPDATE, DELETE` trigger that throws error 51000. It refuses any client, not
+only Prisma, and fires even when no row matches. The guard in `lib/prisma.js` stays: it
+fails earlier and with a clearer message. Not covered: `TRUNCATE TABLE` and
+`DISABLE TRIGGER` need ALTER on the table, so the production login must not be `db_owner`
+or `sa`. `tests/audit-trigger.test.js` proves it; each attempt is rolled back with its row.
+
+### D53. The session store writes with single statements, not `upsert`
+
+`PrismaSessionStore.set` runs `updateMany`, then `create` when nothing matched, then
+`updateMany` again if the insert lost a race (P2002). Prisma's `upsert` on SQL Server is a
+SELECT and a write in one transaction: two saves of the same new session failed with a
+unique violation.
+
+### D54. A key Prisma looks up by string is NVARCHAR, starting with Session.sid
+
+Prisma binds every string parameter as NVARCHAR. Against a VARCHAR or CHAR column SQL Server
+converts the column and scans instead of seeking. On `Session` that made concurrent first
+visits deadlock (found by the Playwright run: six browsers at once, 5 s hangs, HTTP 500).
+Migration `20261011010000_session_sid_nvarchar` fixes `sid`. OPEN: every id is `char(36)`
+and codes and emails are `varchar`, so the same scan happens on every lookup by id. It is
+harmless at seed size; decide before the first busy table (tickets) whether ids move to
+`nchar(36)`/`uniqueidentifier`. Azure SQL has READ_COMMITTED_SNAPSHOT on by default, which
+hides the deadlocks there but not the scans.
+
+### D55. One Playwright smoke suite, run instead of ad-hoc browser scripts
+
+`npm run test:e2e` starts its own server on port 3100 (mock sign-in, raised rate limits,
+whatever database `.env` names) and runs `tests/e2e/*.spec.js` in Chromium at 1440 and
+360 px. `helpers.js` holds sign-in, sign-out, i18n lookup and the checks every screen must
+pass; its `test` fails on any console error or page exception. Two errors are allowed by
+name: the missing favicon and the 401 from `/api/me` that sends a signed-out visitor to
+login. It is not part of `npm test`, which stays browser-free.
+
+### D56. Prisma's install scripts are approved in package.json; the lock file says `mssql`
+
+npm 11 blocks install scripts until approved. `npm approve-scripts prisma @prisma/client
+@prisma/engines` wrote a pinned `allowScripts` block to package.json; a Prisma upgrade
+needs the command run again. `migration_lock.toml` was hand-written as `sqlserver`; the
+engine's name for the provider is `mssql` and migrate refused to run until it was changed.

@@ -15,7 +15,14 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['node_modules/**', 'backend/generated/**', 'coverage/**', '.impeccable/**'],
+    ignores: [
+      'node_modules/**',
+      'backend/generated/**',
+      'coverage/**',
+      '.impeccable/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
 
   js.configs.recommended,
@@ -41,6 +48,12 @@ export default [
   {
     files: ['frontend/**/*.js'],
     languageOptions: { globals: globals.browser },
+  },
+
+  {
+    // Playwright: Node, with callbacks that run inside the page.
+    files: ['tests/e2e/**/*.js', 'playwright.config.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 
   prettier,

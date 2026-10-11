@@ -26,6 +26,7 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 /backend/src: server.js, app.js, config/, middleware/, lib/, jobs/, integrations/, modules/<module>/ (routes.js, service.js, schema.js)
 /backend/prisma: schema.prisma, migrations/, seed.js
 /backend/tests
+/tests/e2e: Playwright specs (*.spec.js) and helpers.js; playwright.config.js at the root
 /docs: PROGRESS.md, DECISIONS.md, API.md
 PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 
@@ -41,7 +42,8 @@ PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 
 ## Commands
 npm run dev       backend + frontend at http://localhost:3000
-npm test          all tests
+npm test          all API and unit tests
+npm run test:e2e  Playwright smoke tests (tests/e2e), Chromium, 1440 and 360 px, English and Arabic
 npm run lint      ESLint + Prettier check
 npm run db:migrate / npm run db:seed
 
@@ -49,4 +51,5 @@ npm run db:migrate / npm run db:seed
 - Each session does only the task in its prompt. Do not start other work.
 - First read docs/PROGRESS.md. Then read only the files the task needs; do not scan the whole repo.
 - Keep chat replies short. Do not paste whole files into chat.
-- At the end: run npm test and npm run lint and fix failures; update docs/PROGRESS.md (done, files touched, open issues, next step; max 15 lines for this session); add decisions to docs/DECISIONS.md; make one git commit with a clear message.
+- Browser checks: run npm run test:e2e. Do not write throwaway browser scripts. A new flow gets a spec in tests/e2e built on tests/e2e/helpers.js (signIn, signOut, t, expectLanguage, expectNoSidewaysScroll).
+- At the end: run npm test, npm run test:e2e (when the frontend or sign-in changed) and npm run lint and fix failures; update docs/PROGRESS.md (done, files touched, open issues, next step; max 15 lines for this session); add decisions to docs/DECISIONS.md; make one git commit with a clear message.

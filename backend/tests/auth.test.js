@@ -687,7 +687,7 @@ describe('roles', () => {
 });
 
 describe('PrismaSessionStore (over an in-memory Session table)', () => {
-  /** The five Prisma calls the store makes, over a Map. */
+  /** The Prisma calls the store makes, over a Map. */
   function fakeDb() {
     const rows = new Map();
     const matching = (where) =>
@@ -700,14 +700,14 @@ describe('PrismaSessionStore (over an in-memory Session table)', () => {
       rows,
       session: {
         findUnique: async ({ where }) => rows.get(where.sid) ?? null,
-        upsert: async ({ where, update, create }) => {
-          rows.set(
-            where.sid,
-            rows.has(where.sid) ? { ...rows.get(where.sid), ...update } : create
-          );
+        create: async ({ data }) => {
+          if (rows.has(data.sid)) throw Object.assign(new Error('unique'), { code: 'P2002' });
+          rows.set(data.sid, { ...data });
         },
         updateMany: async ({ where, data }) => {
-          for (const row of matching(where)) Object.assign(row, data);
+          const found = matching(where);
+          for (const row of found) Object.assign(row, data);
+          return { count: found.length };
         },
         deleteMany: async ({ where }) => {
           const found = matching(where);
@@ -761,6 +761,26 @@ describe('PrismaSessionStore (over an in-memory Session table)', () => {
 
     assert.equal(await store.prune(), 1);
     assert.deepEqual([...db.rows.keys()], ['live']);
+  });
+
+  test('saving a new session that another request has just inserted updates it', async () => {
+    const db = fakeDb();
+    const { updateMany } = db.session;
+    let first = true;
+    // The other request's INSERT lands between this one's UPDATE and INSERT.
+    db.session.updateMany = async (args) => {
+      const result = await updateMany(args);
+      if (first) {
+        first = false;
+        db.rows.set('sid', { sid: 'sid', data: '{}', userId: null, expiresAt: inHours(1) });
+      }
+      return result;
+    };
+    const store = new PrismaSessionStore({ getDb: async () => db });
+
+    await call(store, 'set', 'sid', { cookie: { expires: inHours(8) }, userId: 'user-1' });
+    assert.equal(db.rows.size, 1);
+    assert.equal(db.rows.get('sid').userId, 'user-1');
   });
 
   test('without a cookie expiry the idle window is eight hours', async () => {

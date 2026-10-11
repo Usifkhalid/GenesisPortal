@@ -16,6 +16,9 @@ import { getPrisma } from './prisma.js';
 /** Idle timeout: a session unused for this long is gone. */
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
+/** Prisma's code for a unique constraint violation. */
+const UNIQUE_VIOLATION = 'P2002';
+
 /**
  * express-session store over the Session table.
  * `getDb` is injectable so the store can be tested without SQL Server.
@@ -67,7 +70,18 @@ export class PrismaSessionStore extends session.Store {
         expiresAt: this.#expiry(sess),
         userId: sess.userId ?? null,
       };
-      await db.session.upsert({ where: { sid }, update: values, create: { sid, ...values } });
+
+      // Not upsert: on SQL Server Prisma runs it as a SELECT then a write, and
+      // the same new sid saved twice at once fails with a unique violation.
+      // Here the loser of the INSERT updates instead.
+      const save = () => db.session.updateMany({ where: { sid }, data: values });
+      if ((await save()).count > 0) return;
+      try {
+        await db.session.create({ data: { sid, ...values } });
+      } catch (err) {
+        if (err?.code !== UNIQUE_VIOLATION) throw err;
+        await save();
+      }
     }, callback);
   }
 

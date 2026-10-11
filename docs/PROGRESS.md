@@ -209,3 +209,22 @@ Open issues: Home cards, nav ticket count and bell are demo data; no automated f
 tests (Playwright not installed); top-bar search does nothing yet; no help entry point; SQL
 Server and Entra still unproven.
 Next: install SQL Server and migrate (see session 8), then company admin as the first real page.
+
+## Session 10 — SQL Server for real, audit trigger, Playwright (2026-10-11)
+
+Done: SESSION_SECRET rotated; Prisma install scripts approved (`npm approve-scripts`, D56);
+all migrations applied to local SQL Server, seeded, the skipped seed test passes. Signed in
+as a GEN user and the holding admin, restarted the server, both sessions survived. New
+migrations: AuditLog append-only trigger (D52) and Session.sid to NVARCHAR (D54).
+Session store no longer uses upsert (D53). Playwright (Chromium) with `npm run test:e2e`:
+login, Home, sign-out in EN/AR at 1440/360 (D55); rule added to CLAUDE.md.
+Files: package.json, playwright.config.js, eslint.config.js, tests/e2e/{helpers,smoke.spec}.js,
+backend/prisma/{schema.prisma,migrations/*}, backend/src/lib/session.js,
+backend/tests/{audit-trigger,session-store,auth}.test.js, CLAUDE.md, docs/*.
+Verified: `npm test` 98 pass, 0 skipped; `npm run test:e2e` 12 pass; lint clean.
+Open issues: one junk AuditLog row (action `tampered`, entity `Test`) from a test run made
+before the trigger existed; it can no longer be deleted without disabling the trigger.
+char(36)/varchar keys are scanned on every Prisma lookup (D54). e2e leaves a few
+unauthenticated Session rows that expire in 8 h. `npm audit` still reports the Prisma CLI
+advisory. Entra unproven; Home cards are demo data; favicon 404.
+Next: company admin as the first real page (with its own e2e spec).
