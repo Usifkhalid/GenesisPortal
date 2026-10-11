@@ -11,19 +11,7 @@
  * 1440 px and a site phone at 360 px. Chromium only.
  */
 
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
 import { defineConfig } from '@playwright/test';
-
-import { resolveTestDatabaseUrl } from './backend/src/config/test-db.js';
-
-// .env is not loaded by Playwright itself; the portal server reads it on its own.
-const envFile = fileURLToPath(new URL('./.env', import.meta.url));
-if (existsSync(envFile)) process.loadEnvFile(envFile);
-
-// The e2e server runs on the test database, never the development one.
-const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 
@@ -57,7 +45,11 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     env: {
-      ...(testDatabaseUrl ? { DATABASE_URL: testDatabaseUrl } : {}),
+      // The e2e server runs on the test database, never the development one.
+      // Both halves of the command read .env themselves and resolve the same
+      // test database from it (backend/src/config/env.js), so the one that is
+      // emptied and seeded is the one the server then uses.
+      USE_TEST_DATABASE: '1',
       PORT: String(PORT),
       NODE_ENV: 'development',
       AUTH_MODE: 'mock',

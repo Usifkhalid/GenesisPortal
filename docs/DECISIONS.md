@@ -691,7 +691,7 @@ removed goes before the text so its alt text can be cleared in the same save. `e
 is sent only when changed, so the text of an expired post can still be edited. Times are
 entered and shown as Cairo time whatever the device's zone (`format.js` converts).
 
-### D76. The directory is scoped like every other table
+### D76. The directory is scoped like every other table (superseded by D82)
 
 CLAUDE.md rule 1 puts every read of a company's records behind `lib/scope.js`, and a
 person is a record of their company. So a user finds colleagues of their own company (plus
@@ -737,3 +737,78 @@ in the same instant is possible and harmless: the runs are idempotent.
 A real run asks Graph for each person's manager and may take minutes, longer than a
 request should live. The route returns the run and the work continues; the Sync page asks
 for the history every two seconds while the newest run is running.
+
+### D82. The directory is group-wide: the one exception to rule 1
+
+Decided by the product owner in session 15. Every signed-in person can search and open the
+active people of **every** company. This is an explicit, deliberate exception to CLAUDE.md
+rule 1 (company scoping) and it covers **directory reference data only**: names, job title,
+department, company, office, business phone, email, manager and direct reports. It is what
+a staff directory is for in a group whose companies share one HQ. Supersedes D76.
+
+The edges of the exception:
+
+- Mobile numbers still follow the **person's** company (`showMobileInDirectory`), whoever
+  reads.
+- Inactive people stay hidden from everyone.
+- Everything that changes or reports on people stays company-scoped: data quality, the CSV
+  export, Arabic names (D83) and sync are admin-only, a CompanyAdmin within their own
+  companies.
+- No other table gains anything from this. Announcements, audit, admin lists and every
+  module to come keep going through `lib/scope.js`. Rooms are separately shared (D86).
+
+In code it is `companyIds: null` in `searchPeople`, no `assertCompanyAccess` in
+`getPerson`, and every active company in `filters`; `lib/scope.js` is unchanged. A test
+proves a Genesis user finds and opens a Masar person and that the reports stay scoped.
+
+### D83. Arabic names: edited by the person's admins, imported by CSV, never by sync
+
+A CompanyAdmin (own companies) or HoldingAdmin sets a person's Arabic display name from
+the person panel (`PATCH /api/admin/directory/people/:id`, audited as
+`directory.person.arabic_name` with before and after). Because the person is visible to
+everyone now, a refusal is 403, not 404. The panel learns whether to offer the form from
+`canEditArabicName` on the person, worked out by the server.
+
+Many at once: a CSV of `email, arabicName` on the Data quality page. The upload is
+stateless: `preview` and `apply` both take the file and run the same reading, so there is
+no server-side draft to expire and what is applied is what the file says at that moment.
+The reading sorts rows into changes, unchanged, unknown emails, out of the admin's scope
+and invalid (not an email, empty name, over 200 characters, repeated email). **An empty
+name never clears one**: a half-filled sheet must not wipe names (clearing is done per
+person). Limits: 1 MB, 2,000 rows. Applying is one transaction and writes one audit row
+per company touched (`directory.arabic_names.import`) carrying the counts and the old and
+new names, so an import can be undone by hand; a file that changes nothing writes nothing.
+Semicolon-separated files (Excel in Arabic and European locales) are read too.
+
+Sync never writes `displayNameAr` (D79) and rebuilds the search key from the stored name,
+which a test now proves for a name an admin set.
+
+### D84. Why 91 API tests once failed with 403, and what was wrong with the e2e database
+
+The burst (session 14) was `csrf_invalid` on mock sign-in. Cause: the API tests pass
+`config.NODE_ENV: 'development'` to reach mock sign-in, and `createApp` chose its session
+store from that value, so the tests kept their sessions in the **shared test database**,
+not in memory as intended. Anything that emptied `mgportal_test` while they ran (a second
+`npm test`, or the start of `npm run test:e2e`) deleted the sessions between "get the CSRF
+token" and "sign in". Reproduced on demand by emptying the database mid-run. Fix:
+`createApp` also checks the process's own `isTest`, so API tests are in memory whatever
+config they pass. Five runs in a row: 199/199 each, before and after.
+
+Looking for it turned up a second fault. `playwright.config.js` handed the e2e server a
+ready-made test URL as `DATABASE_URL`; the prepare script then derived its own test name
+from that and emptied and seeded `mgportal_test_test`, while the server ran on
+`mgportal_test`, which was only ever emptied by `npm test`. E2E data had been piling up
+between runs. Now the e2e command sets `USE_TEST_DATABASE=1`; `config/env.js` makes the
+switch itself and marks it (`TEST_DATABASE_ACTIVE=1`), and the prepare script uses the
+switched URL as it is. `mgportal_test_test` is left on the local server, unused.
+
+### D85. Local databases read by row version, like Azure SQL
+
+With a truly fresh e2e database the first directory sync wrote 38 people while other pages
+read them, and SQL Server picked readers as deadlock victims (`/api/auth/mock-users` 500).
+Azure SQL has `READ_COMMITTED_SNAPSHOT` on by default and would not; a local Developer
+edition has it off. `db-admin.js` now switches it on for the test database (every prepare,
+only when off) and for a development database made by `npm run db:reset`. Two writers can
+still deadlock, so the sync's batches and the directory store's transactions retry on
+Prisma `P2034` (up to four attempts). An existing development database is not altered:
+run `npm run db:reset`, or `ALTER DATABASE … SET READ_COMMITTED_SNAPSHOT ON` by hand.

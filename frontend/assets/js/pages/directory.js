@@ -10,14 +10,17 @@
  * becoming a history entry or a re-render. A person opens in a side panel,
  * where manager and direct reports are people to open in turn.
  *
- * The API returns only what the reader's companies allow, so the company
- * filter offers nothing the reader could not already see.
+ * The directory is group-wide: everyone finds the active people of every
+ * company, so the company filter lists them all. An administrator of a
+ * person's company can set their Arabic name from the panel.
  */
 
 import { api } from '../api.js';
 import { openModal } from '../components/dialog.js';
+import { describedBy, field, setBusy, setFieldError } from '../components/form.js';
 import { icon } from '../components/icons.js';
 import { loadFailedNotice } from '../components/notice.js';
+import { showToast } from '../components/toast.js';
 import {
   avatarHtml,
   dirOf,
@@ -392,7 +395,92 @@ export async function render(root, ctx) {
             : `<p class="dir-panel__none">${esc(t('directory.panel.noReports'))}</p>`
         }
       </section>
+      ${p.canEditArabicName ? arabicNameHtml(p) : ''}
     </div>`;
+  }
+
+  /** For an administrator of this person's company only (the API says who). */
+  function arabicNameHtml(p) {
+    return `<details class="dir-arname">
+      <summary class="dir-arname__summary">${esc(t('directory.panel.arabicEdit'))}</summary>
+      <form class="dir-arname__form" id="dirArForm" novalidate>
+        ${field({
+          id: 'dirArName',
+          label: t('directory.panel.arabicLabel'),
+          help: t('directory.panel.arabicHelp'),
+          control: `<input class="input" id="dirArName" name="displayNameAr" type="text"
+            lang="ar" dir="rtl" maxlength="200" autocomplete="off"
+            value="${esc(p.displayNameAr ?? '')}" aria-describedby="${describedBy('dirArName')}" />`,
+        })}
+        <div>
+          <button type="submit" class="btn btn--primary">
+            <span class="btn__label">${esc(t('action.save'))}</span>
+          </button>
+        </div>
+      </form>
+    </details>`;
+  }
+
+  function wireArabicName(content, person) {
+    const form = content.querySelector('#dirArForm');
+    if (!form) return;
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('[type="submit"]');
+      setFieldError(form, 'dirArName', '');
+      setBusy(button, true, t('action.saving'));
+      let saved;
+      try {
+        saved = await api(`/api/admin/directory/people/${encodeURIComponent(person.id)}`, {
+          method: 'PATCH',
+          body: { displayNameAr: form.elements.displayNameAr.value },
+          quiet: true,
+        });
+      } catch (err) {
+        setBusy(button, false, t('action.save'));
+        setFieldError(
+          form,
+          'dirArName',
+          t(
+            err?.status === 403
+              ? 'directory.panel.arabicForbidden'
+              : 'directory.panel.arabicFailed'
+          )
+        );
+        form.elements.displayNameAr.focus();
+        return;
+      }
+      showToast({ tone: 'success', titleKey: 'directory.panel.arabicSaved' });
+      drawPerson(saved, { focusTitle: true });
+      // The cards behind the panel carry the name too.
+      load();
+    });
+  }
+
+  function drawPerson(person, { focusTitle = false } = {}) {
+    // Closed while a save was on its way: nothing to draw into.
+    if (!panel) return;
+    const { dialog } = panel;
+    const content = dialog.querySelector('.dialog__body');
+    const title = dialog.querySelector('.dialog__title');
+    const { primary } = namesOf(person);
+    title.textContent = primary.text;
+    title.setAttribute('lang', primary.lang);
+    title.setAttribute('dir', dirOf(primary.lang));
+    content.innerHTML = panelHtml(person);
+    content.setAttribute('aria-busy', 'false');
+    history.replaceState(null, '', `#directory/${person.id}`);
+
+    for (const button of content.querySelectorAll('[data-person]')) {
+      button.addEventListener('click', () =>
+        showPerson(button.dataset.person, { focusTitle: true })
+      );
+    }
+    wireArabicName(content, person);
+    if (focusTitle) {
+      title.setAttribute('tabindex', '-1');
+      title.focus();
+    }
   }
 
   async function showPerson(id, { focusTitle = false } = {}) {
@@ -415,23 +503,7 @@ export async function render(root, ctx) {
       return;
     }
 
-    const { primary } = namesOf(person);
-    title.textContent = primary.text;
-    title.setAttribute('lang', primary.lang);
-    title.setAttribute('dir', dirOf(primary.lang));
-    content.innerHTML = panelHtml(person);
-    content.setAttribute('aria-busy', 'false');
-    history.replaceState(null, '', `#directory/${id}`);
-
-    for (const button of content.querySelectorAll('[data-person]')) {
-      button.addEventListener('click', () =>
-        showPerson(button.dataset.person, { focusTitle: true })
-      );
-    }
-    if (focusTitle) {
-      title.setAttribute('tabindex', '-1');
-      title.focus();
-    }
+    drawPerson(person, { focusTitle });
   }
 
   async function openPanel(id) {

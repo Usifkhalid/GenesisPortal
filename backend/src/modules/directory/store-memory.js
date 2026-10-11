@@ -136,6 +136,16 @@ export function createMemoryDirectoryStore(repo) {
         .map(view);
     },
 
+    /* ---- Arabic names */
+    async findUsersByEmails(emails) {
+      const wanted = new Set(emails);
+      return users.filter((u) => wanted.has(u.email.toLowerCase())).map(view);
+    },
+
+    async setArabicName(id, displayNameAr, searchKey) {
+      Object.assign(byId(users, id), { displayNameAr, searchKey });
+    },
+
     /* ---- sync runs */
     async findRunningRun(since) {
       const found = syncRuns.find((r) => r.status === 'running' && r.startedAt >= since);

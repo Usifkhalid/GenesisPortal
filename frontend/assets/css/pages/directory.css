@@ -257,6 +257,36 @@
   color: var(--text-muted);
 }
 
+/* An administrator's own corner of the panel: closed until asked for. */
+.dir-arname {
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+.dir-arname__summary {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.dir-arname__summary:focus-visible {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+.dir-arname__form,
+.dq-import__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dir-arname__form {
+  padding-block: var(--space-2) var(--space-3);
+}
+
 /* --- Top-bar typeahead --------------------------------------------------- */
 .topbar__search {
   position: relative;
@@ -411,6 +441,12 @@
 .dq-people__meta {
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+.dq-import__summary {
+  margin: 0;
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
 }
 
 /* --- Admin: sync --------------------------------------------------------- */

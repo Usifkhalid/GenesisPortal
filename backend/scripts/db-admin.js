@@ -53,13 +53,36 @@ async function exists(db, name) {
   return rows[0]?.id != null;
 }
 
-/** Creates the database when it is missing. @returns {Promise<boolean>} true when created */
+/**
+ * Turns READ_COMMITTED_SNAPSHOT on, as Azure SQL has it by default: a reader
+ * sees the last committed row instead of waiting on a writer's lock. Without
+ * it a local database deadlocks readers against the directory sync, which
+ * production never would (docs/DECISIONS.md D85). Changing it closes the
+ * database's other connections, so it is done only when it is off.
+ * @returns {Promise<boolean>} true when it had to be switched on
+ */
+async function ensureRowVersioning(db, name) {
+  const rows = await db.$queryRawUnsafe(
+    `SELECT is_read_committed_snapshot_on AS isOn FROM sys.databases WHERE name = N'${name}'`
+  );
+  if (rows[0]?.isOn) return false;
+  await db.$executeRawUnsafe(
+    `ALTER DATABASE [${name}] SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE`
+  );
+  return true;
+}
+
+/**
+ * Creates the database when it is missing, and makes sure it reads by row
+ * version. @returns {Promise<boolean>} true when created
+ */
 export async function ensureDatabase(url) {
   const name = assertName(databaseName(url));
   return withMaster(url, async (db) => {
-    if (await exists(db, name)) return false;
-    await db.$executeRawUnsafe(`CREATE DATABASE [${name}]`);
-    return true;
+    const missing = !(await exists(db, name));
+    if (missing) await db.$executeRawUnsafe(`CREATE DATABASE [${name}]`);
+    await ensureRowVersioning(db, name);
+    return missing;
   });
 }
 
@@ -74,6 +97,7 @@ export async function recreateDatabase(url) {
       await db.$executeRawUnsafe(`DROP DATABASE [${name}]`);
     }
     await db.$executeRawUnsafe(`CREATE DATABASE [${name}]`);
+    await ensureRowVersioning(db, name);
   });
 }
 

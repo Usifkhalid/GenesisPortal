@@ -16,7 +16,13 @@ import { cleanTestDatabase, ensureDatabase, migrateDeploy } from './db-admin.js'
 
 /** @param {{ seed?: boolean }} [options] */
 export async function prepareTestDatabase({ seed = false } = {}) {
-  const url = resolveTestDatabaseUrl(process.env);
+  // env.js may already have switched DATABASE_URL to the test database (the
+  // e2e server's environment); resolving again would name "<name>_test_test".
+  // cleanTestDatabase still refuses any name that does not end in _test.
+  const url =
+    process.env.TEST_DATABASE_ACTIVE === '1'
+      ? process.env.DATABASE_URL
+      : resolveTestDatabaseUrl(process.env);
   if (!url || url.includes('CHANGE_ME')) {
     console.log('test database: none configured, tests use memory.');
     return null;

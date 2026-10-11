@@ -229,14 +229,18 @@ announcement's company; holding-wide ones under no company. Reads are not audite
 
 ### Directory (`/api/directory`, `/api/admin/directory`)
 
-Any signed-in person reads the directory, limited to their companies (their own, plus
-any they administer; a HoldingAdmin reads all). It returns work information only.
+The directory is **group-wide**: any signed-in person finds and opens the active people of
+every company (the one exception to company scoping, DECISIONS D82). It returns work
+information only. Reports, Arabic names and sync stay admin-only and company-scoped.
 
 | Route | Who | Notes |
 |---|---|---|
-| `GET /api/directory/people?q=&companyId=&departmentId=&lang=&page=&pageSize=` | any | active people; `q` is matched word by word (every word) against English and Arabic name, email and job title, ignoring case, Arabic diacritics and the letter variants أ إ آ ا, ى ي, ة ه. Sorted by name in `lang` (the English name where there is no Arabic one). `pageSize` max 50. → `{ items, total, page, pageSize }`. A `companyId` outside scope is 404. |
-| `GET /api/directory/people/:id` | any | the person: names in both languages, job title, department, company, `officeLocation`, `phone` (business), `email`, `manager`, `directReports`. `mobilePhone` is `null` unless the person's company has `showMobileInDirectory` on. Another company's person, or an inactive one, is 404. |
-| `GET /api/directory/filters` | any | the companies and active departments the reader may filter by |
+| `GET /api/directory/people?q=&companyId=&departmentId=&lang=&page=&pageSize=` | any | active people; `q` is matched word by word (every word) against English and Arabic name, email and job title, ignoring case, Arabic diacritics and the letter variants أ إ آ ا, ى ي, ة ه. Sorted by name in `lang` (the English name where there is no Arabic one). `pageSize` max 50. → `{ items, total, page, pageSize }`. `companyId` only narrows the list; any company may be asked for. |
+| `GET /api/directory/people/:id` | any | the person: names in both languages, job title, department, company, `officeLocation`, `phone` (business), `email`, `manager`, `directReports`. `mobilePhone` is `null` unless the person's own company has `showMobileInDirectory` on, whoever reads. `canEditArabicName` is true for an admin of the person's company. An inactive person is 404. |
+| `GET /api/directory/filters` | any | every active company and its active departments |
+| `PATCH /api/admin/directory/people/:id` | HA, CA | `{ displayNameAr }` (max 200; empty clears it) → the person. Only an admin of the person's company: otherwise 403. Audited as `directory.person.arabic_name`. |
+| `POST /api/admin/directory/arabic-names/preview` | HA, CA | body: the CSV file itself (UTF-8, comma or semicolon, first row `email, arabicName`; 1 MB, 2,000 rows). Writes nothing. → `{ rows, matched, unchanged, changes: [{ id, email, displayNameEn, companyCode, from, to }], unknown: [email], outOfScope: [email], invalid: [{ line, email, reason }] }`; `reason` is `email`, `empty`, `tooLong` or `duplicate`. Errors: 400 `empty_upload`, `csv_invalid`, `csv_too_many_rows`; 413 over 1 MB. |
+| `POST /api/admin/directory/arabic-names/apply` | HA, CA | the same file again → the same body plus `applied`. One transaction; one audit row per company touched, `directory.arabic_names.import`, with the counts and the old and new names. An empty name in the file never clears one. |
 | `GET /api/admin/directory/quality?companyId=` | HA, CA | per company: `activeUsers`, `counts` and `lists` (capped at 200) for `missingCompany`, `missingDepartment`, `missingJobTitle`, `missingManager`, `missingBusinessPhone`, `missingArabicName`; `unmatchedDepartments` (Graph names no department matched, with people counts). `unplaced` (people no company could be found for, from the last successful run) is HoldingAdmin only. A CompanyAdmin gets their own companies; another company is 404. |
 | `GET /api/admin/directory/quality/export.csv?companyId=` | HA, CA | the same gaps, one row per person and issue; audited as `directory.quality.export` |
 | `GET /api/admin/directory/sync` | HA | the last 20 runs; the newest carries its `warnings`, the others only `warningCount` |

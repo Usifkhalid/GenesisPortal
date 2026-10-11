@@ -717,7 +717,48 @@
         "company": "Company in Graph",
         "count": "People"
       },
-      "loadFailed": "The report could not be loaded."
+      "loadFailed": "The report could not be loaded.",
+      "import": {
+        "title": "Import Arabic names",
+        "help": "Upload a CSV file with two columns, email and arabicName. You see what would change before anything is saved, and directory sync never overwrites these names.",
+        "file": "CSV file",
+        "fileHelp": "UTF-8, up to 1 MB and 2,000 rows.",
+        "preview": "Preview",
+        "reading": "Reading",
+        "apply": "Apply {count} changes",
+        "applying": "Applying",
+        "chooseFile": "Choose a CSV file first.",
+        "summary": "{rows} rows read: {changes} to change, {unchanged} already correct, {unknown} unknown emails, {invalid} rows skipped.",
+        "outOfScope": "{count} people belong to companies you do not administer and are left as they are.",
+        "changesTitle": "Names that will change",
+        "noChanges": "Nothing to change: every matched name is already the same.",
+        "unknownTitle": "Emails not in the directory",
+        "invalidTitle": "Rows skipped",
+        "more": "Showing the first {shown} of {count}.",
+        "empty": "None",
+        "col": {
+          "person": "Person",
+          "email": "Email",
+          "current": "Current name",
+          "next": "New name",
+          "line": "Line",
+          "reason": "Why"
+        },
+        "reason": {
+          "email": "Not an email address",
+          "empty": "No Arabic name",
+          "tooLong": "Name longer than 200 characters",
+          "duplicate": "Email repeated in the file"
+        },
+        "done": "Arabic names updated",
+        "doneText": "{count} names changed.",
+        "error": {
+          "csv_invalid": "The file must be a UTF-8 CSV whose first row names the columns email and arabicName.",
+          "csv_too_many_rows": "The file has more than 2,000 rows. Split it and import each part.",
+          "tooLarge": "The file is larger than 1 MB.",
+          "failed": "The file could not be read. Try again."
+        }
+      }
     },
     "sync": {
       "lead": "People are copied from Microsoft Entra every night at 02:00 Cairo time. Run it now after a change.",
@@ -855,6 +896,17 @@
           "update": "Cover image replaced",
           "remove": "Cover image removed"
         }
+      },
+      "directory": {
+        "person": {
+          "arabic_name": "Arabic name edited"
+        },
+        "arabic_names": {
+          "import": "Arabic names imported"
+        },
+        "quality": {
+          "export": "Data-quality report exported"
+        }
       }
     },
     "entity": {
@@ -862,7 +914,11 @@
       "Department": "Department",
       "RoleAssignment": "Administrator role",
       "AuditLog": "Audit log",
-      "Announcement": "Announcement"
+      "Announcement": "Announcement",
+      "UserProfile": "Person",
+      "DirectoryImport": "Directory import",
+      "DirectoryReport": "Directory report",
+      "SyncRun": "Directory sync"
     },
     "field": {
       "code": "Code",
@@ -894,7 +950,16 @@
       "isPinned": "Pinned",
       "publishAt": "Publishes at",
       "expiresAt": "Expires at",
-      "copiedFrom": "Copied from"
+      "copiedFrom": "Copied from",
+      "displayNameAr": "Arabic name",
+      "email": "Email",
+      "changed": "Names changed",
+      "fileRows": "Rows in the file",
+      "unchanged": "Already correct",
+      "unknown": "Unknown emails",
+      "outOfScope": "Outside the admin’s companies",
+      "invalid": "Rows skipped",
+      "names": "Names"
     }
   },
   "ann": {
@@ -1133,7 +1198,13 @@
       "notListed": "Not listed",
       "loading": "Loading",
       "failed": "This person could not be loaded.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "arabicEdit": "Edit Arabic name",
+      "arabicLabel": "Arabic name",
+      "arabicHelp": "Shown wherever the portal is read in Arabic. Leave it empty to show the English name. Directory sync never changes it.",
+      "arabicSaved": "Arabic name saved",
+      "arabicFailed": "The name could not be saved. Try again.",
+      "arabicForbidden": "You can only change names in a company you administer."
     }
   }
 }

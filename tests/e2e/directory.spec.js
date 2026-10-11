@@ -6,9 +6,14 @@
  * The holding admin runs the user sync and reads the data-quality report with
  * the deliberate gaps in the mock Graph data.
  *
+ * The directory is group-wide, so the Genesis user also finds a Masar person.
+ * Administrators set Arabic names: one from the person panel, many from a CSV
+ * on the Data quality page.
+ *
  * Run twice in parallel on one database (desktop and phone projects), so the
  * sync test waits for a run already in progress instead of assuming it is the
- * only one.
+ * only one, and each Arabic-name test writes a name of its own to a person no
+ * other spec signs in as or reads the name of.
  */
 
 import {
@@ -28,6 +33,14 @@ const SALMA = {
   ar: { typed: 'سلمي', name: 'سلمى إبراهيم' },
 };
 const SALMA_EMAIL = 'salma.ibrahim@genesismining-eg.com';
+const MASAR = { en: 'Masar', ar: 'مسار' };
+
+/** A different name for each of the four runs (two languages, two screens). */
+function ownName(page, lang, base) {
+  const wide = page.viewportSize().width > 600;
+  const suffix = { en: ['الأول', 'الثاني'], ar: ['الثالث', 'الرابع'] }[lang][wide ? 0 : 1];
+  return `${base} ${suffix}`;
+}
 
 for (const lang of LANGUAGES) {
   test.describe(`in ${lang}`, () => {
@@ -66,6 +79,8 @@ for (const lang of LANGUAGES) {
       );
       await expect(panel.locator(`a[href="mailto:${SALMA_EMAIL}"]`)).toBeVisible();
       await expect(panel.locator('a[href^="tel:"]')).toHaveCount(1);
+      // Setting a name is an administrator's job: a user is not offered it.
+      await expect(panel.locator('.dir-arname')).toHaveCount(0);
 
       // The manager is a person to open in turn.
       await panel.locator('.dir-people [data-person]').first().click();
@@ -74,6 +89,96 @@ for (const lang of LANGUAGES) {
 
       await page.keyboard.press('Escape');
       await expect(panel).toHaveCount(0);
+    });
+
+    test('a user finds a person in another company', async ({ page }) => {
+      await signIn(page, { company: 'GEN', role: 'User', lang });
+      await page.goto('/#directory?q=tarek.elmasry');
+      const card = page.locator('.dir-card');
+      await expect(card).toHaveCount(1);
+      await expect(card.locator('.dir-card__company')).toHaveText(MASAR[lang]);
+      // The company filter offers every company, not only the reader's own.
+      await expect(
+        page.locator('#dirCompany option', { hasText: MASAR[lang] }).first()
+      ).toBeAttached();
+
+      await card.locator('.dir-card__link').click();
+      const panel = page.locator('dialog.dir-drawer[open]');
+      await expect(panel.locator('a[href="mailto:tarek.elmasry@masar.eg"]')).toBeVisible();
+      await expectNoSidewaysScroll(page);
+    });
+
+    test('a company admin sets a colleague’s Arabic name from the panel', async ({ page }) => {
+      await signIn(page, { company: 'GEN', role: 'CompanyAdmin', lang });
+      await page.goto('/#directory?q=mahmoud.attia');
+      await page.locator('.dir-card__link').click();
+      const panel = page.locator('dialog.dir-drawer[open]');
+
+      const name = ownName(page, lang, 'محمود عطية');
+      await panel.locator('.dir-arname__summary').click();
+      const input = panel.getByLabel(t(lang, 'directory.panel.arabicLabel'));
+      await expect(input).toHaveAttribute('dir', 'rtl');
+      await input.fill(name);
+      await shot(page, `directory-arabic-name-${lang}`);
+      await panel.getByRole('button', { name: t(lang, 'action.save') }).click();
+
+      // The panel is redrawn from the saved record.
+      await expect(panel.locator('#dirArName')).toHaveValue(name);
+      await expect(panel).toContainText(name);
+      await expect(page.locator('.toast')).toContainText(
+        t(lang, 'directory.panel.arabicSaved')
+      );
+      await expectNoSidewaysScroll(page);
+
+      // Someone in another company is shown, but not offered for editing.
+      await page.keyboard.press('Escape');
+      await page.goto('/#directory?q=tarek.elmasry');
+      await page.locator('.dir-card__link').click();
+      await expect(panel.locator('.dir-panel__strip')).toBeVisible();
+      await expect(panel.locator('.dir-arname')).toHaveCount(0);
+    });
+
+    test('the holding admin imports Arabic names from a CSV', async ({ page }) => {
+      await signIn(page, { company: 'HLD', role: 'HoldingAdmin', lang });
+      await page.goto('/#admin/quality');
+      const section = page.locator('.dq-import');
+      await expect(section).toBeVisible();
+
+      // Preview with no file says so, on the field.
+      const preview = section.getByRole('button', {
+        name: t(lang, 'admin.quality.import.preview'),
+      });
+      await preview.click();
+      await expect(section.locator('#dqImportFile-error')).toHaveText(
+        t(lang, 'admin.quality.import.chooseFile')
+      );
+
+      const name = ownName(page, lang, 'عمر فهمي');
+      const csv = [
+        'email,arabicName',
+        `omar.fahmy@mgholding.example,${name}`,
+        'nobody@mgholding.example,لا أحد',
+        'not-an-email,اسم',
+        '',
+      ].join('\r\n');
+      await section.locator('#dqImportFile').setInputFiles({
+        name: 'arabic-names.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(csv, 'utf8'),
+      });
+      await preview.click();
+
+      const result = section.locator('#dqImportResult');
+      await expect(result).toContainText('omar.fahmy@mgholding.example');
+      await expect(result).toContainText(name);
+      await expect(result).toContainText('nobody@mgholding.example');
+      await expect(result).toContainText(t(lang, 'admin.quality.import.reason.email'));
+      await shot(page, `admin-import-${lang}`);
+      await expectNoSidewaysScroll(page);
+
+      await result.locator('#dqImportApply').click();
+      await expect(section.locator('#dqImportDone')).toBeVisible();
+      await expect(page.locator('.toast')).toContainText(t(lang, 'admin.quality.import.done'));
     });
 
     test('a typeahead result opens the person directly', async ({ page }) => {

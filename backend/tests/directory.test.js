@@ -58,6 +58,9 @@ async function signIn(app, user) {
     get: (path) => agent.get(path),
     post: (path, body = {}) => send('post', path, body),
     patch: (path, body) => send('patch', path, body),
+    /** Posts a file as the request body, as the browser does. */
+    upload: (path, text) =>
+      agent.post(path).set('X-CSRF-Token', csrf).set('Content-Type', 'text/csv').send(text),
   };
 }
 
@@ -416,26 +419,84 @@ describe('search', () => {
 });
 
 describe('visibility', () => {
-  test('a user reads only their own company; another company answers 404', async () => {
+  test('the directory is group-wide: a user finds and opens people in every company', async () => {
     const w = await world();
     await w.sync();
 
-    const mine = await w.find(w.gen, '', '&pageSize=50');
-    assert.ok(mine.length > 0 && mine.every((p) => p.company.code === 'GEN'));
-    assert.deepEqual(await w.find(w.gen, 'Tarek El-Masry'), []);
+    const everyone = await w.find(w.gen, '', '&pageSize=50');
+    assert.deepEqual([...new Set(everyone.map((p) => p.company.code))].sort(), [
+      'GEN',
+      'HLD',
+      'MSR',
+    ]);
+    assert.equal(
+      (await w.gen.get('/api/directory/people?pageSize=1')).body.total,
+      (await w.ha.get('/api/directory/people?pageSize=1')).body.total
+    );
 
-    const [tarek] = await w.find(w.ha, 'Tarek El-Masry');
+    // A Genesis user finds a Masar person, opens them, and sees work details only.
+    const [tarek] = await w.find(w.gen, 'Tarek El-Masry');
+    assert.equal(tarek.company.code, 'MSR');
     const detail = await w.gen.get(`/api/directory/people/${tarek.id}`);
-    assert.equal(detail.status, 404);
+    assert.equal(detail.status, 200);
+    assert.equal(detail.body.email, 'tarek.elmasry@masar.eg');
+    assert.ok(detail.body.directReports.length > 0);
+    assert.equal(detail.body.canEditArabicName, false);
+    assert.deepEqual(Object.keys(detail.body).sort(), [
+      'canEditArabicName',
+      'company',
+      'department',
+      'directReports',
+      'displayNameAr',
+      'displayNameEn',
+      'email',
+      'id',
+      'jobTitle',
+      'manager',
+      'mobilePhone',
+      'officeLocation',
+      'phone',
+    ]);
 
-    const asked = await w.gen.get(`/api/directory/people?companyId=${w.msrId}`);
-    assert.equal(asked.status, 404);
+    const masar = await w.find(w.gen, '', `&companyId=${w.msrId}&pageSize=50`);
+    assert.ok(masar.length > 0 && masar.every((p) => p.company.code === 'MSR'));
 
     const filters = (await w.gen.get('/api/directory/filters')).body;
     assert.deepEqual(
       filters.companies.map((c) => c.code),
-      ['GEN']
+      ['GEN', 'HLD', 'MSR']
     );
+    assert.ok(filters.departments.some((d) => d.companyId === w.msrId));
+  });
+
+  test('inactive people stay hidden from everyone, in every company', async () => {
+    const w = await world();
+    const rania = w.repo.users.find((u) => u.email === 'rania.farouk@masar.eg');
+    rania.isActive = false;
+    assert.deepEqual(await w.find(w.gen, 'Rania Farouk'), []);
+    assert.equal((await w.gen.get(`/api/directory/people/${rania.id}`)).status, 404);
+    assert.equal((await w.ha.get(`/api/directory/people/${rania.id}`)).status, 404);
+  });
+
+  test('a mobile number follows the person’s company, not the reader’s', async () => {
+    const w = await world();
+    await w.sync();
+    const [salma] = await w.find(w.msr, 'Salma Ibrahim');
+    const [nermine] = await w.find(w.gen, 'Nermine');
+
+    // Masar turns mobiles on; Genesis leaves them off.
+    const company = (await w.ha.get(`/api/admin/companies/${w.msrId}`)).body;
+    const on = await w.ha.patch(`/api/admin/companies/${w.msrId}`, {
+      updatedAt: company.updatedAt,
+      showMobileInDirectory: true,
+    });
+    assert.equal(on.status, 200, JSON.stringify(on.body));
+
+    // A Masar reader still sees no Genesis mobile; a Genesis reader sees Masar's.
+    const genPerson = (await w.msr.get(`/api/directory/people/${salma.id}`)).body;
+    assert.equal(genPerson.mobilePhone, null);
+    const msrPerson = (await w.gen.get(`/api/directory/people/${nermine.id}`)).body;
+    assert.ok(msrPerson.mobilePhone);
   });
 
   test('a mobile number shows only when the company turns it on, and that is audited', async () => {
@@ -465,6 +526,196 @@ describe('visibility', () => {
     );
     assert.match(audit.after, /"showMobileInDirectory":true/);
     assert.match(audit.before, /"showMobileInDirectory":false/);
+  });
+});
+
+describe('Arabic names', () => {
+  const NAME = 'محمود عطية الله';
+
+  test('a company admin sets a name in their own company; it is audited and searchable', async () => {
+    const w = await world();
+    const mahmoud = w.repo.users.find((u) => u.email === 'mahmoud.attia@genesismining-eg.com');
+    const before = mahmoud.displayNameAr;
+
+    const seen = await w.caGen.get(`/api/directory/people/${mahmoud.id}`);
+    assert.equal(seen.body.canEditArabicName, true);
+
+    const res = await w.caGen.patch(`/api/admin/directory/people/${mahmoud.id}`, {
+      displayNameAr: `  ${NAME}  `,
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.displayNameAr, NAME);
+    assert.deepEqual(
+      (await w.find(w.msr, 'عطيه الله')).map((p) => p.id),
+      [mahmoud.id]
+    );
+
+    const [audit] = w.repo.auditLogs.filter((a) => a.action === 'directory.person.arabic_name');
+    assert.equal(audit.actorId, w.caGen.user.id);
+    assert.equal(audit.companyId, w.genId);
+    assert.equal(audit.entityId, mahmoud.id);
+    assert.equal(JSON.parse(audit.before).displayNameAr, before);
+    assert.equal(JSON.parse(audit.after).displayNameAr, NAME);
+
+    // Saving the same name again writes nothing.
+    await w.caGen.patch(`/api/admin/directory/people/${mahmoud.id}`, { displayNameAr: NAME });
+    assert.equal(
+      w.repo.auditLogs.filter((a) => a.action === 'directory.person.arabic_name').length,
+      1
+    );
+  });
+
+  test('only an admin of the person’s company may set it', async () => {
+    const w = await world();
+    const tarek = w.repo.users.find((u) => u.email === 'tarek.elmasry@masar.eg');
+    const path = `/api/admin/directory/people/${tarek.id}`;
+    const before = tarek.displayNameAr;
+
+    assert.equal((await w.gen.patch(path, { displayNameAr: NAME })).status, 403);
+    assert.equal((await w.msr.patch(path, { displayNameAr: NAME })).status, 403);
+    // A Genesis admin sees the Masar person but cannot change them.
+    assert.equal((await w.caGen.patch(path, { displayNameAr: NAME })).status, 403);
+    assert.equal(tarek.displayNameAr, before);
+    assert.equal(w.repo.auditLogs.length, 0);
+
+    assert.equal((await w.ha.patch(path, { displayNameAr: NAME })).status, 200);
+    assert.equal(tarek.displayNameAr, NAME);
+    assert.equal((await w.ha.patch(path, { displayNameAr: 'x'.repeat(201) })).status, 400);
+    assert.equal((await w.ha.patch(path, { displayNameEn: 'Nope' })).status, 400);
+  });
+
+  test('sync never overwrites a name an admin set', async () => {
+    const w = await world();
+    await w.sync();
+    const laila = w.repo.users.find((u) => u.email === 'laila.hassan@mgholding.example');
+    assert.equal(laila.displayNameAr, '');
+    await w.ha.patch(`/api/admin/directory/people/${laila.id}`, { displayNameAr: 'ليلى حسن' });
+
+    const run = await w.sync();
+    assert.equal(run.status, 'success');
+    assert.deepEqual([run.created, run.updated, run.deactivated], [0, 0, 0]);
+    assert.equal(laila.displayNameAr, 'ليلى حسن');
+    // Still found by it after the sync rebuilt the search key.
+    assert.deepEqual(
+      (await w.find(w.gen, 'ليلي')).map((p) => p.id),
+      [laila.id]
+    );
+  });
+
+  const FILE = [
+    '\uFEFFEmail,Arabic Name',
+    'MAHMOUD.ATTIA@genesismining-eg.com,"محمود عطية الله"',
+    'salma.ibrahim@genesismining-eg.com,سلمى إبراهيم',
+    'tarek.elmasry@masar.eg,طارق المصري الكبير',
+    'nobody@genesismining-eg.com,لا أحد',
+    'not-an-email,اسم',
+    'dina.khalil@genesismining-eg.com,',
+    'mahmoud.attia@genesismining-eg.com,مكرر',
+    '',
+  ].join('\r\n');
+
+  test('the import previews matches, unknown emails and changes without writing', async () => {
+    const w = await world();
+    const res = await w.ha.upload('/api/admin/directory/arabic-names/preview', FILE);
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.rows, 7);
+    assert.equal(res.body.matched, 3);
+    assert.equal(res.body.unchanged, 1); // Salma already has this name
+    assert.deepEqual(
+      res.body.changes.map((c) => [c.email, c.companyCode, c.from, c.to]),
+      [
+        ['mahmoud.attia@genesismining-eg.com', 'GEN', 'محمود عطية', 'محمود عطية الله'],
+        ['tarek.elmasry@masar.eg', 'MSR', 'طارق المصري', 'طارق المصري الكبير'],
+      ]
+    );
+    assert.deepEqual(res.body.unknown, ['nobody@genesismining-eg.com']);
+    assert.deepEqual(
+      res.body.invalid.map((i) => [i.line, i.reason]),
+      [
+        [6, 'email'],
+        [7, 'empty'],
+        [8, 'duplicate'],
+      ]
+    );
+    assert.equal(w.repo.auditLogs.length, 0);
+    assert.equal(
+      w.repo.users.find((u) => u.email === 'tarek.elmasry@masar.eg').displayNameAr,
+      'طارق المصري'
+    );
+  });
+
+  test('applying writes the changes and audits them with counts, per company', async () => {
+    const w = await world();
+    const res = await w.ha.upload('/api/admin/directory/arabic-names/apply', FILE);
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.applied, 2);
+
+    const nameOf = (email) => w.repo.users.find((u) => u.email === email).displayNameAr;
+    assert.equal(nameOf('mahmoud.attia@genesismining-eg.com'), 'محمود عطية الله');
+    assert.equal(nameOf('tarek.elmasry@masar.eg'), 'طارق المصري الكبير');
+    assert.equal(nameOf('dina.khalil@genesismining-eg.com'), 'دينا خليل'); // empty cell: untouched
+
+    const audits = w.repo.auditLogs.filter((a) => a.action === 'directory.arabic_names.import');
+    assert.deepEqual(audits.map((a) => a.companyId).sort(), [w.genId, w.msrId].sort());
+    const gen = JSON.parse(audits.find((a) => a.companyId === w.genId).after);
+    assert.deepEqual(
+      [gen.changed, gen.fileRows, gen.unchanged, gen.unknown, gen.invalid],
+      [1, 7, 1, 1, 3]
+    );
+    assert.deepEqual(gen.names, [
+      { email: 'mahmoud.attia@genesismining-eg.com', displayNameAr: 'محمود عطية الله' },
+    ]);
+
+    // The same file again changes nothing and writes no audit row.
+    const again = await w.ha.upload('/api/admin/directory/arabic-names/apply', FILE);
+    assert.equal(again.body.applied, 0);
+    assert.equal(again.body.unchanged, 3);
+    assert.equal(
+      w.repo.auditLogs.filter((a) => a.action === 'directory.arabic_names.import').length,
+      2
+    );
+  });
+
+  test('a company admin’s import reaches only their own company', async () => {
+    const w = await world();
+    const preview = await w.caGen.upload('/api/admin/directory/arabic-names/preview', FILE);
+    assert.deepEqual(
+      preview.body.changes.map((c) => c.email),
+      ['mahmoud.attia@genesismining-eg.com']
+    );
+    assert.deepEqual(preview.body.outOfScope, ['tarek.elmasry@masar.eg']);
+
+    const res = await w.caGen.upload('/api/admin/directory/arabic-names/apply', FILE);
+    assert.equal(res.body.applied, 1);
+    assert.equal(
+      w.repo.users.find((u) => u.email === 'tarek.elmasry@masar.eg').displayNameAr,
+      'طارق المصري'
+    );
+    assert.ok(w.repo.auditLogs.every((a) => a.companyId === w.genId));
+
+    for (const person of [w.gen, w.msr]) {
+      for (const step of ['preview', 'apply']) {
+        const refused = await person.upload(`/api/admin/directory/arabic-names/${step}`, FILE);
+        assert.equal(refused.status, 403);
+      }
+    }
+  });
+
+  test('a file without the two columns, or empty, is refused', async () => {
+    const w = await world();
+    const url = '/api/admin/directory/arabic-names/preview';
+    const noHeader = await w.ha.upload(url, 'a@b.eg,اسم\r\n');
+    assert.equal(noHeader.status, 400);
+    assert.equal(noHeader.body.error.code, 'csv_invalid');
+    const empty = await w.ha.upload(url, '');
+    assert.equal(empty.status, 400);
+    assert.equal(empty.body.error.code, 'empty_upload');
+    // Excel in an Arabic or European locale separates with semicolons.
+    const semi = await w.ha.upload(
+      url,
+      'email;arabic_name\r\ndina.khalil@genesismining-eg.com;دينا\r\n'
+    );
+    assert.equal(semi.body.changes.length, 1);
   });
 });
 

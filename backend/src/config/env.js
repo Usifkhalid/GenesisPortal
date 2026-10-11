@@ -31,9 +31,21 @@ if (!process.env.NODE_ENV && process.env.NODE_TEST_CONTEXT) process.env.NODE_ENV
 // Under test the database is the test one, whatever .env says: Prisma reads
 // DATABASE_URL from the process environment, so this is the one switch that
 // keeps every test off the development data (see config/test-db.js).
-if (process.env.NODE_ENV === 'test') {
+// The e2e server asks for the same switch with USE_TEST_DATABASE=1: it runs as
+// NODE_ENV=development (mock sign-in), and handing it a ready-made test URL as
+// DATABASE_URL made the prepare script derive "<name>_test_test" and empty a
+// database the server was not using (docs/DECISIONS.md D84).
+const wantsTestDatabase =
+  process.env.NODE_ENV === 'test' ||
+  (process.env.USE_TEST_DATABASE === '1' && process.env.NODE_ENV !== 'production');
+if (wantsTestDatabase && process.env.TEST_DATABASE_ACTIVE !== '1') {
   const testUrl = resolveTestDatabaseUrl(process.env);
-  if (testUrl) process.env.DATABASE_URL = testUrl;
+  if (testUrl) {
+    process.env.DATABASE_URL = testUrl;
+    // Says DATABASE_URL already is the test database, to this process and to
+    // any it starts, so that nothing derives a test name from it a second time.
+    process.env.TEST_DATABASE_ACTIVE = '1';
+  }
 }
 
 /** True for a value still carrying a .env.example placeholder. */

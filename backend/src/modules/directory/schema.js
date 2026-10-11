@@ -25,3 +25,8 @@ export const syncRunBody = z.strictObject({
   /** Confirms a run that would deactivate more than 20% of active people. */
   allowLargeDeactivation: z.boolean().default(false),
 });
+
+export const arabicNameBody = z.strictObject({
+  /** Empty clears the name; the directory then shows the English one. */
+  displayNameAr: z.string().trim().max(200),
+});

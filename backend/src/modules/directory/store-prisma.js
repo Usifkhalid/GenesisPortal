@@ -15,6 +15,10 @@ import { getPrisma } from '../../lib/prisma.js';
 import { ROLES } from '../../lib/roles.js';
 
 const BATCH = 50;
+/** Prisma's code for a transaction that lost a deadlock or a write conflict. */
+const WRITE_CONFLICT = 'P2034';
+const CONFLICT_ATTEMPTS = 4;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const USER_SELECT = {
   id: true,
@@ -137,6 +141,25 @@ function operations(db) {
       });
     },
 
+    /* ---- Arabic names */
+    async findUsersByEmails(emails) {
+      const found = [];
+      // In batches: SQL Server caps a statement at 2100 parameters.
+      for (let i = 0; i < emails.length; i += 500) {
+        found.push(
+          ...(await db.userProfile.findMany({
+            where: { email: { in: emails.slice(i, i + 500) } },
+            select: USER_SELECT,
+          }))
+        );
+      }
+      return found;
+    },
+
+    async setArabicName(id, displayNameAr, searchKey) {
+      await db.userProfile.update({ where: { id }, data: { displayNameAr, searchKey } });
+    },
+
     /* ---- sync runs */
     async findRunningRun(since) {
       return db.syncRun.findFirst({
@@ -218,28 +241,46 @@ function operations(db) {
     },
 
     async applySyncChanges(plan) {
+      // Each statement is a function, so a batch that loses a deadlock to
+      // someone editing one of its people (an admin saving an Arabic name)
+      // can be built and sent again instead of failing the whole run.
       const run = async (statements) => {
         for (let i = 0; i < statements.length; i += BATCH) {
-          await db.$transaction(statements.slice(i, i + BATCH));
+          const batch = statements.slice(i, i + BATCH);
+          for (let attempt = 1; ; attempt += 1) {
+            try {
+              await db.$transaction(batch.map((statement) => statement()));
+              break;
+            } catch (err) {
+              if (err?.code !== WRITE_CONFLICT || attempt >= CONFLICT_ATTEMPTS) throw err;
+              await wait(50 * attempt);
+            }
+          }
         }
       };
 
       await run(
-        plan.creates.map(({ data }) =>
-          db.userProfile.create({
-            data: {
-              ...data,
-              displayNameAr: '',
-              roleAssignments: {
-                create: { role: ROLES.USER, scopeCompanyId: data.companyId },
-              },
-            },
-          })
+        plan.creates.map(
+          ({ data }) =>
+            () =>
+              db.userProfile.create({
+                data: {
+                  ...data,
+                  displayNameAr: '',
+                  roleAssignments: {
+                    create: { role: ROLES.USER, scopeCompanyId: data.companyId },
+                  },
+                },
+              })
         )
       );
 
       await run(
-        plan.updates.map(({ id, data }) => db.userProfile.update({ where: { id }, data }))
+        plan.updates.map(
+          ({ id, data }) =>
+            () =>
+              db.userProfile.update({ where: { id }, data })
+        )
       );
 
       if (plan.managerLinks.length > 0) {
@@ -250,15 +291,16 @@ function operations(db) {
         await run(
           plan.managerLinks
             .filter((l) => idOf.has(l.entraObjectId))
-            .map((l) =>
-              db.userProfile.update({
-                where: { id: idOf.get(l.entraObjectId) },
-                data: {
-                  managerId: l.managerEntraObjectId
-                    ? (idOf.get(l.managerEntraObjectId) ?? null)
-                    : null,
-                },
-              })
+            .map(
+              (l) => () =>
+                db.userProfile.update({
+                  where: { id: idOf.get(l.entraObjectId) },
+                  data: {
+                    managerId: l.managerEntraObjectId
+                      ? (idOf.get(l.managerEntraObjectId) ?? null)
+                      : null,
+                  },
+                })
             )
         );
       }
@@ -277,9 +319,17 @@ export function createPrismaDirectoryStore() {
 
   return {
     ...reads,
-    transaction: async (fn) => {
+    transaction: async (fn, { timeout = 15_000 } = {}) => {
       const db = await getPrisma();
-      return db.$transaction((tx) => fn(operations(tx)), { timeout: 15_000 });
+      // `fn` only writes through `tx`, so a deadlock's loser can simply go again.
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await db.$transaction((tx) => fn(operations(tx)), { timeout });
+        } catch (err) {
+          if (err?.code !== WRITE_CONFLICT || attempt >= CONFLICT_ATTEMPTS) throw err;
+          await wait(50 * attempt);
+        }
+      }
     },
   };
 }

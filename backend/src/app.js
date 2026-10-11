@@ -17,7 +17,7 @@ import express from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
 
-import { FRONTEND_DIR, env, isProduction } from './config/env.js';
+import { FRONTEND_DIR, env, isProduction, isTest } from './config/env.js';
 import { PrismaSessionStore, sessionMiddleware } from './lib/session.js';
 import { loadUser, requireAuth } from './middleware/auth.js';
 import { csrfProtection } from './middleware/csrf.js';
@@ -72,7 +72,11 @@ export function createApp(options = {}) {
   // Sessions and users live in SQL Server. Without one configured (and always
   // under test, so a test never writes to a developer's database) both are
   // held in memory instead. Production cannot get here without a database.
-  const useDatabase = config.hasDatabase && config.NODE_ENV !== 'test';
+  // `isTest` is the process's own NODE_ENV: the API tests pass
+  // config.NODE_ENV 'development' to reach mock sign-in, and must still keep
+  // their sessions out of the shared test database, which another run empties
+  // (docs/DECISIONS.md D84).
+  const useDatabase = config.hasDatabase && config.NODE_ENV !== 'test' && !isTest;
   const repo =
     options.userRepo ?? (useDatabase ? createPrismaUserRepo() : createMemoryUserRepo());
   const store =
