@@ -239,7 +239,8 @@ noted (D59).
 Files: backend/prisma/{schema.prisma,migrations/20261011020000_*}, backend/src/{server.js,
 jobs/prune-sessions.js,jobs/README.md}, backend/tests/prune-sessions.test.js, docs/*.
 Verified: `npm test` 102 pass; `npm run test:e2e` 12 pass; lint clean.
-Open issues: the junk AuditLog row (`tampered`/`Test`) is NOT deleted yet: the command was
-held for review as asked. RoleAssignment lookups by userId scan at seed size (optimizer's choice,
+Junk AuditLog row (`tampered`/`Test`) deleted in one transaction with the trigger disabled and
+re-enabled (approved one-off; trigger verified enabled). Rule added to CLAUDE.md: never print
+secrets. Open issues: RoleAssignment lookups by userId scan at seed size (optimizer's choice,
 no type conversion). Entra unproven; Home cards are demo data; favicon 404.
 Next: company admin as the first real page (with its own e2e spec).

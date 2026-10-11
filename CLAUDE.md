@@ -51,5 +51,6 @@ npm run db:migrate / npm run db:seed
 - Each session does only the task in its prompt. Do not start other work.
 - First read docs/PROGRESS.md. Then read only the files the task needs; do not scan the whole repo.
 - Keep chat replies short. Do not paste whole files into chat.
+- Never print .env values, passwords or secrets to the terminal or chat. When checking settings, show them masked (first 2 characters + ***, e.g. `ho***`), and do not echo connection strings.
 - Browser checks: run npm run test:e2e. Do not write throwaway browser scripts. A new flow gets a spec in tests/e2e built on tests/e2e/helpers.js (signIn, signOut, t, expectLanguage, expectNoSidewaysScroll).
 - At the end: run npm test, npm run test:e2e (when the frontend or sign-in changed) and npm run lint and fix failures; update docs/PROGRESS.md (done, files touched, open issues, next step; max 15 lines for this session); add decisions to docs/DECISIONS.md; make one git commit with a clear message.
