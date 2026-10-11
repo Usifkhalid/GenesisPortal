@@ -6,7 +6,13 @@
  * DATABASE_URL.
  */
 
-import { COMPANIES, DEPARTMENTS, USERS, fakeEntraObjectId } from '../../../prisma/seed-data.js';
+import {
+  COMPANIES,
+  DEPARTMENTS,
+  ROOMS,
+  USERS,
+  fakeEntraObjectId,
+} from '../../../prisma/seed-data.js';
 import { ROLES } from '../../lib/roles.js';
 import { searchKeyOf } from '../../lib/text-search.js';
 
@@ -83,6 +89,19 @@ export function createMemoryUserRepo() {
 
   const brief = (user) => (user ? { id: user.id, isActive: user.isActive } : null);
 
+  const rooms = ROOMS.map((room, i) => ({
+    id: fakeId(5, i),
+    ...room,
+    equipment: [...room.equipment],
+    photoKey: null,
+    photoUrl: null,
+    notes: '',
+    isActive: true,
+    companyIds: [],
+    createdAt: now,
+    updatedAt: now,
+  }));
+
   return {
     /** The rows themselves, so a test can deactivate someone or change a role. */
     companies,
@@ -92,6 +111,11 @@ export function createMemoryUserRepo() {
     auditLogs: [],
     /** Directory sync runs (modules/directory/store-memory.js). */
     syncRuns: [],
+    /** Rooms and bookings (modules/rooms/store-memory.js). */
+    rooms,
+    bookings: [],
+    /** The mocked Graph's calendar (integrations/graph/mock-calendar.js). */
+    mockCalendarEvents: [],
 
     async listCompaniesWithUsers() {
       return companies

@@ -231,6 +231,63 @@ export const USERS = [
   },
 ];
 
+/**
+ * Six meeting rooms at Cairo HQ, open to every company. Names, floors and
+ * mailboxes are placeholders until the real rooms are supplied; the mocked
+ * Graph lists the same six as Exchange room mailboxes.
+ * Equipment: screen, videoConference, whiteboard, phone, other.
+ */
+export const ROOMS = [
+  {
+    mailboxEmail: 'room-hq-1@mgholding.example',
+    nameEn: 'Meeting Room 1',
+    nameAr: 'قاعة الاجتماعات 1',
+    floor: '1',
+    capacity: 4,
+    equipment: ['screen', 'whiteboard'],
+  },
+  {
+    mailboxEmail: 'room-hq-2@mgholding.example',
+    nameEn: 'Meeting Room 2',
+    nameAr: 'قاعة الاجتماعات 2',
+    floor: '1',
+    capacity: 6,
+    equipment: ['screen', 'videoConference'],
+  },
+  {
+    mailboxEmail: 'room-hq-3@mgholding.example',
+    nameEn: 'Meeting Room 3',
+    nameAr: 'قاعة الاجتماعات 3',
+    floor: '2',
+    capacity: 8,
+    equipment: ['screen', 'videoConference', 'whiteboard'],
+  },
+  {
+    mailboxEmail: 'room-hq-4@mgholding.example',
+    nameEn: 'Meeting Room 4',
+    nameAr: 'قاعة الاجتماعات 4',
+    floor: '2',
+    capacity: 10,
+    equipment: ['screen', 'videoConference', 'phone'],
+  },
+  {
+    mailboxEmail: 'room-hq-5@mgholding.example',
+    nameEn: 'Boardroom',
+    nameAr: 'قاعة مجلس الإدارة',
+    floor: '3',
+    capacity: 16,
+    equipment: ['screen', 'videoConference', 'whiteboard', 'phone'],
+  },
+  {
+    mailboxEmail: 'room-hq-6@mgholding.example',
+    nameEn: 'Training Room',
+    nameAr: 'قاعة التدريب',
+    floor: '3',
+    capacity: 24,
+    equipment: ['screen', 'whiteboard', 'other'],
+  },
+];
+
 /** A stable, obviously fake Entra object id for the nth seeded user. */
 export function fakeEntraObjectId(index) {
   return `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;

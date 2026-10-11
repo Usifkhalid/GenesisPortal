@@ -41,10 +41,19 @@ import {
 import { createDirectoryService } from './modules/directory/service.js';
 import { createMemoryDirectoryStore } from './modules/directory/store-memory.js';
 import { createPrismaDirectoryStore } from './modules/directory/store-prisma.js';
-import { graph } from './integrations/graph/index.js';
+import { createGraph, graph } from './integrations/graph/index.js';
 import { createSyncRunner } from './jobs/syncUsers.js';
 import { createPrismaUserRepo } from './modules/auth/repo.js';
 import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
+import {
+  adminBookingRoutes,
+  adminRoomRoutes,
+  bookingRoutes,
+  roomRoutes,
+} from './modules/rooms/routes.js';
+import { createRoomService } from './modules/rooms/service.js';
+import { createMemoryRoomStore } from './modules/rooms/store-memory.js';
+import { createPrismaRoomStore } from './modules/rooms/store-prisma.js';
 
 /**
  * @param {object} [options]
@@ -60,8 +69,9 @@ import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
  * @param {object} [options.announcementStore]  see modules/announcements/store-prisma.js
  * @param {object} [options.storage]  see lib/storage.js; the upload folder by default
  * @param {object} [options.directoryStore]  see modules/directory/store-prisma.js
+ * @param {object} [options.roomStore]  see modules/rooms/store-prisma.js
  * @param {object} [options.graph]  a Graph client in place of the configured one, for tests
- * @param {() => Date} [options.now]  the clock the announcements module and sync read, for tests
+ * @param {() => Date} [options.now]  the clock the announcements, rooms and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  */
@@ -102,12 +112,29 @@ export function createApp(options = {}) {
   const directoryStore =
     options.directoryStore ??
     (repo.companies ? createMemoryDirectoryStore(repo) : createPrismaDirectoryStore());
+  // One Graph client for the app. In memory the mocked calendar is kept in
+  // memory too, beside the rooms and bookings that refer to it.
+  let graphClient = options.graph ? Promise.resolve(options.graph) : null;
+  const getGraph = () => {
+    graphClient ??= repo.mockCalendarEvents
+      ? createGraph({ memoryCalendar: repo.mockCalendarEvents })
+      : graph();
+    return graphClient;
+  };
   const syncRunner = createSyncRunner({
     store: directoryStore,
-    getGraph: options.graph ? async () => options.graph : graph,
+    getGraph,
     now: options.now,
   });
   const directory = createDirectoryService({ store: directoryStore, syncRunner });
+  const rooms = createRoomService({
+    store:
+      options.roomStore ??
+      (repo.companies ? createMemoryRoomStore(repo) : createPrismaRoomStore()),
+    storage: options.storage ?? defaultStorage(),
+    getGraph,
+    now: options.now,
+  });
   app.locals.sessionStore = store;
   app.locals.syncRunner = syncRunner;
   app.locals.inMemory = !useDatabase;
@@ -192,6 +219,11 @@ export function createApp(options = {}) {
 
   app.use('/api/admin/directory', adminDirectoryRoutes(directory));
   app.use('/api/directory', directoryRoutes(directory));
+
+  app.use('/api/admin/rooms', adminRoomRoutes(rooms));
+  app.use('/api/admin/bookings', adminBookingRoutes(rooms));
+  app.use('/api/rooms', roomRoutes(rooms));
+  app.use('/api/bookings', bookingRoutes(rooms));
 
   // Module routers mount here as they are built.
   options.protectedRoutes?.(app);

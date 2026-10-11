@@ -32,6 +32,9 @@ function companyView(row) {
     logoUrl: row.logoUrl,
     logoKey: row.logoKey,
     showMobileInDirectory: row.showMobileInDirectory,
+    workdayStartMin: row.workdayStartMin,
+    workdayEndMin: row.workdayEndMin,
+    workingDays: row.workingDays.split(',').filter(Boolean).map(Number),
     isActive: row.isActive,
     userCount: row._count?.users ?? 0,
     createdAt: row.createdAt,
@@ -205,6 +208,8 @@ function bind(db) {
       const { domains, ...columns } = patch;
       const data = { ...columns };
       if (domains) data.domain = domains[0];
+      // An array in the API, comma-separated text in SQL Server (no array type).
+      if (columns.workingDays) data.workingDays = columns.workingDays.join(',');
 
       const { count } = await db.company.updateMany({
         where: { id, updatedAt: expectedUpdatedAt },

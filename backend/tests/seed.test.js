@@ -122,7 +122,9 @@ describe('seed()', () => {
     const db = createFakePrisma();
     const counts = await seed(db);
 
-    assert.deepEqual(counts, { companies: 3, departments: 9, users: 12 });
+    assert.deepEqual(counts, { companies: 3, departments: 9, users: 12, rooms: 6 });
+    assert.equal(db.room.rows.length, 6);
+    assert.ok(db.room.rows.every((r) => typeof r.equipment === 'string' && r.capacity > 0));
     assertSeeded({
       companies: db.company.rows,
       departments: db.department.rows,
@@ -141,6 +143,7 @@ describe('seed()', () => {
     assert.equal(db.department.rows.length, 9);
     assert.equal(db.userProfile.rows.length, 12);
     assert.equal(db.roleAssignment.rows.length, 12);
+    assert.equal(db.room.rows.length, 6);
     assert.deepEqual(
       db.userProfile.rows.map((u) => u.id),
       ids

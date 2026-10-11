@@ -812,3 +812,76 @@ only when off) and for a development database made by `npm run db:reset`. Two wr
 still deadlock, so the sync's batches and the directory store's transactions retry on
 Prisma `P2034` (up to four attempts). An existing development database is not altered:
 run `npm run db:reset`, or `ALTER DATABASE … SET READ_COMMITTED_SNAPSHOT ON` by hand.
+
+### D86. Rooms are shared reference data; a booking belongs to its organiser's company
+
+HQ's meeting rooms are used by all the companies, so `Room` has no `companyId`: any
+signed-in person sees and books a room with no restriction list. A room may instead name
+the companies it is for (`RoomCompany`), and then it exists only for those companies' own
+people and a HoldingAdmin: not listed, 404 by id, not bookable. The list names companies,
+not roles, so a CompanyAdmin of another company gets nothing from it.
+
+Busy times are shared with the rooms, with the organiser's name, because a timetable that
+hides who has the room is not usable. That is where sharing stops. A `Booking` carries the
+organiser's `companyId` and is a business record like any other (rule 1): its subject,
+attendees and detail are for the organiser, the people invited and the administrators of
+that company; only the organiser or such an administrator may change or cancel it (anyone
+else gets 404, an invited attendee 403); the admin list goes through
+`adminCompanyIdsFor`. An administrator acting on someone else's booking is audited.
+Like D82, this is a named exception for reference data, not a loosening of the rule.
+
+### D87. Exchange is the source of truth; the portal keeps a reference per occurrence
+
+Whether a room is free is always asked of Exchange (`getSchedule`), never worked out from
+Booking rows, so a meeting made in Outlook blocks the room here too and shows as busy
+with no organiser. `Booking` is one row per occurrence (a series is the rows sharing
+`seriesMasterId`), which makes "cancel this one" and "cancel from here on" simple and
+lets a busy time be matched to its row: by event id where the adapter gives one (the
+mock), else by room and exact time (Exchange's free/busy carries no ids).
+
+Booking a series: expand every occurrence, check them all against the schedule, and
+create nothing if any collides (409 with the dates). Then create the event; the calendar
+has the last word, so a collision at that point (two people at once) is the same 409.
+If the rows cannot be saved the event is cancelled again. "My bookings" reconciles the
+organiser's rows with their calendar: an event gone from Exchange cancels the row
+(`cancelledById` NULL), a moved one moves it. If Exchange cannot be asked, the rows are
+shown as they are.
+
+Attendees: the event holds the real list. The row keeps `attendeeCount` (seats needed)
+and `attendeeIds` (the portal users invited), which is what decides who may read the
+subject. Both are references, not a copy of the meeting.
+
+### D88. Booking time is Cairo's clock through the IANA zone
+
+Stored in UTC; every rule is evaluated on `Africa/Cairo` via `Intl` (`lib/time.js`:
+`cairoWallToUtc`, `cairoWallOf`). No code knows an offset. A series is expanded day by
+day on the Cairo calendar and each day converted on its own, so 10:00 stays 10:00 when
+summer time ends (07:00 UTC becomes 08:00 UTC); a test books across 29 October 2026.
+
+Rules (`modules/rooms/rules.js`, pure): quarter-hour start and end, 15 minutes to 8
+hours, not in the past, at most 90 days ahead, inside working hours on a working day.
+Working hours are per company (`workdayStartMin`, `workdayEndMin`, `workingDays` on
+Company; default 08:00 to 18:00, Sunday to Thursday) and the **organiser's** company's
+apply, since the rooms belong to no company. A series: daily means every working day,
+weekly means chosen weekdays that must be working days and include the first meeting's;
+it ends within six months. The 90-day limit applies to the first occurrence only, or a
+six-month series could never be booked. Moving a booking applies the same rules.
+
+### D89. Calendar calls: delegated for the organiser, application for everything else
+
+The Graph adapter gained `listRooms`, `getSchedule`, `createEvent`, `updateEvent`,
+`cancelEvent` and `listMyEvents`. In the real client, rooms and free/busy use the
+application permission; booking is delegated (`/me/events` with the person's token), so
+the meeting is theirs in Outlook and Exchange applies the room's own policy. When an
+administrator changes someone else's meeting there is no organiser token, and the call
+goes to `/users/{organiser}/events` with the application permission. Times go to Graph
+as Cairo wall time with `Egypt Standard Time`, and a series as one recurring event in
+that zone, so Exchange repeats it by local time too. The portal passes the occurrences
+it computed; the real client reads Exchange's own instances back, one per row.
+
+The mock keeps the calendar in `MockCalendarEvent` (an array when the portal runs in
+memory) and, like Exchange, refuses a busy room. Adapters throw `GraphError`
+(`room_conflict`, `event_not_found`, `delegated_token_missing`) so no module reads a
+Graph status. **The real calendar code has never run against a tenant** and nothing yet
+hands it a person's token (`req.getGraphToken`): both are session 19. Until then
+`GRAPH_MODE=real` answers 503 `calendar_unavailable` on booking.

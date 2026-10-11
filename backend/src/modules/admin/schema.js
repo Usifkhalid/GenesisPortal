@@ -52,6 +52,18 @@ export const companyUpdateBody = z.strictObject({
   domains: domains.optional(),
   accentColor: accent.optional(),
   showMobileInDirectory: z.boolean().optional(),
+  /**
+   * Working hours for room bookings: minutes after midnight on Cairo's clock,
+   * on a quarter hour, and the working weekdays (0 is Sunday).
+   */
+  workdayStartMin: z.number().int().min(0).max(1425).multipleOf(15).optional(),
+  workdayEndMin: z.number().int().min(15).max(1440).multipleOf(15).optional(),
+  workingDays: z
+    .array(z.number().int().min(0).max(6))
+    .min(1)
+    .max(7)
+    .transform((days) => [...new Set(days)].sort())
+    .optional(),
 });
 
 /** Deactivate, reactivate and the logo carry only what they were loaded at. */

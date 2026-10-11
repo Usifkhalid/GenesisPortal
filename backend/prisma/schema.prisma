@@ -50,6 +50,12 @@ model Company {
   /// Whether a colleague's mobile number appears in the directory. Off unless
   /// the company's HoldingAdmin turns it on; business phone is always shown.
   showMobileInDirectory Boolean  @default(false)
+  /// Working hours for room bookings: minutes after midnight on Cairo's clock
+  /// (480 = 08:00, 1080 = 18:00), and the working weekdays as "0,1,2,3,4"
+  /// where 0 is Sunday. A booking by this company's people must fit inside.
+  workdayStartMin       Int      @default(480)
+  workdayEndMin         Int      @default(1080)
+  workingDays           String   @default("0,1,2,3,4") @db.VarChar(20)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -61,6 +67,8 @@ model Company {
   notifications     Notification[]
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
+  roomRestrictions  RoomCompany[]
+  bookings          Booking[]
 }
 
 /// Every mail domain a company owns, the primary one included (it is also
@@ -135,6 +143,8 @@ model UserProfile {
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
   syncRuns          SyncRun[]
+  bookings          Booking[]          @relation("BookingOrganiser")
+  bookingsCancelled Booking[]          @relation("BookingCancelledBy")
 
   @@index([companyId, isActive])
   @@index([departmentId])
@@ -315,4 +325,110 @@ model SyncRun {
   requestedBy UserProfile? @relation(fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([startedAt])
+}
+
+/// A meeting room at HQ. Exchange owns the calendar (the room is a resource
+/// mailbox); the portal keeps what Exchange does not: bilingual name, floor,
+/// equipment, a photo. Shared reference data, not a business table: it has no
+/// companyId. A room with no RoomCompany rows is open to every company;
+/// otherwise only to the companies listed (docs/DECISIONS.md D86).
+model Room {
+  id           String   @id @default(uuid()) @db.NVarChar(36)
+  /// The resource mailbox in Exchange, lower case.
+  mailboxEmail String   @unique @db.NVarChar(320)
+  nameEn       String   @db.NVarChar(200)
+  nameAr       String   @db.NVarChar(200)
+  floor        String?  @db.NVarChar(50)
+  capacity     Int
+  /// Comma-separated, from: screen, videoConference, whiteboard, phone, other.
+  equipment    String   @default("") @db.NVarChar(200)
+  /// Storage key of the photo (lib/storage.js); photoUrl is derived from it.
+  photoKey     String?  @db.NVarChar(200)
+  photoUrl     String?  @db.NVarChar(500)
+  notes        String   @default("") @db.NVarChar(1000)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  companies RoomCompany[]
+  bookings  Booking[]
+}
+
+/// One company a restricted room is open to.
+model RoomCompany {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  roomId    String   @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room    Room    @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([roomId, companyId])
+  @@index([companyId])
+}
+
+/// The portal's reference to one meeting in a room: one row per occurrence, so
+/// a recurring booking is the rows that share seriesMasterId. The event itself
+/// lives in Exchange (graphEventId, in the organiser's calendar with the room
+/// as a resource attendee). companyId is the organiser's company and scopes
+/// who may administer the row. Times are UTC.
+model Booking {
+  id             String    @id @default(uuid()) @db.NVarChar(36)
+  graphEventId   String    @unique @db.NVarChar(200)
+  /// NULL for a single booking.
+  seriesMasterId String?   @db.NVarChar(200)
+  roomId         String    @db.NVarChar(36)
+  organiserId    String    @db.NVarChar(36)
+  companyId      String    @db.NVarChar(36)
+  subject        String    @db.NVarChar(200)
+  startAt        DateTime
+  endAt          DateTime
+  /// JSON of the series' rule ({ type, weekdays, until }); NULL when single.
+  recurrence     String?   @db.NVarChar(300)
+  /// People expected, the organiser included.
+  attendeeCount  Int       @default(1)
+  /// JSON array of the portal users invited; they may read the subject.
+  attendeeIds    String    @default("[]") @db.NVarChar(Max)
+  /// confirmed | cancelled.
+  status         String    @default("confirmed") @db.VarChar(20)
+  cancelledAt    DateTime?
+  /// Who cancelled it in the portal; NULL when Exchange no longer has the event.
+  cancelledById  String?   @db.NVarChar(36)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  room        Room         @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organiser   UserProfile  @relation("BookingOrganiser", fields: [organiserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cancelledBy UserProfile? @relation("BookingCancelledBy", fields: [cancelledById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([roomId, startAt])
+  @@index([organiserId, startAt])
+  @@index([companyId, startAt])
+  @@index([seriesMasterId])
+}
+
+/// GRAPH_MODE=mock only: the calendar Exchange would hold, so room booking can
+/// be built and tested with no tenant. One row per event occurrence. Never
+/// read by the portal's own modules, only by integrations/graph/mock.js.
+model MockCalendarEvent {
+  id             String   @id @db.NVarChar(200)
+  seriesMasterId String?  @db.NVarChar(200)
+  organiserEmail String   @db.NVarChar(320)
+  roomEmail      String   @db.NVarChar(320)
+  subject        String   @db.NVarChar(200)
+  startAt        DateTime
+  endAt          DateTime
+  recurrence     String?  @db.NVarChar(300)
+  /// JSON array of attendee emails.
+  attendees      String   @default("[]") @db.NVarChar(Max)
+  isCancelled    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([roomEmail, startAt])
+  @@index([organiserEmail, startAt])
+  @@index([seriesMasterId])
 }

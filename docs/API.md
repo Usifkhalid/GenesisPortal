@@ -261,7 +261,70 @@ would deactivate more than 20% of the active people (`deactivation_limit`; rerun
 `allowLargeDeactivation`). Each run writes one audit entry, `directory.sync` or
 `directory.sync.failed`, with its counts, filed under no company.
 
+### Rooms and bookings (`/api/rooms`, `/api/bookings`, `/api/admin/rooms`, `/api/admin/bookings`)
+
+Exchange is the source of truth: a room is a resource mailbox, a booking is an event in the
+organiser's calendar with the room as a resource attendee, and whether a room is free is
+always asked of Exchange. The portal keeps the room's details and one reference row per
+meeting. Backend only so far; there is no screen yet.
+
+Instants are ISO 8601 with `Z` or an offset and are stored in UTC. A calendar day
+(`2026-10-25`) or a clock time (`10:30`) in a query is Cairo's.
+
+| Route | Who | Notes |
+|---|---|---|
+| `GET /api/rooms?capacity=&equipment=&floor=` | any | active rooms the reader may use: `{ items: [{ id, nameEn, nameAr, floor, capacity, equipment, photoUrl, notes, restricted }] }`. `capacity` is a minimum; `equipment` is a comma list, all required, from `screen`, `videoConference`, `whiteboard`, `phone`, `other`. A restricted room is listed only for its companies' own people and a HoldingAdmin. |
+| `GET /api/rooms/:id` | any | one room; a room the reader may not use is 404 |
+| `GET /api/rooms/:id/photo` | any | the photo's bytes (the address is `photoUrl`, versioned) |
+| `GET /api/rooms/availability?date=&view=day\|week&roomId=&capacity=&equipment=&floor=` | any | `{ from, to, days, hours, rooms: [{ room, busy: [{ start, end, organiser, subject, bookingId, mine }] }] }`. `week` is the Sunday-to-Saturday week holding `date`. `hours` is the reader's company's working hours. `subject` and `bookingId` are `null` unless the reader is the organiser, an invited attendee or an admin of the organiser's company; `organiser` is `null` for a meeting made in Outlook. |
+| `GET /api/rooms/find?date=&start=HH:MM&duration=&people=&equipment=` | any | free rooms for that slot, smallest that fits first: `{ start, end, rooms }`. The slot obeys the booking rules below. |
+| `POST /api/bookings` | any | `{ roomId, subject, start, end, attendeeCount?, attendeeIds?, recurrence? }` → 201 `{ items: [booking] }`, one per occurrence. `recurrence` is `{ type: 'daily', until }` (working days only) or `{ type: 'weekly', weekdays: [0-6], until }` (0 is Sunday). Every occurrence is checked first: on any conflict nothing is created and the answer is 409 `room_conflict` with `details.conflicts: [{ date, start, end }]`. |
+| `GET /api/bookings/mine` | any | my confirmed bookings that have not ended, soonest first, checked against Exchange (one deleted or moved in Outlook is cancelled or moved here) |
+| `GET /api/bookings/:id` | organiser, attendee, admin | anyone else: 404 |
+| `PATCH /api/bookings/:id` | organiser, admin | `{ subject?, start?, end? }` (`start` and `end` together) for this occurrence; the rules and conflicts are checked again. An attendee is 403, anyone else 404. |
+| `POST /api/bookings/:id/cancel` | organiser, admin | `{ scope: 'one' \| 'series' }` → `{ cancelled: [id] }`. `series` cancels this occurrence and every later one. |
+| `GET /api/admin/bookings?roomId=&companyId=&from=&to=&status=&page=&pageSize=` | HA, CA | every booking of the admin's companies, subjects included. `status`: `confirmed` (default), `cancelled`, `all`. Another company's `companyId` is 404. |
+| `GET /api/admin/rooms` | HA | all rooms, inactive too, with `mailboxEmail`, `companyIds`, `isActive`, `updatedAt` |
+| `GET /api/admin/rooms/mailboxes` | HA | Exchange's room mailboxes and, for each, the portal room that uses it (`roomId`) |
+| `POST /api/admin/rooms` | HA | `{ mailboxEmail, nameEn, nameAr, floor?, capacity, equipment?, notes?, companyIds? }`. `companyIds` empty: shared by every company. 409 `mailbox_taken`. |
+| `PATCH /api/admin/rooms/:id` | HA | `{ updatedAt, …any of the above, isActive? }`; 409 `stale_record` |
+| `PUT /api/admin/rooms/:id/photo?updatedAt=` | HA | body: the image itself (PNG, JPEG or WebP, 2 MB), checked by its signature like an announcement cover |
+| `DELETE /api/admin/rooms/:id/photo?updatedAt=` | HA | |
+
+A booking: `{ id, room, organiser, start, end, status, cancelledAt, recurring, subject,
+recurrence, attendeeCount, attendeeIds, companyId, mine, canManage }`. The fields from
+`subject` to `companyId` are empty for a reader who may not see the subject.
+
+**Booking rules.** Computed on Cairo's clock through the IANA zone (Egypt observes
+daylight saving time; a weekly 10:00 stays 10:00 across the change). Each refusal is 400
+with a message a person can act on:
+
+| Code | Rule |
+|---|---|
+| `booking_granularity` | start and end on a quarter hour |
+| `booking_too_short`, `booking_too_long` | 15 minutes to 8 hours |
+| `booking_in_past` | no start in the past |
+| `booking_too_far` | at most 90 days ahead (the first occurrence of a series) |
+| `not_a_working_day`, `outside_working_hours` | inside the organiser's company's working hours; `details` carries them. Default 08:00 to 18:00, Sunday to Thursday. |
+| `recurrence_too_long`, `recurrence_ends_before_start`, `recurrence_day_mismatch` | a series ends within six months, not before it starts, and includes the weekday of its first meeting |
+| `over_capacity`, `unknown_attendee` | more people than seats; an invited person who is not an active portal user |
+
+Other codes: 409 `booking_cancelled`, `booking_finished` (already over),
+`booking_gone` (Exchange no longer has the event; the row is marked cancelled); 400
+`not_recurring`; 503 `calendar_unavailable`.
+
+Working hours are three more fields on `PATCH /api/admin/companies/:id`:
+`workdayStartMin` and `workdayEndMin` (minutes after midnight, on a quarter hour) and
+`workingDays` (`[0-6]`); 400 `working_hours_invalid` when the day would end before it
+starts.
+
+Audit: `room.create`, `room.update`, `room.photo.update`, `room.photo.remove` (filed
+under no company), and `booking.admin.update` and `booking.admin.cancel` when an
+administrator changes someone else's booking (filed under the organiser's company). An
+organiser's own bookings are not audited. The organiser is not yet told when an admin
+cancels: that comes with notifications.
+
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-room booking, support tickets and notifications.
+support tickets and notifications.

@@ -46,6 +46,9 @@ const companySnapshot = (c) => ({
   accentColor: c.accentColor,
   logoUrl: c.logoUrl,
   showMobileInDirectory: c.showMobileInDirectory,
+  workdayStartMin: c.workdayStartMin,
+  workdayEndMin: c.workdayEndMin,
+  workingDays: c.workingDays,
   isActive: c.isActive,
 });
 
@@ -185,6 +188,15 @@ export function createAdminService({ store, storage }) {
       }
 
       if (changes.domains) await assertDomainsFree(tx, changes.domains, id);
+      const opens = changes.workdayStartMin ?? before.workdayStartMin;
+      const closes = changes.workdayEndMin ?? before.workdayEndMin;
+      if (opens >= closes) {
+        throw new HttpError(
+          400,
+          'working_hours_invalid',
+          'The working day must end after it starts.'
+        );
+      }
 
       const after = await tx.updateCompany(id, changes, new Date(updatedAt));
       if (!after) throw stale();

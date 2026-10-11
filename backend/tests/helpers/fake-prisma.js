@@ -13,6 +13,7 @@ const UNIQUES = {
   userProfile: [['email'], ['entraObjectId']],
   roleAssignment: [['userId', 'role', 'scopeCompanyId']],
   auditLog: [],
+  room: [['mailboxEmail']],
 };
 
 function table(name) {

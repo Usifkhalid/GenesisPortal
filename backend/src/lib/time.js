@@ -54,3 +54,44 @@ export function formatCairo(date) {
   );
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
 }
+
+/**
+ * The UTC instant of a time on Cairo's clock: `minutes` after midnight on the
+ * calendar day `ymd`. The offset is looked up for that day, so the same wall
+ * time lands on a different UTC hour either side of a daylight-saving change.
+ * @param {string} ymd  "2026-10-25"
+ * @param {number} minutes  600 for 10:00
+ * @returns {Date}
+ */
+export function cairoWallToUtc(ymd, minutes) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const wallAsUtc = Date.UTC(y, m - 1, d, 0, minutes);
+  let guess = wallAsUtc - cairoOffsetMs(wallAsUtc);
+  guess = wallAsUtc - cairoOffsetMs(guess);
+  return new Date(guess);
+}
+
+/** 0 for Sunday … 6 for Saturday, for a calendar day. */
+export function weekdayOfYmd(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** The calendar day `days` after `ymd` (before, when negative). */
+export function addDaysYmd(ymd, days) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * An instant as Cairo's clock shows it.
+ * @param {Date} date
+ * @returns {{ ymd: string, minutes: number, weekday: number }}
+ */
+export function cairoWallOf(date) {
+  const p = Object.fromEntries(
+    parts.formatToParts(date).map(({ type, value }) => [type, value])
+  );
+  const ymd = `${p.year}-${p.month}-${p.day}`;
+  return { ymd, minutes: Number(p.hour) * 60 + Number(p.minute), weekday: weekdayOfYmd(ymd) };
+}
