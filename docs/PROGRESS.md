@@ -228,3 +228,18 @@ char(36)/varchar keys are scanned on every Prisma lookup (D54). e2e leaves a few
 unauthenticated Session rows that expire in 8 h. `npm audit` still reports the Prisma CLI
 advisory. Entra unproven; Home cards are demo data; favicon 404.
 Next: company admin as the first real page (with its own e2e spec).
+
+## Session 11 — Fix session: NVARCHAR keys, session pruning (2026-10-11)
+
+Done: all string key and lookup columns are NVARCHAR (migration `20261011020000_string_keys_nvarchar`,
+data kept, no schema drift, seed re-run); showplan confirms index seeks for lookups by id, email
+and company code (D57). Expired sessions pruned at startup and hourly via `jobs/prune-sessions.js`,
+with a test (D58). Least-privilege production login and `approve-scripts` after a Prisma upgrade
+noted (D59).
+Files: backend/prisma/{schema.prisma,migrations/20261011020000_*}, backend/src/{server.js,
+jobs/prune-sessions.js,jobs/README.md}, backend/tests/prune-sessions.test.js, docs/*.
+Verified: `npm test` 102 pass; `npm run test:e2e` 12 pass; lint clean.
+Open issues: the junk AuditLog row (`tampered`/`Test`) is NOT deleted yet: the command was
+held for review as asked. RoleAssignment lookups by userId scan at seed size (optimizer's choice,
+no type conversion). Entra unproven; Home cards are demo data; favicon 404.
+Next: company admin as the first real page (with its own e2e spec).

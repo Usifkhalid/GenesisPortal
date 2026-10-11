@@ -6,6 +6,7 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
+import { startSessionPruning } from './jobs/prune-sessions.js';
 import { disconnectPrisma } from './lib/prisma.js';
 
 const app = createApp();
@@ -22,18 +23,13 @@ const server = app.listen(env.PORT, () => {
   }
 });
 
-// Expired sessions are never read; this only keeps the table small.
-const store = app.locals.sessionStore;
-if (typeof store.prune === 'function') {
-  setInterval(
-    () => store.prune().catch((err) => logger.warn({ err }, 'session prune failed')),
-    60 * 60 * 1000
-  ).unref();
-}
+// Expired sessions: removed now, then hourly (jobs/prune-sessions.js).
+const pruning = startSessionPruning(app.locals.sessionStore, logger);
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     server.close(async () => {
+      pruning.stop();
       await disconnectPrisma();
       process.exit(0);
     });

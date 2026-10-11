@@ -495,11 +495,9 @@ unique violation.
 Prisma binds every string parameter as NVARCHAR. Against a VARCHAR or CHAR column SQL Server
 converts the column and scans instead of seeking. On `Session` that made concurrent first
 visits deadlock (found by the Playwright run: six browsers at once, 5 s hangs, HTTP 500).
-Migration `20261011010000_session_sid_nvarchar` fixes `sid`. OPEN: every id is `char(36)`
-and codes and emails are `varchar`, so the same scan happens on every lookup by id. It is
-harmless at seed size; decide before the first busy table (tickets) whether ids move to
-`nchar(36)`/`uniqueidentifier`. Azure SQL has READ_COMMITTED_SNAPSHOT on by default, which
-hides the deadlocks there but not the scans.
+Migration `20261011010000_session_sid_nvarchar` fixes `sid`. Settled in D57: every key and lookup column
+moved to NVARCHAR. Azure SQL has READ_COMMITTED_SNAPSHOT on by default, which hides the
+deadlocks there but not the scans.
 
 ### D55. One Playwright smoke suite, run instead of ad-hoc browser scripts
 
@@ -516,3 +514,32 @@ npm 11 blocks install scripts until approved. `npm approve-scripts prisma @prism
 @prisma/engines` wrote a pinned `allowScripts` block to package.json; a Prisma upgrade
 needs the command run again. `migration_lock.toml` was hand-written as `sqlserver`; the
 engine's name for the provider is `mssql` and migrate refused to run until it was changed.
+
+### D57. All string keys and lookups are NVARCHAR (settles D54)
+
+Ids, foreign keys, codes, emails, domains, `role`, `AuditLog.entity` and `entityId` are
+`NVARCHAR`; ids are `nvarchar(36)`, still lowercase UUID strings. Migration
+`20261011020000_string_keys_nvarchar` drops foreign keys, unique constraints, indexes and
+primary keys around the columns, alters them in place and puts everything back; data is
+kept. Execution plans for a lookup by id, by email and by company code are now a clustered
+or nonclustered index seek with no implicit conversion. Left as they were because nothing
+looks them up: `accentColor`, `phone`, `language`, `action`, `ip`, `channel`,
+`templateKey`. A new key or lookup column is NVARCHAR from the start.
+
+### D58. Expired sessions are removed at startup and then hourly
+
+`jobs/prune-sessions.js` calls `PrismaSessionStore.prune()` when the server starts and
+every hour after, logs a failure as a warning and carries on. The in-memory store has no
+`prune` and is skipped. Tested in `tests/prune-sessions.test.js`. Single instance only:
+with several App Service instances each prunes, which is harmless (a delete of rows that
+are already gone).
+
+### D59. Production database logins are least-privilege
+
+The app connects with a login that has read, write and execute only (`db_datareader`,
+`db_datawriter` and EXECUTE), never `sa`, `db_owner` or anything with ALTER. Migrations
+run under a separate admin login, from the deploy pipeline, not from the app's settings.
+This is what keeps the AuditLog trigger (D52) from being disabled by the app. Local
+development still uses `sa`; production refuses nothing here yet, so it is a deployment
+rule. After a Prisma upgrade run `npm approve-scripts prisma @prisma/client @prisma/engines`
+again (D56): the approval is pinned to the installed versions.
