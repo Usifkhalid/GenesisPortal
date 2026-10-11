@@ -67,7 +67,7 @@ export async function render(root) {
   function draw(focus) {
     const holdingLabel = t('admin.admins.holding');
     root.innerHTML = `<div class="stack">
-      <p class="field__help">${esc(t('admin.admins.lead'))}</p>
+      <p class="admin-lead">${esc(t('admin.admins.lead'))}</p>
       ${group({
         key: 'holding',
         title: esc(holdingLabel),
