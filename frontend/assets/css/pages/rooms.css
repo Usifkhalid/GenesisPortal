@@ -1,0 +1,582 @@
+/* ============================================================================
+ * pages/rooms.css — room booking: the view switch, "Find a room", the day
+ * timetable and its phone list, the booking dialog and a room's panel.
+ *
+ * The timetable's time axis runs along the inline direction and every
+ * position is an inline inset or size, so Arabic is the same layout read from
+ * the other side with no override. Tokens only, logical properties only.
+ * Everything answers to the page container (the rail may be open or not).
+ * ========================================================================= */
+
+/* --- View switch --------------------------------------------------------- */
+.rooms-nav {
+  display: flex;
+  gap: var(--space-1);
+  border-block-end: var(--border-1) solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.rooms-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.rooms-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-4);
+  border-block-end: var(--border-2) solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.rooms-nav__link:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.rooms-nav__link[aria-current='page'] {
+  border-block-end-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+}
+
+.rooms__missing {
+  margin: 0 0 var(--space-4);
+  color: var(--warning-ink);
+  font-weight: var(--weight-bold);
+}
+
+/* --- Find a room --------------------------------------------------------- */
+/* Two columns from the narrowest phone, the date across both: the form is
+ * three rows, so the free rooms start within the first screen. */
+.find__fields {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.find__date {
+  grid-column: 1 / -1;
+}
+
+@container page (min-width: 34rem) {
+  .find__date {
+    grid-column: auto;
+  }
+}
+
+@container page (min-width: 56rem) {
+  .find__fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.find__equipment {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.find__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+}
+
+.find__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.find__actions .field__help {
+  margin: 0;
+}
+
+.find__summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.find__summary:empty {
+  display: none;
+}
+
+.find__hint {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.find__done {
+  margin-block-end: var(--space-4);
+}
+
+.room-row {
+  align-items: center;
+}
+
+.rooms-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* --- Day: controls ------------------------------------------------------- */
+.day-controls__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.day-controls__field {
+  flex: 1 1 6rem;
+  min-inline-size: 0;
+}
+
+.day-controls__room {
+  min-inline-size: 0;
+}
+
+@container page (min-width: 48rem) {
+  .day-controls {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .day-controls__date {
+    flex: 0 1 auto;
+  }
+
+  .day-controls__field {
+    flex: 0 0 12rem;
+  }
+
+  .day-controls__room {
+    flex: 0 1 18rem;
+  }
+}
+
+/* --- Day: heading, timetable and phone list ------------------------------ */
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.day__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+}
+
+.day__summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.day__summary:empty {
+  display: none;
+}
+
+/* The page's width decides: a timetable where it fits, a list where it does not. */
+.day-timeline {
+  display: none;
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container page (min-width: 48rem) {
+  .day-timeline {
+    display: flex;
+  }
+
+  .day-list {
+    display: none;
+  }
+}
+
+.day-timeline {
+  gap: var(--space-3);
+}
+
+.day-timeline__head,
+.day-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 11rem) minmax(0, 1fr);
+  column-gap: var(--space-4);
+  align-items: center;
+}
+
+/* The axis and every track share the same inline margin, so an hour mark
+ * lines up down the whole page and its label has room past the first and last
+ * column. */
+.day-axis,
+.day-track {
+  position: relative;
+  margin-inline: var(--space-6);
+}
+
+.day-axis {
+  block-size: var(--space-5);
+}
+
+.day-axis__label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--at);
+  inline-size: var(--space-12);
+  margin-inline-start: calc(var(--space-6) * -1);
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  text-align: center;
+}
+
+.day-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-row__room {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.day-row__name {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.day-row__name:hover {
+  color: var(--brand-accent-ink);
+  text-decoration: underline;
+}
+
+.day-row__meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.day-track {
+  block-size: var(--space-12);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-control);
+}
+
+.day-tick {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--at);
+  inline-size: var(--border-1);
+  background: var(--rule-muted);
+}
+
+.day-past {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--size);
+  background: var(--surface-sunken);
+}
+
+.day-now {
+  position: absolute;
+  inset-block: calc(var(--space-1) * -1);
+  inset-inline-start: var(--at);
+  inline-size: var(--border-2);
+  background: var(--brand-accent-edge);
+  pointer-events: none;
+}
+
+.day-busy,
+.day-free {
+  position: absolute;
+  inset-block: var(--space-1);
+  inset-inline-start: var(--at);
+  inline-size: var(--size);
+  min-inline-size: var(--space-1);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.day-busy {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-2);
+  background: var(--surface-active);
+  border: var(--border-1) solid var(--rule-strong);
+  color: var(--text-body);
+  font-size: var(--text-2xs);
+}
+
+.day-busy--mine {
+  background: var(--brand-accent-wash);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+  font-weight: var(--weight-bold);
+}
+
+.day-busy__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-free {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-inline-size: var(--space-4);
+  padding-inline: var(--space-1);
+  background: none;
+  border: var(--border-1) dashed var(--rule-strong);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-2xs);
+  cursor: pointer;
+}
+
+.day-free:hover {
+  background: var(--brand-accent-wash);
+  border-color: var(--brand-accent-edge);
+  color: var(--brand-accent-ink);
+}
+
+.day-free__icon {
+  flex: none;
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+}
+
+.day-free__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Phone: a card per room and the free stretches of its day as buttons. */
+.day-slots {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+.day-slots__none {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.day-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--tap-min);
+  padding: var(--space-2) var(--space-1);
+  background: none;
+  border: 0;
+  border-block-end: var(--border-1) solid var(--rule-muted);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.day-slot:hover {
+  background: var(--surface-sunken);
+}
+
+.day-slot__time {
+  color: var(--text-strong);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+
+.day-slot__length {
+  margin-inline-start: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.day-slot__icon {
+  flex: none;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  color: var(--brand-accent-ink);
+}
+
+.day-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  list-style: none;
+}
+
+.day-skeleton__row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(0, 3fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.day-skeleton__track {
+  block-size: var(--space-10);
+  border-radius: var(--radius-control);
+}
+
+/* --- Booking dialog ------------------------------------------------------ */
+.booking-dialog {
+  inline-size: min(100% - var(--space-8), 38rem);
+}
+
+.booking__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  list-style: none;
+}
+
+.booking__summary::-webkit-details-marker {
+  display: none;
+}
+
+.booking__summary-text {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.booking__change {
+  flex: none;
+  color: var(--brand-accent-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.booking__fields {
+  padding-block-start: var(--space-4);
+}
+
+.booking__conflicts {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.booking__weekdays {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.booking__weekday-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+
+/* --- A room's panel ------------------------------------------------------ */
+.room-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.room-photo {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+}
+
+.room-photo--blank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--surface-sunken);
+  border: var(--border-1) dashed var(--rule-strong);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.room-photo__icon {
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+}
+
+.room-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.room-detail__none {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.room-gear {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-gear__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.room-gear__icon {
+  flex: none;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  color: var(--success-ink);
+}

@@ -111,3 +111,46 @@ export function fromCairoInput(local) {
   guess = wall - cairoOffsetMs(guess);
   return new Date(guess).toISOString();
 }
+
+/* ------------------------------------------------------- Cairo calendar days */
+
+const two = (n) => String(n).padStart(2, '0');
+
+/** An instant's calendar day in Cairo, "2026-10-25". */
+export function cairoYmd(value) {
+  const p = cairoFields(new Date(value).getTime());
+  return `${p.year}-${two(p.month)}-${two(p.day)}`;
+}
+
+/** Minutes after midnight on Cairo's clock. */
+export function cairoMinutes(value) {
+  const p = cairoFields(new Date(value).getTime());
+  return p.hour * 60 + p.minute;
+}
+
+/** 615 → "10:15". Latin digits in both languages. */
+export const clockOf = (minutes) => `${two(Math.floor(minutes / 60))}:${two(minutes % 60)}`;
+
+/** An instant as "14:30" on Cairo's clock. */
+export const formatTime = (value) => clockOf(cairoMinutes(value));
+
+/** "2026-10-25" moved by whole days. */
+export function addDays(ymd, days) {
+  const date = new Date(`${ymd}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** 0 is Sunday, as in the booking API. */
+export const weekdayOf = (ymd) => new Date(`${ymd}T12:00:00Z`).getUTCDay();
+
+/** "Sunday, 25 Oct" for a calendar day (no zone maths: it is only a date). */
+export function formatDay(ymd, { weekday = 'long', year = false } = {}) {
+  return new Intl.DateTimeFormat(locale(), {
+    timeZone: 'UTC',
+    weekday,
+    day: 'numeric',
+    month: 'short',
+    ...(year ? { year: 'numeric' } : {}),
+  }).format(new Date(`${ymd}T12:00:00Z`));
+}

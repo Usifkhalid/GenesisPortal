@@ -289,3 +289,23 @@ Files: backend/{prisma/*,scripts/*,src/{app.js,config/env.js,lib/time.js,integra
 Verified: `npm test` 248 pass (5 runs of 199 before the fix, 3 of 248 after); `npm run test:e2e` 48 pass; lint clean. The rooms module also ran against SQL Server (`rooms-store.test.js`).
 Open issues: `prisma generate` hit EPERM on the engine DLL while `npm run dev` was running: the client code was written and works (the engine file is byte-identical), but stop the dev server and run `npm run db:generate` once to finish it cleanly. The development database was migrated with `prisma migrate deploy` (session 14's directory migration was still pending there too) but not re-seeded: run `npm run db:seed` for the rooms and the search keys, and `npm run db:reset` (or one ALTER DATABASE) for D85. `mgportal_test_test` is an unused leftover on the local server. Real Graph calendar calls and the delegated token are unproven (session 19). An admin's cancel does not notify the organiser yet. Room and booking audit actions have no labels in the audit log screen. Room names, floors and mailboxes are placeholders. The new directory UI had no /impeccable pass.
 Next: the room booking screens, then notifications.
+
+## Session 16 — Room booking frontend (2026-10-11; the prompt called it "Session 12")
+
+Done: Rooms page: Find a room (date, time, length, people, equipment; free rooms, smallest first;
+Book then Confirm), Day view (timetable, flips in RTL; list of free stretches on a phone),
+booking dialog (subject, people picker on the directory, repeat none/daily/weekly, conflicts
+listed, "find another room"), My bookings (series folded, cancel one or later), a room's panel,
+Home's bookings card on real data (next 3). New `components/people-picker.js`. API: `hours` on
+`GET /api/rooms`, `seriesId` on a booking. `/impeccable critique` (detector clean; single-context,
+no sub-agents) and polish: phone form compacted, busy blocks titled, links quiet. D90-D93.
+Files: frontend/assets/{js/pages/rooms.js,js/pages/rooms/*,js/components/{people-picker,icons}.js,
+js/{format,router}.js,js/pages/home.js,css/pages/rooms.css,css/components.css,i18n/*}, index.html;
+backend/src/modules/rooms/service.js, backend/tests/rooms.test.js; tests/e2e/{rooms.spec,helpers}.js; docs/*.
+Verified: `npm test` 250 pass; lint clean; rooms e2e 16/16 (EN/AR, 1440/360) in four consecutive runs.
+Open issues: the FULL e2e suite is unstable on this machine right now and was with my work stashed
+too (login page stuck "loading" for >5 s at cold start, 5-11 failures in older specs); cause not found
+(server answers in ~50 ms, DB fine; two `npm run dev` watchers running). Native date fields show
+MM/DD/YYYY in English. No room photos supplied. Room names/floors still placeholders; real Graph
+unproven (session 19). No notification when an admin cancels. Not keyboard-walked by a person.
+Next: notifications, then support tickets; find why cold-start sign-in is slow under full-suite load.

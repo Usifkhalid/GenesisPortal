@@ -34,7 +34,7 @@ const DEFAULT_ROUTE = 'home';
 const ROUTES = {
   home: { nav: 'home', title: 'nav.home', page: 'home', skeleton: homeSkeleton },
   announcements: { nav: 'announcements', title: 'nav.announcements', page: 'announcements' },
-  rooms: { nav: 'rooms', title: 'nav.rooms', page: null },
+  rooms: { nav: 'rooms', title: 'nav.rooms', page: 'rooms' },
   tickets: { nav: 'tickets', title: 'nav.tickets', page: null },
   directory: { nav: 'directory', title: 'nav.directory', page: 'directory' },
   admin: { nav: 'admin', title: 'nav.admin', page: 'admin' },

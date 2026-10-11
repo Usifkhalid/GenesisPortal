@@ -2639,3 +2639,99 @@ a.person {
   font-size: var(--text-sm);
   color: var(--text-strong);
 }
+
+/* ============================================================================
+ * People picker
+ *
+ * A search field, its matches in a list that opens in the flow (not over the
+ * page, so a dialog's own scrolling never clips it), and the people chosen so
+ * far as removable chips. Built by components/people-picker.js.
+ * ========================================================================= */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.picker__list {
+  max-block-size: 14rem;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-control);
+}
+
+.picker__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.picker__option:hover,
+.picker__option[aria-selected='true'] {
+  background: var(--brand-accent-wash);
+}
+
+.picker__option[aria-selected='true'] {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: calc(var(--border-2) * -1);
+}
+
+.picker__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.picker__name {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.picker__where {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.picker__none {
+  padding: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--space-10);
+  max-inline-size: 100%;
+  padding-inline-start: var(--space-1);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+}
+
+/* One choice among several set in a row: a checkbox beside its word. */
+.choice--inline {
+  align-items: center;
+}

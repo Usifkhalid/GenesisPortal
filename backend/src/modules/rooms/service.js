@@ -169,6 +169,8 @@ export function createRoomService({
       status: b.status,
       cancelledAt: b.cancelledAt,
       recurring: Boolean(b.seriesMasterId),
+      // Only the series' own people may tell which meetings belong together.
+      seriesId: full ? (b.seriesMasterId ?? null) : null,
       // Everything below belongs to the meeting, not to the room's timetable.
       subject: full ? b.subject : null,
       recurrence: full ? b.recurrence : null,
@@ -272,8 +274,12 @@ export function createRoomService({
   /* ----------------------------------------------------------------- rooms */
 
   async function listRooms(req, filters) {
-    requireUser(req);
-    return { items: (await usableRooms(req, filters)).map(roomView) };
+    const user = requireUser(req);
+    const [rooms, hours] = await Promise.all([
+      usableRooms(req, filters),
+      hoursFor(user.companyId),
+    ]);
+    return { items: rooms.map(roomView), hours };
   }
 
   async function getRoom(req, id) {

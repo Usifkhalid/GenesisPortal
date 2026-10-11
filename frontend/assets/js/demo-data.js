@@ -43,12 +43,6 @@ export const DEMO_TICKETS = [
   },
 ];
 
-/** The user's next room bookings. `today` picks the "Today" label. */
-export const DEMO_BOOKINGS = [
-  { room: 204, floor: '2', today: true, time: '15:00–16:00', title: 'demo.bookings.b1' },
-  { room: 101, floor: '1', day: 'thu', time: '10:00–11:30', title: 'demo.bookings.b2' },
-];
-
 export const DEMO_ANNOUNCEMENTS = [
   {
     published: '07/10/2026',

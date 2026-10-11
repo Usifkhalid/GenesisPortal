@@ -885,3 +885,37 @@ memory) and, like Exchange, refuses a busy room. Adapters throw `GraphError`
 Graph status. **The real calendar code has never run against a tenant** and nothing yet
 hands it a person's token (`req.getGraphToken`): both are session 19. Until then
 `GRAPH_MODE=real` answers 503 `calendar_unavailable` on booking.
+
+### D90. Rooms is one page with a view per address; a room opens in a panel
+
+`#rooms` (find a room, also `#rooms/new`), `#rooms/day`, `#rooms/mine` and `#rooms/<id>`
+(the room's panel over "find"). The views are modules in `pages/rooms/` sharing one
+environment (rooms, the company's working hours) cached for five minutes, and a small bus
+(`notifyChanged` / `onChanged`) so a booking made in one place redraws the others. The panel
+is a drawer like the directory's, with its own address so it can be shared. A room with no
+photo says so; nothing stands in for one.
+
+### D91. Booking is two taps, and never silent
+
+"Book" on a free room opens the booking dialog filled with the searched room, day, time and
+people; the subject is pre-filled ("Meeting") and selected, so Confirm alone books. The time
+and room stay folded under one line ("Change"). A tap that makes a real calendar event on a
+weak connection must be one the person can see before it happens, so there is no one-tap
+booking. Whatever is booked is what was searched for, not what the form says by then. A room
+taken meanwhile lists the conflicting times and offers "Find another room for this time".
+
+### D92. The day view is one dataset drawn twice, chosen by container width
+
+A timetable (row per room, working hours as columns) from 48rem of page width, and a card
+per room with its free stretches as buttons below that. The axis is positioned with inline
+insets and sizes only, so Arabic is the same layout read from the other side. The free
+stretches are the buttons (few tab stops, each named "Book room, free from … to …"); a press
+inside a long stretch starts where it landed, on the half hour.
+
+### D93. API: working hours with the room list, series id on a booking
+
+`GET /api/rooms` also returns the reader's company's `hours`, so the page needs one request
+and no calendar call to know what can be booked. A booking view carries `seriesId` (empty
+where the reader may not see the subject), so My bookings folds a series into one entry
+(its next meeting, how it repeats, how many more) and cancels "this one" or "this and all
+later" through the existing cancel route.

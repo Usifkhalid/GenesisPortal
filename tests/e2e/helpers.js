@@ -24,6 +24,9 @@ const IGNORED_ERRORS = [
   // By design: a second sync request while one runs answers 409 and the page
   // says so. Two projects share one database, so a test can meet it.
   /status of 409 .*\/api\/admin\/directory\/sync\)$/,
+  // By design: a room taken while its booking dialog was open answers 409
+  // room_conflict, and the dialog says so (rooms.spec.js makes it happen).
+  /status of 409 .*\/api\/bookings\)$/,
 ];
 
 export const test = base.extend({

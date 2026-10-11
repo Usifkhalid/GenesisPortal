@@ -7,8 +7,8 @@
  * Real: the person, the company and the Cairo date and time, all from the
  * session (GET /api/me). They are on screen at once.
  *
- * Real: the news card (announcements). DEMO: the other four cards, whose
- * modules have no API yet, so each `load` below hands back demo-data.js.
+ * Real: the news card (announcements) and the bookings card (room booking).
+ * DEMO: the other three cards, whose modules have no API yet, so each `load` below hands back demo-data.js.
  * Everything around `load` is already the real thing: a card shows a skeleton
  * while its list loads, then its rows, its own one-line empty state, or its own
  * failure with a retry. Replacing a `load` with an api() call is the whole of
@@ -16,21 +16,15 @@
  */
 
 import { api } from '../api.js';
-import { formatDate } from '../format.js';
-import { t, getLocale } from '../i18n.js';
+import { cairoYmd, formatDate, formatDay, formatTime } from '../format.js';
+import { t, getLocale, localized } from '../i18n.js';
 import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
 import { icon } from '../components/icons.js';
 import { companyName } from '../components/company-mark.js';
 import { initials } from '../components/initials.js';
 import { recordSkeleton } from '../components/skeleton.js';
-import {
-  DEMO_TICKETS,
-  DEMO_BOOKINGS,
-  DEMO_PEOPLE,
-  DEMO_WAITING,
-  ticketNumber,
-} from '../demo-data.js';
+import { DEMO_TICKETS, DEMO_PEOPLE, DEMO_WAITING, ticketNumber } from '../demo-data.js';
 
 const CAIRO = 'Africa/Cairo';
 
@@ -154,9 +148,9 @@ function failedLine() {
 }
 
 /** A capped record list, with a link to the rest when there is a rest. */
-function recordList(rows, href) {
-  const extra = rows.length - MAX_ROWS;
-  return `<ul class="record-list" data-density="compact">${rows.slice(0, MAX_ROWS).join('')}</ul>
+function recordList(rows, href, max = MAX_ROWS) {
+  const extra = rows.length - max;
+  return `<ul class="record-list" data-density="compact">${rows.slice(0, max).join('')}</ul>
     ${
       extra > 0
         ? `<a class="record-list__more" href="${href}">${esc(t('home.more', { count: extra }))}</a>`
@@ -187,16 +181,21 @@ function ticketRow({ company }, ticket) {
   </li>`;
 }
 
-function bookingRow({ company }, booking) {
-  const room = `${company.code}-${booking.room}`;
-  const day = booking.today ? t('home.today') : t(`day.${booking.day}`);
+/** One of my upcoming bookings (GET /api/bookings/mine). */
+function bookingRow(_ctx, booking) {
+  const ymd = cairoYmd(booking.start);
+  const day =
+    ymd === cairoYmd(new Date()) ? t('home.today') : formatDay(ymd, { weekday: 'short' });
+  const time = `${formatTime(booking.start)}–${formatTime(booking.end)}`;
   return `<li class="record">
     <dl class="labelstrip labelstrip--compact">
-      ${pair(t('room.name'), esc(room))}
-      ${pair(t('home.rooms.when'), `${esc(day)} ${esc(booking.time)}`)}
-      ${pair(t('room.floor'), esc(booking.floor))}
+      ${pair(t('room.name'), esc(localized(booking.room)))}
+      ${pair(t('home.rooms.when'), `${esc(day)} ${esc(time)}`)}
+      ${pair(t('room.floor'), esc(booking.room.floor || '—'))}
     </dl>
-    <h3 class="record__title"><a href="#rooms/${esc(room)}">${esc(t(booking.title))}</a></h3>
+    <h3 class="record__title"><a href="#rooms/mine">${esc(
+      booking.subject || t('rooms.mine.noSubject')
+    )}</a></h3>
   </li>`;
 }
 
@@ -322,8 +321,11 @@ const CARDS = [
     title: 'home.rooms.title',
     href: '#rooms',
     openLabel: 'home.rooms.openAll',
-    load: async () => DEMO_BOOKINGS, // DEMO
+    // The next three, soonest first; the rest are one link away.
+    load: async () => (await api('/api/bookings/mine', { quiet: true })).items,
     row: bookingRow,
+    max: 3,
+    more: '#rooms/mine',
     skeletonRows: 2,
     empty: { title: 'home.rooms.emptyTitle', text: 'home.rooms.emptyText' },
   },
@@ -395,7 +397,8 @@ function bodyHtml(card, ctx, state) {
 
   const list = recordList(
     state.records.map((record) => card.row(ctx, record)),
-    card.more ?? card.href
+    card.more ?? card.href,
+    card.max
   );
   return card.listLabel
     ? `<div class="stack stack--tight">

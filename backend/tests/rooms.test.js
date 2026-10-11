@@ -196,6 +196,16 @@ describe('rooms', () => {
     assert.equal((await request(w.app).get('/api/rooms')).status, 401);
   });
 
+  test('the room list carries the reader’s company’s working hours', async () => {
+    const w = await world();
+    const { hours } = (await w.gen.get('/api/rooms')).body;
+    assert.deepEqual(hours, {
+      workdayStartMin: 480,
+      workdayEndMin: 1080,
+      workingDays: [0, 1, 2, 3, 4],
+    });
+  });
+
   test('a restricted room exists only for its companies', async () => {
     const w = await world();
     const all = (await w.ha.get('/api/admin/rooms')).body.items;
@@ -471,7 +481,16 @@ describe('recurring bookings', () => {
     assert.ok(items.every((b) => b.recurring && b.recurrence.type === 'weekly'));
     assert.equal(new Set(w.repo.bookings.map((b) => b.seriesMasterId)).size, 1);
     assert.match(w.repo.bookings[0].seriesMasterId, /^mock-series-/);
+    // The screens fold a series by this id: the same on every occurrence.
+    assert.equal(new Set(items.map((b) => b.seriesId)).size, 1);
+    assert.equal(items[0].seriesId, w.repo.bookings[0].seriesMasterId);
     assertConsistent(w);
+  });
+
+  test('a single booking has no series id', async () => {
+    const w = await world();
+    const items = await w.mustBook(w.gen, {});
+    assert.equal(items[0].seriesId, null);
   });
 
   test('daily means working days only', async () => {

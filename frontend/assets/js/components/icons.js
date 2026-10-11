@@ -41,6 +41,8 @@ const PATHS = {
   check: '<path d="M4.5 12.5 9 17 19.5 6.5"/>',
   chevronDown: '<path d="M6 9.5 12 15.5 18 9.5"/>',
   chevronEnd: '<path d="M9.5 5 16.5 12 9.5 19"/>',
+  // The mirror of chevronEnd: "back". Directional too, so it flips in Arabic.
+  chevronStart: '<path d="M14.5 5 7.5 12 14.5 19"/>',
   arrowUp: '<path d="M12 19V5"/><path d="M6.5 10.5 12 5l5.5 5.5"/>',
   // Up and towards the end of the line: "open this". Directional, so mark it .icon--dir.
   arrowUpEnd: '<path d="M7 17 17 7"/><path d="M9 7h8v8"/>',
