@@ -14,17 +14,33 @@ const fakeId = (table, index) =>
   `${table}0000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
 
 export function createMemoryUserRepo() {
+  const now = new Date();
   const companies = COMPANIES.map((company, i) => ({
     id: fakeId(1, i),
     ...company,
+    domains: [company.domain],
+    logoKey: null,
     isActive: true,
+    createdAt: now,
+    updatedAt: now,
   }));
   const companyByCode = new Map(companies.map((c) => [c.code, c]));
 
+  const departments = DEPARTMENTS.map((d, i) => ({
+    id: fakeId(4, i),
+    key: d.key,
+    companyId: companyByCode.get(d.company).id,
+    nameEn: d.nameEn,
+    nameAr: d.nameAr,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
   const users = USERS.map((user, i) => {
     const company = companyByCode.get(user.company);
-    const department = DEPARTMENTS.find(
-      (d) => d.company === user.company && d.key === user.department
+    const department = departments.find(
+      (d) => d.companyId === company.id && d.key === user.department
     );
     return {
       id: fakeId(2, i),
@@ -37,10 +53,12 @@ export function createMemoryUserRepo() {
       language: user.language,
       isActive: true,
       company,
+      departmentId: department?.id ?? null,
       department: department ? { nameEn: department.nameEn, nameAr: department.nameAr } : null,
       // The same rule as seed.js: only a HoldingAdmin is holding-wide.
       roles: [
         {
+          id: fakeId(3, i),
           role: user.role,
           scopeCompanyId: user.role === ROLES.HOLDING_ADMIN ? null : company.id,
         },
@@ -54,6 +72,9 @@ export function createMemoryUserRepo() {
     /** The rows themselves, so a test can deactivate someone or change a role. */
     companies,
     users,
+    departments,
+    /** Rows written by the admin module, for tests and development. */
+    auditLogs: [],
 
     async listCompaniesWithUsers() {
       return companies

@@ -126,8 +126,67 @@ starts the session and redirects to `/`. On failure it redirects to
 `requireRole(ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN)` from `middleware/auth.js` as the
 coarse gate, then `assertCompanyAdmin(req, companyId)` from `lib/scope.js` for the company.
 
+### Administration (`/api/admin`)
+
+Every route needs a session and, for writes, `X-CSRF-Token`. Roles: **HA** holding
+admin, **CA** company admin (of the company concerned). A company outside someone's reach
+answers 404, not 403. Every write is one transaction holding the change and exactly one
+`AuditLog` row; a refused or failed write writes none.
+
+Errors a form can act on carry a stable `error.code`:
+
+| Status | Code | Meaning |
+|---|---|---|
+| 400 | `validation_failed` | `details`: `[{ path, message }]` |
+| 400 | `accent_not_accessible` | the colour fails `frontend/assets/js/accent.js`; `details.failed` |
+| 409 | `stale_record` | `updatedAt` is not the record's current one: reload |
+| 409 | `code_taken` | company code in use |
+| 409 | `domain_taken` | `details.domain` belongs to another company |
+| 409 | `department_name_taken` | `details.field` is `nameEn` or `nameAr` |
+| 409 | `already_assigned` | the person already holds that role there |
+| 409 | `cannot_remove_own_role` | removing your own HoldingAdmin role |
+| 409 | `last_holding_admin` | removing the last active HoldingAdmin |
+| 413 | `logo_too_large` / `payload_too_large` | over 512 KB |
+| 415 | `unsupported_image` | not PNG, JPEG or WebP by file signature |
+
+Concurrency: every edit sends the `updatedAt` (ISO string) of the record as loaded, in the
+body, or in the query for the logo routes. The update only applies if it still matches.
+
+| Method and path | Who | Notes |
+|---|---|---|
+| `GET /scope` | HA, CA | `{ holdingAdmin, companies[] }`: the companies this person administers |
+| `GET /companies?status=active\|inactive\|all` | HA | `{ items[] }`: `id, code, nameEn, nameAr, domains[], accentColor, logoUrl, isActive, userCount, createdAt, updatedAt` |
+| `GET /companies/:id` | HA | |
+| `POST /companies` | HA | `{ code /^[A-Z]{2,5}$/, nameEn, nameAr, domains[1..5], accentColor "#rrggbb" }` → 201 |
+| `PATCH /companies/:id` | HA | `{ updatedAt, nameEn?, nameAr?, domains?, accentColor? }`. The code is not editable (unknown fields are 400). |
+| `POST /companies/:id/deactivate` · `/reactivate` | HA | `{ updatedAt }`. There is no delete. A deactivated company's people are signed out at their next request. |
+| `PUT /companies/:id/logo?updatedAt=` | HA | raw body, any content type; the file's signature decides. Max 512 KB. Replaces and removes the old file. |
+| `DELETE /companies/:id/logo?updatedAt=` | HA | |
+| `GET /api/companies/:id/logo` | anyone who may see the company | the stored image; `Cache-Control: private, max-age=31536000, immutable` (the `?v=` in `logoUrl` changes on replace) |
+| `GET /departments?companyId=&status=` | HA any; CA own | `companyId` defaults to the person's first administered company |
+| `POST /departments` | HA any; CA own | `{ companyId, nameEn, nameAr }`; names unique per company, in both languages |
+| `PATCH /departments/:id` | HA any; CA own | `{ updatedAt, nameEn?, nameAr? }` |
+| `POST /departments/:id/deactivate` · `/reactivate` | HA any; CA own | `{ updatedAt }`. People keep a deactivated department. There is no delete. |
+| `GET /admins` | HA | `{ holding[], companies[{ company, admins[] }] }` |
+| `POST /admins` | HA | `{ userId, role: HoldingAdmin\|CompanyAdmin, companyId? }` → 201. `companyId` is required for CompanyAdmin and forbidden for HoldingAdmin. |
+| `DELETE /admins/:id` | HA | `:id` is the assignment id |
+| `GET /people?q=` | HA | active people by English name, Arabic name or email (2+ characters, 15 results) |
+| `GET /audit` | HA all; CA their companies | filters `from`, `to` (Cairo dates, `YYYY-MM-DD`, inclusive), `actorId`, `action`, `entity`, `companyId` (a company id, or `holding`); `page`, `pageSize` (10–100). Newest first. `{ items[], page, pageSize, total }` |
+| `GET /audit/facets` | HA, CA | the actions, entities, actors and companies there are entries for |
+| `GET /audit/export.csv` | HA all; CA theirs | the same filters, no paging, up to 10 000 rows, UTF-8 with BOM, formula-safe. The export is itself written to the log (`audit.export`). |
+| `GET /audit/:id` | HA all; CA theirs | one entry with parsed `before` and `after` |
+
+There are no edit or delete routes for the audit log: `PUT`, `PATCH`, `DELETE` and
+`POST` on `/audit` and `/audit/:id` answer 404, and the database trigger refuses them
+anyway (D52).
+
+Audit actions written by this module: `company.create`, `company.update`,
+`company.deactivate`, `company.reactivate`, `company.logo.update`, `company.logo.remove`,
+`department.create`, `department.update`, `department.deactivate`,
+`department.reactivate`, `role.assign`, `role.remove`, `audit.export`. A role entry is
+filed under the company it administers, so that company's admin sees it.
+
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-company admin, announcements, directory, room booking, support tickets, notifications and
-the audit log.
+announcements, directory, room booking, support tickets and notifications.

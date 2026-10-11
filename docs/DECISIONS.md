@@ -543,3 +543,82 @@ This is what keeps the AuditLog trigger (D52) from being disabled by the app. Lo
 development still uses `sa`; production refuses nothing here yet, so it is a deployment
 rule. After a Prisma upgrade run `npm approve-scripts prisma @prisma/client @prisma/engines`
 again (D56): the approval is pinned to the installed versions.
+
+### D60. The accent rule is stated once more in JavaScript, and pinned to the CSS
+
+The server cannot run `tokens.css`, and the live verdict in the form needs the numbers
+too. `frontend/assets/js/accent.js` carries the same arithmetic (black or white label at
+luminance 0.179; fill banded 0.26–0.88; ink capped 0.46 light and floored 0.78 dark; edge
+capped 0.56, banded 0.56–0.72 dark) and is the only JavaScript statement of it: the browser
+and the backend both import that one file. `backend/tests/accent.test.js` reads the
+constants out of `tokens.css` and fails if either drifts. **The rule rejects a colour when
+the derived label on the fill is under 4.5:1, the accent as text is under 4.5:1 on any of
+the four stone grounds in either theme, or the accent as an outline is under 3:1 on the
+page and on a card in either theme.** The edge is held to the page and a card only, because
+that is all D3 promises for it (against the raised dark steps it is 2.7:1). By
+construction every well-formed hex passes (a 4096-colour sweep is a test), so in practice
+the rule refuses malformed values and will refuse a colour the day the tokens change.
+
+### D61. Any element may scope a theme (`[data-theme]`)
+
+The company preview needs the light and dark shell side by side whatever the viewer's theme,
+re-deriving every brand value from the colour being tried. `tokens.css` therefore applies
+its light block to `:root, [data-theme='light'], [data-theme='dark']`, the dark overrides to
+`[data-theme='dark']` and the relative-colour derivations to `:root, [data-theme]`. Nothing
+changes for `<html>`. The preview is the real CSS arithmetic running on the real tokens, not
+a JavaScript imitation. Cost: a scoped element redeclares the whole token set.
+
+### D62. Logos: a storage adapter, an authenticated route, versioned URLs
+
+`lib/storage.js` has `put`, `get`, `remove`. The local adapter writes to `STORAGE_DIR`
+(default `<repo>/storage`, gitignored, outside `frontend/` so it is never a static file); an
+Azure Blob adapter with the same three methods replaces it. Uploads are PNG, JPEG or WebP by
+signature (`lib/image-type.js`), not by name or content type; SVG is refused outright
+(markup that can carry script, and no signature). Max 512 KB, enforced by the body parser
+and again in the service. The file is stored under a server-made key
+`logo-<companyId>-<uuid>.<ext>`; `Company.logoUrl` becomes
+`/api/companies/<id>/logo?v=<uuid>`, served to people who may see the company with a
+one-year `immutable` cache, which is safe because replacing changes the address. The new
+file is written first; the old one is removed only after the database commit, and a new
+file is removed again if the commit fails, so a crash leaves at worst an orphan, never a
+dangling logo. The login page cannot show an uploaded logo (nobody is signed in): it shows
+the company code, as it does for a company with no logo.
+
+### D63. Optimistic concurrency by `updatedAt`, checked in the UPDATE
+
+Edits send the `updatedAt` they loaded. The store applies the change with
+`UPDATE … WHERE id = ? AND updatedAt = ?` and treats zero rows as `stale_record` (409), so
+two saves cannot both win even between the read and the write. A no-op edit (nothing differs)
+writes nothing and no audit row, but a stale one is still refused. The form says "changed by
+someone else" and offers Reload; it does not try to merge.
+
+### D64. Several mail domains: `CompanyDomain`, with `Company.domain` kept as the primary
+
+A company may own up to five domains. They live in `CompanyDomain` (unique across
+companies, which the database enforces); `Company.domain` stays as the primary (first)
+one so existing readers keep working. Migration `20261011030000_company_admin` backfills
+one row per company, adds `Department.isActive`, a unique `(companyId, nameAr)`, and
+`Company.logoKey`.
+
+### D65. Departments and companies are deactivated, never deleted
+
+There is no delete route for either. A deactivated department keeps its people. A
+deactivated company's people are signed out at their next request (`loadUser` already
+refuses an inactive company), and it disappears from the login list and the switcher.
+Role assignments, which are not business records, are removed outright and audited with
+their `before`.
+
+### D66. The admin module runs over a store with a Prisma and an in-memory implementation
+
+`service.js` holds the rules; `store-prisma.js` and `store-memory.js` hold the queries,
+as `modules/auth` does with its repos. When the user repo is the in-memory one, the admin
+store is too: a test can never reach a real database. A deadlock victim (Prisma `P2034`)
+is retried up to six times with jitter; Azure SQL's default snapshot reads make it rarer
+than on a local instance. The Prisma store is exercised by `npm run test:e2e`, which runs
+against the seeded SQL Server.
+
+### D67. Audit scope for a company admin is the companies they administer
+
+Not the companies they may merely read. A person who is a User of GEN and CompanyAdmin of
+TST sees TST's entries and departments, not GEN's. Holding-wide entries (no company) are for
+holding admins only. An export or a role change is filed under the one company it concerns.

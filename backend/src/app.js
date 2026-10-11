@@ -24,6 +24,11 @@ import { csrfProtection } from './middleware/csrf.js';
 import { apiNotFound, errorHandler, pageNotFound } from './middleware/errors.js';
 import { apiLimiter, authLimiter } from './middleware/rate-limit.js';
 import { requestLog } from './middleware/request-log.js';
+import { defaultStorage } from './lib/storage.js';
+import { adminRoutes, logoRoutes } from './modules/admin/routes.js';
+import { createAdminService } from './modules/admin/service.js';
+import { createMemoryAdminStore } from './modules/admin/store-memory.js';
+import { createPrismaAdminStore } from './modules/admin/store-prisma.js';
 import { createMemoryUserRepo } from './modules/auth/repo-memory.js';
 import { createPrismaUserRepo } from './modules/auth/repo.js';
 import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
@@ -38,6 +43,8 @@ import { meRoutes, publicAuthRoutes } from './modules/auth/routes.js';
  *   routes behind all three, for tests
  * @param {Partial<typeof env>} [options.config]  overrides of the environment, for tests
  * @param {object} [options.userRepo]  see modules/auth/repo.js
+ * @param {object} [options.adminStore]  see modules/admin/store-prisma.js
+ * @param {object} [options.storage]  see lib/storage.js; the logo folder by default
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  */
@@ -54,6 +61,16 @@ export function createApp(options = {}) {
   const store =
     options.sessionStore ??
     (useDatabase ? new PrismaSessionStore() : new session.MemoryStore());
+  // The admin module works on the same people as sign-in: the in-memory ones
+  // when the user repo is the in-memory one (which exposes its rows), the
+  // database otherwise. Never a mix, so a test cannot reach a real database.
+  const adminStore =
+    options.adminStore ??
+    (repo.companies ? createMemoryAdminStore(repo) : createPrismaAdminStore());
+  const admin = createAdminService({
+    store: adminStore,
+    storage: options.storage ?? defaultStorage(),
+  });
   app.locals.sessionStore = store;
   app.locals.inMemory = !useDatabase;
 
@@ -126,6 +143,9 @@ export function createApp(options = {}) {
   app.use('/api', loadUser(repo), requireAuth);
 
   app.use(meRoutes({ config, repo }));
+
+  app.use('/api/admin', adminRoutes(admin));
+  app.use(logoRoutes(admin));
 
   // Module routers mount here as they are built:
   //   app.use('/api/announcements', announcementRoutes);

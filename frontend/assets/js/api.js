@@ -30,12 +30,14 @@ export class ApiError extends Error {
   /**
    * @param {number} status  0 when the request never reached the server
    * @param {string} code
+   * @param {unknown} [details]  the server's structured extras, e.g. which field
    */
-  constructor(status, code) {
+  constructor(status, code, details) {
     super(code);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -85,7 +87,10 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function send(path, method, body) {
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // A Blob (a logo) goes as its own bytes; anything else as JSON.
+  const raw = typeof Blob !== 'undefined' && body instanceof Blob;
+  if (raw) headers['Content-Type'] = body.type || 'application/octet-stream';
+  else if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!SAFE_METHODS.has(method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
   const attempt = () =>
@@ -93,7 +98,7 @@ async function send(path, method, body) {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
     });
 
   try {
@@ -111,12 +116,17 @@ async function send(path, method, body) {
   }
 }
 
-async function readError(res) {
+async function readErrorBody(res) {
   try {
-    return (await res.json())?.error?.code ?? 'unknown';
+    const error = (await res.json())?.error;
+    return { code: error?.code ?? 'unknown', details: error?.details };
   } catch {
-    return 'unknown';
+    return { code: 'unknown', details: undefined };
   }
+}
+
+async function readError(res) {
+  return (await readErrorBody(res)).code;
 }
 
 /** Fetches a fresh CSRF token for the current session. */
@@ -148,7 +158,10 @@ async function request(path, { method, body, redirectOn401 }) {
     return new Promise(() => {});
   }
 
-  if (!res.ok) throw new ApiError(res.status, await readError(res));
+  if (!res.ok) {
+    const { code, details } = await readErrorBody(res);
+    throw new ApiError(res.status, code, details);
+  }
   if (res.status === 204) return null;
 
   try {

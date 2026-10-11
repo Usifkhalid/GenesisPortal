@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 
 const UNIQUES = {
   company: [['code'], ['domain']],
+  companyDomain: [['domain']],
   department: [['companyId', 'nameEn']],
   userProfile: [['email'], ['entraObjectId']],
   roleAssignment: [['userId', 'role', 'scopeCompanyId']],

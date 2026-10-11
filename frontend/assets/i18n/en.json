@@ -530,5 +530,253 @@
       "title": "That did not work",
       "text": "Try again in a moment."
     }
+  },
+  "admin": {
+    "lead": "Set up companies, their departments and who administers them.",
+    "nav": {
+      "label": "Administration sections",
+      "companies": "Companies",
+      "departments": "Departments",
+      "admins": "Administrators"
+    },
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "field": {
+      "code": "Code",
+      "names": "Names",
+      "domain": "Mail domain",
+      "domains": "Mail domains",
+      "accent": "Accent",
+      "accentPick": "Pick a colour",
+      "accentHex": "Accent colour (hex)",
+      "users": "People",
+      "actions": "Actions",
+      "nameEn": "Name in English",
+      "nameAr": "Name in Arabic",
+      "logo": "Logo file"
+    },
+    "help": {
+      "code": "2 to 5 capital letters, such as TST. It prefixes ticket numbers and cannot be changed later.",
+      "codeLocked": "The code was set when the company was created and cannot be changed.",
+      "domains": "One per line, such as masar.eg. The first is the primary domain. A domain can belong to one company only.",
+      "logo": "PNG, JPEG or WebP, up to 512 KB. Leave empty to keep the current logo."
+    },
+    "companies": {
+      "filter": "Show companies",
+      "new": "New company",
+      "empty": "No companies match this filter.",
+      "caption": "Companies, by code",
+      "editNamed": "Edit {name}",
+      "notFound": "This company could not be found.",
+      "back": "Back to companies",
+      "identity": "Identity",
+      "logoTitle": "Logo",
+      "removeLogo": "Remove logo",
+      "removeLogoTitle": "Remove this logo?",
+      "removeLogoBody": "The company goes back to showing its code on its accent colour until a new logo is uploaded.",
+      "accentTitle": "Accent colour",
+      "activeNote": "People of this company can sign in.",
+      "inactiveNote": "People of this company cannot sign in.",
+      "deactivate": "Deactivate company",
+      "reactivate": "Reactivate company",
+      "create": "Create company",
+      "deactivateTitle": "Deactivate {name}?",
+      "deactivateBody": "Everyone in this company is signed out and cannot sign in until it is reactivated. Nothing is deleted.",
+      "reactivateTitle": "Reactivate {name}?",
+      "reactivateBody": "People of this company can sign in again."
+    },
+    "preview": {
+      "title": "Preview",
+      "help": "The shell with this accent, in both themes.",
+      "light": "Light theme",
+      "dark": "Dark theme",
+      "unnamed": "Company name",
+      "link": "A link"
+    },
+    "verdict": {
+      "format": "Enter a colour as six hex digits, such as #1c7a4a.",
+      "label": "Label on a filled button",
+      "inkLight": "Accent text on light backgrounds",
+      "inkDark": "Accent text on dark backgrounds",
+      "edgeLight": "Accent outline on light backgrounds",
+      "edgeDark": "Accent outline on dark backgrounds",
+      "ok": "This colour works: every text and outline value the portal derives from it passes.",
+      "notOk": "This colour cannot be made accessible. Choose another.",
+      "needs": "needs {min}"
+    },
+    "departments": {
+      "noCompany": "You do not administer any company.",
+      "company": "Company",
+      "add": "Add a department",
+      "addButton": "Add department",
+      "empty": "This company has no departments yet.",
+      "caption": "Departments of the company",
+      "editNamed": "Edit {name}",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivateNamed": "Deactivate {name}",
+      "reactivateNamed": "Reactivate {name}",
+      "deactivateTitle": "Deactivate {name}?",
+      "deactivateBody": "It can no longer be chosen for new people. You can reactivate it later.",
+      "deactivateBodyUsers": "{count} people are in it and keep it. It can no longer be chosen for new people."
+    },
+    "admins": {
+      "lead": "Holding admins run every company. A company admin runs one.",
+      "holding": "Holding admins (all companies)",
+      "none": "No one yet.",
+      "add": "Add",
+      "addTo": "Add an administrator to {group}",
+      "addTitle": "Add an administrator to {group}",
+      "addConfirm": "Add as administrator",
+      "search": "Find a person",
+      "searchHelp": "Type at least two letters of their name, in English or Arabic, or their email.",
+      "results": "People found",
+      "noResults": "No one matches.",
+      "alreadyHolds": "Already an administrator",
+      "remove": "Remove",
+      "removeNamed": "Remove {name} from {group}",
+      "removeTitle": "Remove {name}?",
+      "removeBodyHolding": "They lose access to every company’s administration. You cannot remove yourself, or the last holding admin.",
+      "removeBodyCompany": "They lose access to the administration of {company}."
+    },
+    "error": {
+      "title": "Could not save",
+      "staleTitle": "Changed by someone else",
+      "stale": "Someone else changed this record while you had it open. Reload to see their version, then make your change again.",
+      "reload": "Reload",
+      "codeTaken": "That code is already used by another company.",
+      "domainTaken": "The domain {domain} already belongs to another company.",
+      "departmentNameTaken": "A department of this company already has that name.",
+      "accent": "This colour cannot be made accessible. Choose another.",
+      "alreadyAssigned": "This person is already an administrator here.",
+      "cannotRemoveOwn": "You cannot remove your own holding admin role. Ask another holding admin.",
+      "lastHoldingAdmin": "The last active holding admin cannot be removed.",
+      "unsupportedImage": "The logo must be a PNG, JPEG or WebP image.",
+      "logoTooLarge": "The logo is larger than 512 KB. Use a smaller image.",
+      "emptyUpload": "No file was sent.",
+      "nothingToChange": "Nothing was changed.",
+      "code": "Use 2 to 5 capital letters, A to Z.",
+      "nameRequired": "Enter a name.",
+      "domainRequired": "Enter at least one mail domain.",
+      "domainsMax": "A company can have up to five mail domains.",
+      "domainsDuplicate": "Each domain can be listed once.",
+      "domainFormat": "“{domain}” is not a valid domain. Use a form like masar.eg."
+    },
+    "toast": {
+      "saved": "Saved",
+      "created": "Company created",
+      "logoFailed": "Company saved, logo not uploaded",
+      "departmentAdded": "Department added",
+      "adminAdded": "Administrator added",
+      "adminRemoved": "Administrator removed"
+    }
+  },
+  "audit": {
+    "lead": "Every administration change, newest first. This log cannot be edited.",
+    "pagination": "Audit log pages",
+    "filter": {
+      "title": "Filter the audit log",
+      "from": "From date",
+      "to": "To date",
+      "company": "Company",
+      "actor": "Done by",
+      "action": "Action",
+      "entity": "Record type",
+      "allCompanies": "All companies",
+      "allActors": "Everyone",
+      "allActions": "All actions",
+      "allEntities": "All record types",
+      "holdingOnly": "Holding-wide changes",
+      "cairoNote": "Dates are Cairo days, from midnight to midnight.",
+      "apply": "Apply filters",
+      "reset": "Clear filters"
+    },
+    "export": "Export CSV",
+    "count": "Showing {from}–{to} of {total} entries",
+    "empty": "No entries match these filters.",
+    "caption": "Audit log entries, newest first",
+    "col": {
+      "when": "When (Cairo)",
+      "actor": "Done by",
+      "company": "Company",
+      "action": "Action",
+      "entity": "Record"
+    },
+    "system": "System",
+    "holdingWide": "Holding-wide",
+    "view": "Details",
+    "viewNamed": "Details of {action} on {when}",
+    "emptyValue": "empty",
+    "page": "Page {page} of {pages}",
+    "yes": "Yes",
+    "no": "No",
+    "before": "Before",
+    "after": "After",
+    "unchanged": "{count} unchanged fields",
+    "noSnapshot": "This entry has no recorded values.",
+    "nothingChanged": "No field changed.",
+    "kind": {
+      "created": "Created",
+      "removed": "Removed",
+      "changed": "Changed"
+    },
+    "entityId": "Record id",
+    "ip": "IP address",
+    "changes": "What changed",
+    "action": {
+      "company": {
+        "create": "Company created",
+        "update": "Company edited",
+        "deactivate": "Company deactivated",
+        "reactivate": "Company reactivated",
+        "logo": {
+          "update": "Logo replaced",
+          "remove": "Logo removed"
+        }
+      },
+      "department": {
+        "create": "Department added",
+        "update": "Department edited",
+        "deactivate": "Department deactivated",
+        "reactivate": "Department reactivated"
+      },
+      "role": {
+        "assign": "Administrator added",
+        "remove": "Administrator removed"
+      },
+      "audit": {
+        "export": "Audit log exported"
+      }
+    },
+    "entity": {
+      "Company": "Company",
+      "Department": "Department",
+      "RoleAssignment": "Administrator role",
+      "AuditLog": "Audit log"
+    },
+    "field": {
+      "code": "Code",
+      "nameEn": "Name in English",
+      "nameAr": "Name in Arabic",
+      "domains": "Mail domains",
+      "accentColor": "Accent colour",
+      "logoUrl": "Logo",
+      "isActive": "Active",
+      "companyId": "Company",
+      "userId": "Person",
+      "userEmail": "Email",
+      "role": "Role",
+      "scopeCompanyId": "Company scope",
+      "filter": "Filter used",
+      "rows": "Rows exported",
+      "truncated": "Cut short"
+    }
   }
 }

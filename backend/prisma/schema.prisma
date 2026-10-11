@@ -42,10 +42,15 @@ model Company {
   /// "#rrggbb". Becomes the --brand-accent CSS variable at runtime.
   accentColor String   @db.Char(7)
   logoUrl     String?  @db.NVarChar(500)
+  /// Storage key of an uploaded logo (backend/src/lib/storage.js); NULL for a
+  /// logo that is a static file, like the seeded ones. logoUrl is derived
+  /// from it on upload.
+  logoKey     String?  @db.NVarChar(200)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  domains         CompanyDomain[]
   departments     Department[]
   users           UserProfile[]
   roleAssignments RoleAssignment[]
@@ -53,11 +58,26 @@ model Company {
   notifications   Notification[]
 }
 
+/// Every mail domain a company owns, the primary one included (it is also
+/// Company.domain). Unique across companies, so one address maps to one place.
+model CompanyDomain {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  domain    String   @unique @db.NVarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([companyId])
+}
+
 model Department {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   companyId String   @db.NVarChar(36)
   nameEn    String   @db.NVarChar(200)
   nameAr    String   @db.NVarChar(200)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -65,6 +85,7 @@ model Department {
   users   UserProfile[]
 
   @@unique([companyId, nameEn])
+  @@unique([companyId, nameAr])
 }
 
 /// A person, mirrored from Entra ID. Graph sync owns the directory fields;

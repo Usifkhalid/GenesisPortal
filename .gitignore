@@ -7,6 +7,9 @@ node_modules/
 backend/generated/
 backend/prisma/*.db
 
+# Uploaded files (company logos): the local storage adapter (lib/storage.js).
+storage/
+
 # Test and tooling output.
 coverage/
 playwright-report/

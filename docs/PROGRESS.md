@@ -244,3 +244,24 @@ re-enabled (approved one-off; trigger verified enabled). Rule added to CLAUDE.md
 secrets. Open issues: RoleAssignment lookups by userId scan at seed size (optimizer's choice,
 no type conversion). Entra unproven; Home cards are demo data; favicon 404.
 Next: company admin as the first real page (with its own e2e spec).
+
+## Session 12 — Company admin, departments, administrators, audit log (2026-10-11; the prompt called it "Session 8")
+
+Done: HoldingAdmin can onboard a company from the portal; every write is one audited
+transaction. Backend `modules/admin` (companies, logo, departments, admins, people, audit list,
+facets, detail, CSV export), store with Prisma and in-memory versions, `lib/{storage,image-type,
+time}.js`, migration `20261011030000_company_admin` (CompanyDomain, Department.isActive, logoKey).
+Frontend: `#admin/{companies,departments,admins}` and `#audit-log` (compact, stacked under 40rem,
+EN/AR/RTL), live light/dark preview via scoped `[data-theme]` (D61), contrast verdict from the one
+shared rule `accent.js` (D60), before/after drawer. D60-D67. `docs/ADD-A-COMPANY.md` added.
+Files: backend/src/{app.js,config/env.js,lib/*,modules/admin/*,modules/auth/repo-memory.js},
+backend/prisma/*, backend/tests/{admin,accent}.test.js, frontend/assets/{css/tokens.css,
+css/pages/admin.css,js/{accent,format,api,router}.js,js/components/{dialog,form}.js,js/pages/{admin,
+audit-log}*,i18n/*}, tests/e2e/{admin.spec,helpers}.js, docs/*, CLAUDE.md.
+Verified: `npm test` 137 pass; `npm run test:e2e` 16 pass (EN/AR, 1440/360); lint clean.
+Open issues: Prisma store has no SQL Server test of its own (e2e covers it); the "last holding
+admin" guard is only reachable through the service (self-removal fires first); deactivated
+companies from e2e runs accumulate (filtered out by default); departments cannot be reassigned
+or users moved yet; Entra and directory sync still unproven; logos are local files (Azure Blob
+adapter not written).
+Next: announcements module, or directory sync to fill people from Graph.

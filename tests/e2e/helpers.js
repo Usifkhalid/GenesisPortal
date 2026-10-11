@@ -114,3 +114,13 @@ export async function signOut(page) {
   await page.locator('#signOutBtn').click();
   await page.waitForURL('**/login.html');
 }
+
+/**
+ * Saves a screenshot to test-results/shots when E2E_SHOTS=1, for a design
+ * review (`E2E_SHOTS=1 npm run test:e2e`). A no-op otherwise.
+ */
+export async function shot(page, name) {
+  if (process.env.E2E_SHOTS !== '1') return;
+  const project = page.context()._options?.viewport?.width ?? 'x';
+  await page.screenshot({ path: `test-results/shots/${name}-${project}.png`, fullPage: true });
+}

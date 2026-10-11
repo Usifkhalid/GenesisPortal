@@ -26,10 +26,14 @@
  *      [data-density='compact'] on any ancestor tightens everything inside it.
  *
  * Themes: light is the default because site staff work outdoors in bright sun.
- * Dark follows prefers-color-scheme and can be forced with [data-theme].
+ * Dark follows prefers-color-scheme and can be forced with [data-theme] on
+ * <html>, or scoped to any element: a [data-theme] element re-derives every
+ * brand value from its own --brand-accent (the company preview in admin).
  * ========================================================================= */
 
-:root {
+:root,
+[data-theme='light'],
+[data-theme='dark'] {
   /* --- Pitch and spacing -------------------------------------------------
    * One 4px pitch. --space-px is the hairline; it is the only sub-pitch value.
    */
@@ -362,7 +366,8 @@
  * above cover engines without it.
  * ========================================================================= */
 @supports (color: oklch(from white l c h)) {
-  :root {
+  :root,
+  [data-theme] {
     --brand-accent-fill: oklch(from var(--brand-accent) clamp(0.26, l, 0.88) c h);
 
     /* Y = 0.2126r + 0.7152g + 0.0722b, computed on linear-light channels.
@@ -477,7 +482,7 @@
 }
 
 /* Forced dark, independent of the operating system. Same values. */
-:root[data-theme='dark'] {
+[data-theme='dark'] {
   --stone-0: #15201a;
   --stone-50: #0d1611;
   --stone-100: #1c2921;
@@ -531,7 +536,7 @@
 }
 
 @supports (color: oklch(from white l c h)) {
-  :root[data-theme='dark'] {
+  [data-theme='dark'] {
     --brand-accent-ink: oklch(
       from var(--brand-accent) max(l, 0.78) calc(min(c, 0.2) * 0.9) h
     );

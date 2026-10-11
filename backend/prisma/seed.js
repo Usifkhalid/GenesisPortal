@@ -25,6 +25,13 @@ export async function seed(prisma) {
       create: { code, ...data },
     });
     companyIds.set(code, row.id);
+    // The domain is also a CompanyDomain row, which is what keeps it unique
+    // across companies once admins can add more.
+    await prisma.companyDomain.upsert({
+      where: { domain: data.domain },
+      update: { companyId: row.id },
+      create: { companyId: row.id, domain: data.domain },
+    });
   }
 
   const departmentIds = new Map();

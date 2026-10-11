@@ -37,8 +37,8 @@ const ROUTES = {
   rooms: { nav: 'rooms', title: 'nav.rooms', page: null },
   tickets: { nav: 'tickets', title: 'nav.tickets', page: null },
   directory: { nav: 'directory', title: 'nav.directory', page: null },
-  admin: { nav: 'admin', title: 'nav.admin', page: null },
-  'audit-log': { nav: 'auditLog', title: 'nav.auditLog', page: null },
+  admin: { nav: 'admin', title: 'nav.admin', page: 'admin' },
+  'audit-log': { nav: 'auditLog', title: 'nav.auditLog', page: 'audit-log' },
   notifications: { nav: null, title: 'nav.notifications', page: null },
 };
 

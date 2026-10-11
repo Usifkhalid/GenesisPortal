@@ -181,9 +181,11 @@ function render() {
       ${state.companies.map(companyCard).join('')}
     </div>`;
     for (const slot of body.querySelectorAll('[data-company-mark]')) {
-      slot.replaceWith(
-        companyMark(state.companies[Number(slot.dataset.companyMark)], { small: true })
-      );
+      const company = state.companies[Number(slot.dataset.companyMark)];
+      // An uploaded logo is served to signed-in people only (/api/...), so this
+      // page, which nobody is signed in to, shows the company's code instead.
+      const logoUrl = company.logoUrl?.startsWith('/api/') ? null : company.logoUrl;
+      slot.replaceWith(companyMark({ ...company, logoUrl }, { small: true }));
     }
     for (const button of body.querySelectorAll('[data-user-id]')) {
       button.addEventListener('click', () => signInAs(button.dataset.userId));

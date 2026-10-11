@@ -27,7 +27,8 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 /backend/prisma: schema.prisma, migrations/, seed.js
 /backend/tests
 /tests/e2e: Playwright specs (*.spec.js) and helpers.js; playwright.config.js at the root
-/docs: PROGRESS.md, DECISIONS.md, API.md
+/storage: uploaded files (company logos) from the local storage adapter (backend/src/lib/storage.js, STORAGE_DIR); gitignored, outside frontend/ so never served statically. Azure Blob later.
+/docs: PROGRESS.md, DECISIONS.md, API.md, ADD-A-COMPANY.md
 PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 
 ## Rules (always)

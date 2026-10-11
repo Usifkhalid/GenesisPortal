@@ -66,6 +66,13 @@ const schema = z
     /** mock: canned Graph responses. real: the live tenant. */
     GRAPH_MODE: z.enum(['mock', 'real']).default('mock'),
 
+    /**
+     * Where uploaded files (company logos) are kept by the local storage
+     * adapter. Default: <repo>/storage, outside frontend/, so it is never
+     * served as a static file. Azure Blob replaces the adapter later.
+     */
+    STORAGE_DIR: z.string().min(1).optional(),
+
     ENTRA_TENANT_ID: z.string().optional(),
     ENTRA_CLIENT_ID: z.string().optional(),
     ENTRA_CLIENT_SECRET: z.string().optional(),
