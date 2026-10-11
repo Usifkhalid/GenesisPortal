@@ -43,14 +43,22 @@ async function signInAs(page, personId, lang) {
  * promotes one never takes them away from another spec.
  */
 async function pickPlainUser(page) {
-  const people = await (await page.request.get('/api/admin/people?q=masar.eg')).json();
-  const admins = await (await page.request.get('/api/admin/admins')).json();
-  const held = new Set(
-    [...admins.holding, ...admins.companies.flatMap((g) => g.admins)].map((a) => a.user.id)
-  );
-  const candidates = people.items.filter((p) => !held.has(p.id));
-  if (candidates.length === 0) throw new Error('No Masar user without an admin role');
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  // Four tests (two languages, two viewports) run at once and Masar has three
+  // such people: wait for one that another test has handed back.
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const people = await (await page.request.get('/api/admin/people?q=masar.eg')).json();
+    const admins = await (await page.request.get('/api/admin/admins')).json();
+    const held = new Set(
+      [...admins.holding, ...admins.companies.flatMap((g) => g.admins)].map((a) => a.user.id)
+    );
+    const candidates = people.items.filter((p) => !held.has(p.id));
+    if (candidates.length > 0) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    if (Date.now() > deadline) throw new Error('No Masar user without an admin role');
+    await page.waitForTimeout(500);
+  }
 }
 
 async function csrf(page) {
@@ -63,7 +71,7 @@ for (const lang of LANGUAGES) {
     test('a holding admin onboards a company and its admin sees only theirs', async ({
       page,
     }) => {
-      test.setTimeout(90_000);
+      test.setTimeout(150_000);
 
       const code = `T${randomLetters(4)}`;
       const nameEn = `Test Company ${code}`;

@@ -11,6 +11,8 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
+import { resolveTestDatabaseUrl } from './test-db.js';
+
 /** Repository root, resolved from this file rather than the cwd. */
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -25,6 +27,14 @@ if (existsSync(envFile)) process.loadEnvFile(fileURLToPath(envFile));
 // `node --test` marks its child processes; treating them as NODE_ENV=test keeps
 // `npm test` free of a cross-platform env-setting dependency.
 if (!process.env.NODE_ENV && process.env.NODE_TEST_CONTEXT) process.env.NODE_ENV = 'test';
+
+// Under test the database is the test one, whatever .env says: Prisma reads
+// DATABASE_URL from the process environment, so this is the one switch that
+// keeps every test off the development data (see config/test-db.js).
+if (process.env.NODE_ENV === 'test') {
+  const testUrl = resolveTestDatabaseUrl(process.env);
+  if (testUrl) process.env.DATABASE_URL = testUrl;
+}
 
 /** True for a value still carrying a .env.example placeholder. */
 const isPlaceholder = (value) => !value || value.includes('CHANGE_ME');
@@ -41,6 +51,12 @@ const schema = z
 
     /** SQL Server connection string. Prisma reads this too, from .env. */
     DATABASE_URL: z.string().min(1).optional(),
+
+    /**
+     * The database tests and e2e use. Absent: DATABASE_URL with `_test` added
+     * to the database name. Must end in `_test`.
+     */
+    DATABASE_URL_TEST: z.string().min(1).optional(),
 
     /**
      * Signs the server-side session cookie. Without one (dev and test only) a

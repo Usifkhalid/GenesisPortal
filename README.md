@@ -38,17 +38,28 @@ has not been granted yet.
 ## Database
 
 ```bash
-npm run db:migrate       # create and apply a migration
-npm run db:seed          # development data
+npm run db:migrate       # create and apply a migration (development)
+npm run db:seed          # development data: companies, departments, 12 fake users
+npm run db:reset         # DROP the development database, migrate, seed
 ```
 
-Both read `DATABASE_URL` from `.env`. The schema is still empty, so there is nothing to
-migrate or seed yet.
+All read `DATABASE_URL` from `.env`. `db:reset` loses everything in that database and
+refuses to run unless `NODE_ENV` is `development` (the default), the server is on this
+machine and the database is not a test one.
+
+### Test database
+
+`npm test` and `npm run test:e2e` never use `DATABASE_URL`. They run on `mgportal_test`
+(`DATABASE_URL_TEST` in `.env`, or `DATABASE_URL` with `_test` added to the database name).
+Before every run `backend/scripts/prepare-test-db.js` creates it if it is missing, applies the
+migrations and empties every table (seeding it first for the e2e server). A test database
+must be named `*_test`; anything else is refused.
 
 ## Checks
 
 ```bash
-npm test                 # node:test + supertest
+npm test                 # node:test + supertest, on the test database
+npm run test:e2e         # Playwright, Chromium, 1440 and 360 px, EN and AR
 npm run lint             # ESLint + Prettier check
 npm run format           # Prettier write
 ```

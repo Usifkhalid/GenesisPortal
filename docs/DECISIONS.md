@@ -622,3 +622,22 @@ against the seeded SQL Server.
 Not the companies they may merely read. A person who is a User of GEN and CompanyAdmin of
 TST sees TST's entries and departments, not GEN's. Holding-wide entries (no company) are for
 holding admins only. An export or a role change is filed under the one company it concerns.
+
+### D68. Tests and e2e run on their own database, `mgportal_test`
+
+`DATABASE_URL_TEST` names it; absent, it is `DATABASE_URL` with `_test` appended to the
+database name. `config/env.js` swaps `DATABASE_URL` for it when `NODE_ENV=test`, and
+`playwright.config.js` hands it to the e2e server, so no test can reach the development
+data. `config/test-db.js` refuses a name that does not end in `_test` or equals the
+development one. `npm test` (pretest) and the e2e web server run
+`backend/scripts/prepare-test-db.js`: create if missing, `prisma migrate deploy`, empty every
+table (AuditLog's trigger switched off and on again, which is why the name guard exists),
+and for e2e seed. Raw SQL is confined to `backend/scripts/db-admin.js` and takes only
+checked identifiers.
+
+### D69. `npm run db:reset` drops the development database
+
+Drop, create, migrate, seed. It refuses unless `NODE_ENV` is `development` (the default),
+the host is local and the name is not `*_test`. It exists because test and e2e runs used to
+leave companies, sessions and audit rows in the development database, and AuditLog cannot
+be pruned by hand.

@@ -10,13 +10,15 @@
   "scripts": {
     "dev": "node --watch backend/src/server.js",
     "start": "node backend/src/server.js",
+    "pretest": "node backend/scripts/prepare-test-db.js",
     "test": "node --test \"backend/tests/**/*.test.js\"",
     "test:e2e": "playwright test",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
     "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
-    "db:seed": "node backend/prisma/seed.js"
+    "db:seed": "node backend/prisma/seed.js",
+    "db:reset": "node backend/scripts/reset-db.js"
   },
   "dependencies": {
     "@azure/msal-node": "^7.0.1",
