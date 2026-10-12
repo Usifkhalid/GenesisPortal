@@ -21,3 +21,6 @@ test-results/
 
 # Review screenshots are regenerated on every critique.
 .impeccable/review/
+
+# Local project briefing, not for the repository.
+portal-project-context.md
