@@ -69,6 +69,8 @@ model Company {
   announcementReads AnnouncementRead[]
   roomRestrictions  RoomCompany[]
   bookings          Booking[]
+  supportTeams      SupportTeamCompany[]
+  tickets           Ticket[]
 }
 
 /// Every mail domain a company owns, the primary one included (it is also
@@ -143,8 +145,15 @@ model UserProfile {
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
   syncRuns          SyncRun[]
-  bookings          Booking[]          @relation("BookingOrganiser")
-  bookingsCancelled Booking[]          @relation("BookingCancelledBy")
+  bookings          Booking[]           @relation("BookingOrganiser")
+  bookingsCancelled Booking[]           @relation("BookingCancelledBy")
+  teamMemberships   SupportTeamMember[]
+  ticketsRequested  Ticket[]            @relation("TicketRequester")
+  ticketsCreated    Ticket[]            @relation("TicketCreatedBy")
+  ticketsAssigned   Ticket[]            @relation("TicketAssignee")
+  ticketComments    TicketComment[]
+  ticketAttachments TicketAttachment[]
+  ticketEvents      TicketEvent[]
 
   @@index([companyId, isActive])
   @@index([departmentId])
@@ -434,4 +443,299 @@ model MockCalendarEvent {
   @@index([roomEmail, startAt])
   @@index([organiserEmail, startAt])
   @@index([seriesMasterId])
+}
+
+// ---------------------------------------------------------------------------
+// Helpdesk. One support team (IT) is seeded; another department is a new
+// SupportTeam row with its own categories, SLA and calendar, never code.
+// A ticket carries the requester's companyId, but the people who read it are
+// the requester and the members of its team: the one documented exception to
+// company scoping (docs/DECISIONS.md D99, modules/tickets/rules.js).
+// ---------------------------------------------------------------------------
+
+/// A support team. `code` prefixes its ticket numbers (IT-2026-00042).
+model SupportTeam {
+  id                 String   @id @default(uuid()) @db.NVarChar(36)
+  code               String   @unique @db.NVarChar(10)
+  nameEn             String   @db.NVarChar(200)
+  nameAr             String   @db.NVarChar(200)
+  /// When false, only the companies in SupportTeamCompany are served.
+  servesAllCompanies Boolean  @default(true)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  companies     SupportTeamCompany[]
+  members       SupportTeamMember[]
+  categories    TicketCategory[]
+  slaPolicies   SlaPolicy[]
+  calendar      BusinessCalendar?
+  cannedReplies CannedReply[]
+  tickets       Ticket[]
+}
+
+/// One company a team serves, when it does not serve them all.
+model SupportTeamCompany {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team    SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, companyId])
+  @@index([companyId])
+}
+
+model SupportTeamMember {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  userId    String   @db.NVarChar(36)
+  /// Agent | Lead.
+  role      String   @db.NVarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TicketCategory {
+  id              String   @id @default(uuid()) @db.NVarChar(36)
+  teamId          String   @db.NVarChar(36)
+  nameEn          String   @db.NVarChar(200)
+  nameAr          String   @db.NVarChar(200)
+  /// P1 | P2 | P3 | P4: what a ticket in this category starts at.
+  defaultPriority String   @default("P3") @db.NVarChar(5)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  team    SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tickets Ticket[]
+
+  @@unique([teamId, nameEn])
+  @@index([teamId, isActive, sortOrder])
+}
+
+/// Where the problem is: an office or a site. Group-wide reference data.
+model TicketLocation {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  nameEn    String   @unique @db.NVarChar(200)
+  nameAr    String   @db.NVarChar(200)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+/// Targets in business minutes (the team's BusinessCalendar), per priority.
+model SlaPolicy {
+  id                   String   @id @default(uuid()) @db.NVarChar(36)
+  teamId               String   @db.NVarChar(36)
+  /// P1 | P2 | P3 | P4.
+  priority             String   @db.NVarChar(5)
+  firstResponseMinutes Int
+  resolveMinutes       Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, priority])
+}
+
+/// The working hours of one team. timeZone is an IANA name (Egypt observes
+/// DST, so never an offset); workingDays is "0,1,2,3,4" with 0 for Sunday; the
+/// hours are minutes after midnight on that zone's clock.
+model BusinessCalendar {
+  id          String   @id @default(uuid()) @db.NVarChar(36)
+  teamId      String   @unique @db.NVarChar(36)
+  timeZone    String   @default("Africa/Cairo") @db.NVarChar(64)
+  workingDays String   @default("0,1,2,3,4") @db.NVarChar(20)
+  startMin    Int      @default(480)
+  endMin      Int      @default(1020)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// A public holiday, group-wide: no SLA clock runs on it. `date` is a calendar
+/// day, "2026-10-06", not an instant.
+model Holiday {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  date      String   @unique @db.NVarChar(10)
+  nameEn    String   @db.NVarChar(200)
+  nameAr    String   @db.NVarChar(200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// The last number given out for a prefix and year. A create bumps the row
+/// inside its own transaction, so two creates can never be handed one number.
+model TicketSequence {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  prefix    String   @db.NVarChar(10)
+  year      Int
+  last      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([prefix, year])
+}
+
+model Ticket {
+  id                 String    @id @default(uuid()) @db.NVarChar(36)
+  /// IT-2026-00042: team code, Cairo year, yearly sequence.
+  number             String    @unique @db.NVarChar(30)
+  /// The company of the requester, for reporting. It does not decide who reads it.
+  companyId          String    @db.NVarChar(36)
+  teamId             String    @db.NVarChar(36)
+  categoryId         String    @db.NVarChar(36)
+  locationId         String?   @db.NVarChar(36)
+  requesterId        String    @db.NVarChar(36)
+  /// Differs from requesterId when an agent logged it for someone.
+  createdById        String    @db.NVarChar(36)
+  /// portal | phone | walkIn.
+  source             String    @default("portal") @db.NVarChar(20)
+  assigneeId         String?   @db.NVarChar(36)
+  subject            String    @db.NVarChar(200)
+  description        String    @db.NVarChar(Max)
+  /// P1 | P2 | P3 | P4.
+  priority           String    @db.NVarChar(5)
+  /// New | Open | WaitingOnRequester | Resolved | Closed.
+  status             String    @default("New") @db.NVarChar(30)
+  firstResponseDueAt DateTime
+  resolveDueAt       DateTime
+  firstRespondedAt   DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  /// Business minutes the clock has stood still (waiting on the requester, or
+  /// resolved and later reopened). Both due dates already include them.
+  slaPausedMinutes   Int       @default(0)
+  /// When the current pause began; NULL while the clock runs.
+  slaPausedAt        DateTime?
+  /// Derived, kept by the service so the queue can filter and sort in SQL:
+  /// the due date in force (first response until answered, then resolve),
+  /// the moment 75% of that target is used, and whether the clock is running.
+  nextDueAt          DateTime
+  nextRiskAt         DateTime
+  slaActive          Boolean   @default(true)
+  /// Set on Resolved: three working days later the job closes it.
+  autoCloseAt        DateTime?
+  /// Free text for now; the IT asset module will link it.
+  assetTag           String?   @db.NVarChar(100)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  team      SupportTeam     @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category  TicketCategory  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location  TicketLocation? @relation(fields: [locationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requester UserProfile     @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy UserProfile     @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignee  UserProfile?    @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  comments    TicketComment[]
+  attachments TicketAttachment[]
+  events      TicketEvent[]
+
+  @@index([requesterId, status])
+  @@index([teamId, status, slaActive, nextDueAt])
+  @@index([assigneeId, status])
+  @@index([companyId, createdAt])
+  @@index([status, autoCloseAt])
+}
+
+model TicketComment {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId   String   @db.NVarChar(36)
+  authorId   String   @db.NVarChar(36)
+  body       String   @db.NVarChar(Max)
+  /// A note between agents: never shown to the requester.
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ticket Ticket      @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  author UserProfile @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  attachments TicketAttachment[]
+
+  @@index([ticketId, createdAt])
+}
+
+/// A file on a ticket (commentId NULL: with the description) or on a comment.
+/// The bytes are in lib/storage.js under storageKey; contentType is what the
+/// signature of the file said, never what the client claimed.
+model TicketAttachment {
+  id           String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId     String   @db.NVarChar(36)
+  commentId    String?  @db.NVarChar(36)
+  uploadedById String   @db.NVarChar(36)
+  fileName     String   @db.NVarChar(200)
+  contentType  String   @db.NVarChar(100)
+  size         Int
+  storageKey   String   @unique @db.NVarChar(200)
+  /// Copied from the comment, so a download is decided without a join.
+  isInternal   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticket     Ticket         @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comment    TicketComment? @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  uploadedBy UserProfile    @relation(fields: [uploadedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ticketId])
+  @@index([commentId])
+}
+
+/// The history of a ticket, one row per thing that happened. Append-only in
+/// practice: nothing updates or deletes it.
+model TicketEvent {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId   String   @db.NVarChar(36)
+  /// NULL for the system (the auto-close job).
+  actorId    String?  @db.NVarChar(36)
+  /// created | assigned | status | priority | category | comment | attachment
+  /// | reopened | autoClosed.
+  type       String   @db.NVarChar(30)
+  fromValue  String?  @db.NVarChar(200)
+  toValue    String?  @db.NVarChar(200)
+  commentId  String?  @db.NVarChar(36)
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ticket Ticket       @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor  UserProfile? @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ticketId, createdAt])
+}
+
+/// A reply an agent can drop into a comment, in both languages.
+model CannedReply {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  titleEn   String   @db.NVarChar(200)
+  titleAr   String   @db.NVarChar(200)
+  bodyEn    String   @db.NVarChar(Max)
+  bodyAr    String   @db.NVarChar(Max)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([teamId, isActive, sortOrder])
 }

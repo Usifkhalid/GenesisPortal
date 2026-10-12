@@ -171,7 +171,7 @@ describe('sync mapping', () => {
     const w = await world();
     const run = await w.sync();
     assert.equal(run.status, 'success', JSON.stringify(run.warnings));
-    assert.equal(run.created, 26);
+    assert.equal(run.created, 24);
     assert.equal(run.deactivated, 0);
 
     // companyName empty: placed by the mail domain.
@@ -278,7 +278,7 @@ describe('sync mapping', () => {
     const entries = w.repo.auditLogs.filter((a) => a.action === 'directory.sync');
     assert.equal(entries.length, 2);
     const first = JSON.parse(entries[0].after);
-    assert.equal(first.created, 26);
+    assert.equal(first.created, 24);
     assert.equal(entries[0].actorId, w.ha.user.id);
     assert.equal(entries[0].companyId, null);
   });
@@ -312,10 +312,10 @@ describe('sync safety', () => {
     const aborted = await w.sync();
     assert.equal(aborted.status, 'failed');
     const [limit] = warning(aborted, 'deactivation_limit');
-    assert.deepEqual([limit.wouldDeactivate, limit.active], [3, 12]);
+    assert.deepEqual([limit.wouldDeactivate, limit.active], [3, 14]);
     // Nothing applied: no one deactivated, no one created.
     assert.ok(w.repo.users.every((u) => u.isActive));
-    assert.equal(w.repo.users.length, 12);
+    assert.equal(w.repo.users.length, 14);
 
     const confirmed = await w.sync({ allowLargeDeactivation: true });
     assert.equal(confirmed.status, 'success');

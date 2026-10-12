@@ -14,6 +14,14 @@ const UNIQUES = {
   roleAssignment: [['userId', 'role', 'scopeCompanyId']],
   auditLog: [],
   room: [['mailboxEmail']],
+  supportTeam: [['code']],
+  supportTeamMember: [['teamId', 'userId']],
+  businessCalendar: [['teamId']],
+  slaPolicy: [['teamId', 'priority']],
+  ticketCategory: [['teamId', 'nameEn']],
+  cannedReply: [],
+  ticketLocation: [['nameEn']],
+  holiday: [['date']],
 };
 
 function table(name) {

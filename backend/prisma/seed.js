@@ -1,9 +1,12 @@
 /**
  * seed.js — loads seed-data.js into the database: the three companies, their
- * departments, twelve fake users for AUTH_MODE=mock to list, and six HQ rooms.
+ * departments, fourteen fake users for AUTH_MODE=mock to list, six HQ rooms, and
+ * the IT helpdesk (team, members, categories, locations, targets, hours,
+ * holidays, canned replies).
  *
  * Idempotent: rows are matched on natural keys (company code, department name
- * within a company, user email, room mailbox), so `npm run db:seed` can be run again after
+ * within a company, user email, room mailbox, team code, category and location
+ * name, holiday date), so `npm run db:seed` can be run again after
  * editing seed-data.js. It updates and adds; it never deletes.
  */
 
@@ -11,7 +14,16 @@ import { isProduction } from '../src/config/env.js';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma.js';
 import { ROLES } from '../src/lib/roles.js';
 import { searchKeyOf } from '../src/lib/text-search.js';
-import { COMPANIES, DEPARTMENTS, ROOMS, USERS, fakeEntraObjectId } from './seed-data.js';
+import {
+  COMPANIES,
+  DEPARTMENTS,
+  HOLIDAYS,
+  ROOMS,
+  SUPPORT_TEAMS,
+  TICKET_LOCATIONS,
+  USERS,
+  fakeEntraObjectId,
+} from './seed-data.js';
 
 /**
  * @param {import('@prisma/client').PrismaClient} prisma
@@ -65,7 +77,11 @@ export async function seed(prisma) {
     const row = await prisma.userProfile.upsert({
       where: { email },
       update: data,
-      create: { email, entraObjectId: fakeEntraObjectId(index), ...data },
+      create: {
+        email,
+        entraObjectId: user.entraObjectId ?? fakeEntraObjectId(index),
+        ...data,
+      },
     });
     userIds.set(email, row.id);
   }
@@ -98,6 +114,65 @@ export async function seed(prisma) {
       update: data,
       create: { mailboxEmail, ...data },
     });
+  }
+
+  // The helpdesk. Members, targets and hours are matched on their team;
+  // an administrator's later edits to a seeded row are kept, except the
+  // names and defaults listed in seed-data.js.
+  for (const { members, calendar, sla, categories, cannedReplies, ...team } of SUPPORT_TEAMS) {
+    const { code, ...teamData } = team;
+    const row = await prisma.supportTeam.upsert({
+      where: { code },
+      update: teamData,
+      create: { code, ...teamData },
+    });
+    const teamId = row.id;
+
+    for (const member of members) {
+      const userId = userIds.get(member.email);
+      await prisma.supportTeamMember.upsert({
+        where: { teamId_userId: { teamId, userId } },
+        update: { role: member.role },
+        create: { teamId, userId, role: member.role },
+      });
+    }
+    await prisma.businessCalendar.upsert({
+      where: { teamId },
+      update: {},
+      create: { teamId, ...calendar },
+    });
+    for (const policy of sla) {
+      await prisma.slaPolicy.upsert({
+        where: { teamId_priority: { teamId, priority: policy.priority } },
+        update: {},
+        create: { teamId, ...policy },
+      });
+    }
+    for (const [sortOrder, category] of categories.entries()) {
+      await prisma.ticketCategory.upsert({
+        where: { teamId_nameEn: { teamId, nameEn: category.nameEn } },
+        update: { nameAr: category.nameAr },
+        create: { teamId, sortOrder, ...category },
+      });
+    }
+    for (const [sortOrder, reply] of cannedReplies.entries()) {
+      const existing = await prisma.cannedReply.findFirst({
+        where: { teamId, titleEn: reply.titleEn },
+      });
+      if (!existing) await prisma.cannedReply.create({ data: { teamId, sortOrder, ...reply } });
+    }
+  }
+
+  for (const [sortOrder, location] of TICKET_LOCATIONS.entries()) {
+    await prisma.ticketLocation.upsert({
+      where: { nameEn: location.nameEn },
+      update: { nameAr: location.nameAr },
+      create: { sortOrder, ...location },
+    });
+  }
+
+  for (const { date, ...names } of HOLIDAYS) {
+    await prisma.holiday.upsert({ where: { date }, update: {}, create: { date, ...names } });
   }
 
   return {

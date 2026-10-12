@@ -137,7 +137,20 @@
     "sampleSubject": "Weighbridge terminal will not print tickets",
     "sampleBody": "The terminal at the north gate accepts a load and shows the weight, but nothing comes out of the printer. Drivers are queuing. We have restarted the terminal twice.",
     "sampleProvenance": "Last changed by Y. El-Shal, 7 Oct 2026 at 14:05 Cairo time.",
-    "detailTitle": "Ticket detail"
+    "detailTitle": "Ticket detail",
+    "status": {
+      "New": "New",
+      "Open": "Open",
+      "WaitingOnRequester": "Waiting on you",
+      "Resolved": "Resolved",
+      "Closed": "Closed"
+    },
+    "priority": {
+      "P1": "Urgent",
+      "P2": "High",
+      "P3": "Normal",
+      "P4": "Low"
+    }
   },
   "room": {
     "one": "Room",
@@ -978,6 +991,40 @@
           "update": "Booking changed by an administrator",
           "cancel": "Booking cancelled by an administrator"
         }
+      },
+      "helpdesk": {
+        "team": {
+          "create": "Support team added",
+          "update": "Support team changed"
+        },
+        "member": {
+          "add": "Support team member added",
+          "update": "Support team role changed",
+          "remove": "Support team member removed"
+        },
+        "category": {
+          "create": "Ticket category added",
+          "update": "Ticket category changed"
+        },
+        "location": {
+          "create": "Ticket location added",
+          "update": "Ticket location changed"
+        },
+        "sla": {
+          "update": "SLA targets changed"
+        },
+        "calendar": {
+          "update": "Support hours changed"
+        },
+        "holiday": {
+          "create": "Public holiday added",
+          "update": "Public holiday changed",
+          "remove": "Public holiday removed"
+        },
+        "canned": {
+          "create": "Canned reply added",
+          "update": "Canned reply changed"
+        }
       }
     },
     "entity": {
@@ -991,7 +1038,15 @@
       "DirectoryReport": "Directory report",
       "SyncRun": "Directory sync",
       "Room": "Room",
-      "Booking": "Booking"
+      "Booking": "Booking",
+      "SupportTeam": "Support team",
+      "SupportTeamMember": "Support team member",
+      "TicketCategory": "Ticket category",
+      "TicketLocation": "Ticket location",
+      "SlaPolicy": "SLA targets",
+      "BusinessCalendar": "Support hours",
+      "Holiday": "Public holiday",
+      "CannedReply": "Canned reply"
     },
     "field": {
       "code": "Code",
@@ -1053,7 +1108,20 @@
       "created": "People added",
       "updated": "People updated",
       "deactivated": "People deactivated",
-      "warnings": "Warnings"
+      "warnings": "Warnings",
+      "servesAllCompanies": "Serves every company",
+      "teamId": "Support team",
+      "defaultPriority": "Default priority",
+      "sortOrder": "Order",
+      "timeZone": "Time zone",
+      "workingDays": "Working days",
+      "startMin": "Opens (minutes after midnight)",
+      "endMin": "Closes (minutes after midnight)",
+      "date": "Date",
+      "P1": "Urgent (P1)",
+      "P2": "High (P2)",
+      "P3": "Normal (P3)",
+      "P4": "Low (P4)"
     }
   },
   "ann": {
@@ -1491,5 +1559,9 @@
     "none": "No one found for “{query}”.",
     "count": "{count} people found",
     "failed": "People could not be searched. Check your signal and try again."
+  },
+  "tickets": {
+    "navCount": "{count} open tickets",
+    "navCountQueue": "{count} unassigned tickets, {soon} close to or past their deadline"
   }
 }

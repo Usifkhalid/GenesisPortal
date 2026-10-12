@@ -7,8 +7,9 @@
  * Real: the person, the company and the Cairo date and time, all from the
  * session (GET /api/me). They are on screen at once.
  *
- * Real: the news card (announcements) and the bookings card (room booking).
- * DEMO: the other three cards, whose modules have no API yet, so each `load` below hands back demo-data.js.
+ * Real: the news card (announcements), the bookings card (room booking) and
+ * the two ticket cards (the helpdesk: the person's own tickets, never anyone
+ * else's). DEMO: the directory card's recent people, which has no API yet.
  * Everything around `load` is already the real thing: a card shows a skeleton
  * while its list loads, then its rows, its own one-line empty state, or its own
  * failure with a retry. Replacing a `load` with an api() call is the whole of
@@ -16,7 +17,7 @@
  */
 
 import { api } from '../api.js';
-import { cairoYmd, formatDate, formatDay, formatTimeRange } from '../format.js';
+import { cairoYmd, formatDate, formatDay, formatTime, formatTimeRange } from '../format.js';
 import { t, getLocale, localized } from '../i18n.js';
 import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
@@ -24,7 +25,7 @@ import { icon } from '../components/icons.js';
 import { companyName } from '../components/company-mark.js';
 import { initials } from '../components/initials.js';
 import { recordSkeleton } from '../components/skeleton.js';
-import { DEMO_TICKETS, DEMO_PEOPLE, DEMO_WAITING, ticketNumber } from '../demo-data.js';
+import { DEMO_PEOPLE } from '../demo-data.js';
 
 const CAIRO = 'Africa/Cairo';
 
@@ -33,11 +34,11 @@ const MAX_ROWS = 4;
 
 /** Each ticket status has its own badge tone and its own icon silhouette. */
 const STATUS = {
-  open: { tone: '', icon: 'statusOpen' },
-  inProgress: { tone: 'badge--info', icon: 'statusProgress' },
-  waiting: { tone: 'badge--warning', icon: 'statusWaiting' },
-  resolved: { tone: 'badge--success', icon: 'statusResolved' },
-  overdue: { tone: 'badge--danger', icon: 'statusOverdue' },
+  New: { tone: '', icon: 'statusOpen' },
+  Open: { tone: 'badge--info', icon: 'statusProgress' },
+  WaitingOnRequester: { tone: 'badge--warning', icon: 'statusWaiting' },
+  Resolved: { tone: 'badge--success', icon: 'statusResolved' },
+  Closed: { tone: '', icon: 'statusResolved' },
 };
 
 /* ------------------------------------------------------------- Cairo time */
@@ -85,9 +86,17 @@ function greetingKey(hour) {
   return 'home.greetingEvening';
 }
 
-/** "14:30" today, "Thu 16:00" on another day. */
-function when(day, time) {
-  return day ? `${t(`day.${day}`)} ${time}` : time;
+/**
+ * When a ticket is due: "14:30" today, "Thu, 15 Oct 16:00" on another day. A
+ * ticket that is waiting on its requester, or done, has no clock running.
+ */
+function dueLabel(ticket) {
+  if (!['on_track', 'at_risk', 'breached'].includes(ticket.sla.state)) return '—';
+  const ymd = cairoYmd(ticket.sla.dueAt);
+  const time = formatTime(ticket.sla.dueAt);
+  return ymd === cairoYmd(new Date())
+    ? time
+    : `${formatDay(ymd, { weekday: 'short' })} ${time}`;
 }
 
 /* ---------------------------------------------------------------- pieces */
@@ -148,8 +157,8 @@ function failedLine() {
 }
 
 /** A capped record list, with a link to the rest when there is a rest. */
-function recordList(rows, href, max = MAX_ROWS) {
-  const extra = rows.length - max;
+function recordList(rows, href, max = MAX_ROWS, total = rows.length) {
+  const extra = total - max;
   return `<ul class="record-list" data-density="compact">${rows.slice(0, max).join('')}</ul>
     ${
       extra > 0
@@ -158,23 +167,26 @@ function recordList(rows, href, max = MAX_ROWS) {
     }`;
 }
 
-function ticketRow({ company }, ticket) {
-  const number = ticketNumber(company.code, ticket.seq);
-  const status = STATUS[ticket.status];
+/** One of my own tickets (GET /api/tickets/mine). Late ones say so. */
+function ticketRow(_ctx, ticket) {
+  const late = ticket.sla.state === 'breached';
+  const status = late
+    ? { tone: 'badge--danger', icon: 'statusOverdue' }
+    : STATUS[ticket.status];
   return `<li class="record">
     <dl class="labelstrip labelstrip--compact">
-      ${pair(t('ticket.one'), esc(number))}
-      ${pair(t('field.priority'), esc(ticket.priority))}
-      ${pair(t('ticket.due'), esc(when(ticket.day, ticket.due)))}
+      ${pair(t('ticket.one'), `<bdi dir="ltr">${esc(ticket.number)}</bdi>`)}
+      ${pair(t('field.priority'), esc(t(`ticket.priority.${ticket.priority}`)))}
+      ${pair(t('ticket.due'), esc(dueLabel(ticket)))}
     </dl>
     <div class="record__head">
       <h3 class="record__title">
-        <a href="#tickets/${esc(number)}">${esc(t(ticket.subject))}</a>
+        <a href="#tickets/${esc(ticket.id)}"><bdi>${esc(ticket.subject)}</bdi></a>
       </h3>
       <span class="record__aside">
         <span class="badge ${status.tone}">
           ${icon(status.icon, 'badge__icon')}
-          <span>${esc(t(`status.${ticket.status}`))}</span>
+          <span>${esc(t(late ? 'status.overdue' : `ticket.status.${ticket.status}`))}</span>
         </span>
       </span>
     </div>
@@ -295,7 +307,8 @@ function peopleSearch() {
  * Home's cards, in reading order: what is waiting on the person, where they
  * have to be next, what they have open, then the two things they come to look
  * up. On a phone that is the order down the page. For each:
- *   load(ctx)  → a promise of the card's records (DEMO for all five, see top)
+ *   load(ctx)  → a promise of the card's records, or of { items, total }
+ *                when the server holds more than it sent
  *   row        → one record's markup
  *   empty      → what the card says with no records; absent when the card
  *                has something else to offer, as the directory has its search
@@ -306,7 +319,8 @@ const CARDS = [
     tag: 'nav.tickets',
     title: 'home.waiting.title',
     more: '#tickets',
-    load: async () => DEMO_WAITING, // DEMO
+    // My tickets that an agent has asked me something about.
+    load: () => api('/api/tickets/mine?status=WaitingOnRequester&pageSize=5', { quiet: true }),
     row: ticketRow,
     skeletonRows: 1,
     empty: {
@@ -336,9 +350,8 @@ const CARDS = [
     count: 'home.tickets.count',
     href: '#tickets',
     openLabel: 'home.tickets.openAll',
-    // DEMO. What is late comes first; after that, the order the queue gave them.
-    load: async () =>
-      [...DEMO_TICKETS].sort((a, b) => (b.status === 'overdue') - (a.status === 'overdue')),
+    // Mine and still open (new, open or waiting on me), newest first.
+    load: () => api('/api/tickets/mine?pageSize=5', { quiet: true }),
     row: ticketRow,
     empty: { title: 'home.tickets.emptyTitle', text: 'home.tickets.emptyText' },
   },
@@ -370,12 +383,12 @@ const CARDS = [
 
 /**
  * @typedef {{ status: 'loading' } | { status: 'failed' }
- *   | { status: 'ready', records: object[] }} CardState
+ *   | { status: 'ready', records: object[], total: number }} CardState
  */
 
 /** @param {(typeof CARDS)[number]} card  @param {CardState} state */
 function headHtml(card, state) {
-  const count = state.status === 'ready' ? state.records.length : 0;
+  const count = state.status === 'ready' ? state.total : 0;
   return cardHead({
     id: `home-${card.key}-title`,
     tag: t(card.tag),
@@ -398,7 +411,8 @@ function bodyHtml(card, ctx, state) {
   const list = recordList(
     state.records.map((record) => card.row(ctx, record)),
     card.more ?? card.href,
-    card.max
+    card.max,
+    state.total
   );
   return card.listLabel
     ? `<div class="stack stack--tight">
@@ -434,7 +448,9 @@ async function fillCard(home, card, ctx) {
   };
 
   try {
-    show({ status: 'ready', records: await card.load(ctx) });
+    const loaded = await card.load(ctx);
+    const records = Array.isArray(loaded) ? loaded : loaded.items;
+    show({ status: 'ready', records, total: loaded.total ?? records.length });
   } catch {
     show({ status: 'failed' });
     shown.querySelector('[data-retry]').addEventListener('click', () => {

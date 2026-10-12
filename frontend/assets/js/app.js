@@ -8,8 +8,8 @@
  * bar, the rail/bottom-nav pair and the company switcher, and hands the work
  * area to router.js, which draws the page the address names.
  *
- * DEMO: the ticket count in the nav and the two notifications in the bell
- * still come from demo-data.js, until those modules have an API.
+ * DEMO: the two notifications in the bell are samples, until notifications
+ * have an API.
  */
 
 import { DEFAULT_LOCALE, LOCALES, setLocale, getLocale, localized, t } from './i18n.js';
@@ -22,7 +22,6 @@ import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { initials } from './components/initials.js';
 import { initPeopleSearch } from './components/people-search.js';
-import { DEMO_TICKETS, ticketNumber } from './demo-data.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
 const STORED_RAIL_KEY = 'mgp.railCollapsed';
@@ -226,13 +225,11 @@ function renderShellData() {
   const collapsed = toggle.getAttribute('aria-expanded') === 'false';
   toggle.setAttribute('aria-label', t(collapsed ? 'nav.expandRail' : 'nav.collapseRail'));
 
-  // DEMO: the open-ticket count and the first notification.
-  for (const count of document.querySelectorAll('[data-ticket-count]')) {
-    count.textContent = String(DEMO_TICKETS.length);
-  }
+  drawTicketCount();
 
+  // DEMO: a sample notification, until notifications have an API.
   document.getElementById('notifSample1').textContent = t('notification.sample1Title', {
-    ticket: ticketNumber(company.code, DEMO_TICKETS[0].seq),
+    ticket: 'IT-2026-00042',
   });
   updateNotifA11y();
 }
@@ -260,6 +257,39 @@ async function refreshAnnouncementCount() {
     unreadAnnouncements = 0;
   }
   drawAnnouncementCount();
+}
+
+/* ------------------------------------------------------------ ticket count */
+
+/** GET /api/tickets/counts. `queue` is null for anyone not on a support team. */
+let ticketCounts = { mine: 0, queue: null };
+
+/**
+ * Draws the number beside Tickets: for the support team, the tickets nobody
+ * has picked up yet; for everyone else, their own open ones.
+ */
+function drawTicketCount() {
+  const { mine, queue } = ticketCounts;
+  const count = queue ? queue.unassigned : mine;
+  const label = queue
+    ? t('tickets.navCountQueue', { count, soon: queue.breachingSoon })
+    : t('tickets.navCount', { count });
+  for (const el of document.querySelectorAll('[data-ticket-count]')) {
+    el.hidden = count === 0;
+    el.textContent = count > 99 ? '99+' : String(count);
+    el.setAttribute('aria-label', label);
+  }
+}
+
+/** Asks the server for this person's ticket numbers. */
+async function refreshTicketCount() {
+  try {
+    ticketCounts = await api('/api/tickets/counts', { quiet: true });
+  } catch {
+    // The nav is a convenience: no count is better than a wrong one.
+    ticketCounts = { mine: 0, queue: null };
+  }
+  drawTicketCount();
 }
 
 /* -------------------------------------------------------------- navigation */
@@ -558,6 +588,8 @@ async function init() {
   initSkipLink();
   document.addEventListener('announcements:changed', refreshAnnouncementCount);
   refreshAnnouncementCount();
+  document.addEventListener('tickets:changed', refreshTicketCount);
+  refreshTicketCount();
   NARROW.addEventListener('change', updateSearchPlaceholder);
 }
 

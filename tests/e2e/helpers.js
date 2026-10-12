@@ -84,10 +84,11 @@ export async function openLogin(page, lang = 'en') {
 }
 
 /**
- * Finds a seeded mock user. `role` is HoldingAdmin, CompanyAdmin or User.
+ * Finds a seeded mock user. `role` is HoldingAdmin, CompanyAdmin or User;
+ * `name` (the English display name) picks one person among several.
  * @returns {Promise<{ id: string, displayNameEn: string, displayNameAr: string, company: object }>}
  */
-export async function findUser(page, { company, role = 'User' }) {
+export async function findUser(page, { company, role = 'User', name = null }) {
   const response = await page.request.get('/api/auth/mock-users');
   expect(response.ok(), 'mock sign-in is on').toBeTruthy();
 
@@ -95,7 +96,9 @@ export async function findUser(page, { company, role = 'User' }) {
   const home = companies.find((c) => c.code === company);
   // A directory sync (directory.spec) adds people with no Arabic name; the
   // seeded ones have one, so they stay the ones every other spec signs in as.
-  const person = home?.users.find((u) => u.role === role && u.displayNameAr);
+  const person = home?.users.find(
+    (u) => u.role === role && u.displayNameAr && (!name || u.displayNameEn === name)
+  );
   if (!person) throw new Error(`No seeded ${role} in ${company}`);
   return { ...person, company: home };
 }
@@ -103,12 +106,12 @@ export async function findUser(page, { company, role = 'User' }) {
 /**
  * Signs in through the login page and waits for the shell.
  * @param {import('@playwright/test').Page} page
- * @param {{ company: string, role?: string, lang?: string }} who
+ * @param {{ company: string, role?: string, name?: string, lang?: string }} who
  * @returns the person signed in, as findUser returns it
  */
-export async function signIn(page, { company, role = 'User', lang = 'en' }) {
+export async function signIn(page, { company, role = 'User', name = null, lang = 'en' }) {
   await openLogin(page, lang);
-  const person = await findUser(page, { company, role });
+  const person = await findUser(page, { company, role, name });
 
   await page.locator(`[data-user-id="${person.id}"]`).click();
   await page.waitForURL((url) => url.pathname === '/');

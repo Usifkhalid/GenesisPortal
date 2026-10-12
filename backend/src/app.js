@@ -54,6 +54,11 @@ import {
 import { createRoomService } from './modules/rooms/service.js';
 import { createMemoryRoomStore } from './modules/rooms/store-memory.js';
 import { createPrismaRoomStore } from './modules/rooms/store-prisma.js';
+import { createHelpdeskAdminService } from './modules/tickets/admin-service.js';
+import { helpdeskAdminRoutes, ticketRoutes } from './modules/tickets/routes.js';
+import { createTicketService } from './modules/tickets/service.js';
+import { createMemoryTicketStore } from './modules/tickets/store-memory.js';
+import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
 
 /**
  * @param {object} [options]
@@ -70,8 +75,9 @@ import { createPrismaRoomStore } from './modules/rooms/store-prisma.js';
  * @param {object} [options.storage]  see lib/storage.js; the upload folder by default
  * @param {object} [options.directoryStore]  see modules/directory/store-prisma.js
  * @param {object} [options.roomStore]  see modules/rooms/store-prisma.js
+ * @param {object} [options.ticketStore]  see modules/tickets/store-prisma.js
  * @param {object} [options.graph]  a Graph client in place of the configured one, for tests
- * @param {() => Date} [options.now]  the clock the announcements, rooms and sync read, for tests
+ * @param {() => Date} [options.now]  the clock the announcements, rooms, tickets and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  */
@@ -135,7 +141,17 @@ export function createApp(options = {}) {
     getGraph,
     now: options.now,
   });
+  const ticketStore =
+    options.ticketStore ??
+    (repo.companies ? createMemoryTicketStore(repo) : createPrismaTicketStore());
+  const tickets = createTicketService({
+    store: ticketStore,
+    storage: options.storage ?? defaultStorage(),
+    now: options.now,
+  });
+  const helpdeskAdmin = createHelpdeskAdminService({ store: ticketStore });
   app.locals.sessionStore = store;
+  app.locals.tickets = tickets;
   app.locals.syncRunner = syncRunner;
   app.locals.inMemory = !useDatabase;
 
@@ -224,6 +240,9 @@ export function createApp(options = {}) {
   app.use('/api/admin/bookings', adminBookingRoutes(rooms));
   app.use('/api/rooms', roomRoutes(rooms));
   app.use('/api/bookings', bookingRoutes(rooms));
+
+  app.use('/api/admin/helpdesk', helpdeskAdminRoutes(helpdeskAdmin));
+  app.use('/api/tickets', ticketRoutes(tickets));
 
   // Module routers mount here as they are built.
   options.protectedRoutes?.(app);

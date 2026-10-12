@@ -327,7 +327,85 @@ administrator changes someone else's booking (filed under the organiser's compan
 organiser's own bookings are not audited. The organiser is not yet told when an admin
 cancels: that comes with notifications.
 
+### Helpdesk tickets (`/api/tickets`, `/api/admin/helpdesk`)
+
+An IT helpdesk: one team (code `IT`) serves every company from one queue. A ticket carries
+its requester's `companyId` for reporting, but company scope does not decide who reads it
+(DECISIONS D99). A ticket is read by its requester, by the members of its support team for
+the companies that team serves, and by a HoldingAdmin. Nobody else, a CompanyAdmin of the
+requester's company included. Anything out of reach is 404 on every route, so a ticket's
+existence cannot be learned from an id, a list, a search, a count or an attachment address.
+Only Home's cards and the nav count use this API so far; the Tickets page comes next.
+
+Priorities are `P1` Urgent, `P2` High, `P3` Normal, `P4` Low. Statuses are `New`, `Open`,
+`WaitingOnRequester`, `Resolved`, `Closed`. Sources are `portal`, `phone`, `walkIn`. Numbers
+are `IT-2026-00042`: team code, the year on the team's calendar, a yearly sequence (a
+counter row bumped inside the create transaction, so concurrent creates never share one).
+
+| Route | Who | Notes |
+|---|---|---|
+| `GET /api/tickets/options` | any | for the new-ticket form: `{ teams, categories: [{ id, teamId, nameEn, nameAr, defaultPriority }], locations, defaultLocationId, priorities, statuses, sources, canLogForOthers, attachments: { maxBytes, maxPerComment, extensions } }`. Categories are those of the teams that serve the reader's company. `defaultLocationId` is the location whose name is the reader's directory office, when one matches. |
+| `POST /api/tickets` | any | `{ subject, description, categoryId, locationId?, assetTag? }` → 201, the ticket in full (below). The category decides the team and the starting priority. `locationId` left out takes the requester's default; `null` means none. A team member may add `requesterId`, `source` and `priority` to log a ticket for someone else (default source `phone`); from anyone else those fields are 403. 400 `unknown_category`, `unknown_location`, `unknown_requester`. |
+| `GET /api/tickets/mine?status=&q=&page=&pageSize=` | any | tickets raised for me, newest first: `{ total, page, pageSize, items: [summary] }`. `status`: `active` (default: New, Open, WaitingOnRequester), `all`, or one status. `q` searches the number and the subject, within my own only. |
+| `GET /api/tickets/counts` | any | `{ mine, queue }`: `mine` is my active tickets; `queue` is `null` unless the reader is on a team (or a HoldingAdmin), then `{ unassigned, breachingSoon, assignedToMe }` over what they serve. `breachingSoon`: the clock is running and 75% or more of the target is used, breached ones included. |
+| `GET /api/tickets/:id` | requester, team, HA | `{ ticket, attachments, timeline }`. `attachments` are the files sent with the description. `timeline` is every event, oldest first: `{ id, type, at, actor, from, to, isInternal, comment }` with `type` one of `created`, `assigned`, `status`, `priority`, `category`, `comment`, `attachment`, `reopened`, `autoClosed`; `actor` is `null` for the system; `from`/`to` are people for `assigned`, categories for `category`, plain values otherwise; `comment` is `{ id, body, attachments }`. Internal notes, their files and their events are left out for the requester. |
+| `POST /api/tickets/:id/comments` | requester, team, HA | `{ body, isInternal? }` → 201, the ticket in full. `isInternal` is for the team (403 from the requester). 409 `ticket_closed` for a public comment on a closed ticket. |
+| `POST /api/tickets/:id/attachments?name=&commentId=` | requester, team, HA | body: the file itself (send it as `application/octet-stream`), 10 MB at most (413). `name` is its file name. With `commentId` (a comment of the caller's own) it belongs to that comment, otherwise to the description; five files each (409 `too_many_attachments`). Allowed: PNG, JPEG, GIF, WebP, PDF, Word, Excel, PowerPoint (old and new formats), `.txt`, `.log`, each checked by its signature against its extension; anything else, archives and executables included, is 415 `unsupported_file`. 400 `empty_upload`, 409 `ticket_closed`. → 201 `{ id, fileName, contentType, size, isInternal, uploadedBy, createdAt, url }`. |
+| `GET /api/tickets/:id/attachments/:attachmentId` | requester, team, HA | the bytes, always as a download (`Content-Disposition: attachment`). A file on an internal note is 404 for the requester. |
+| `POST /api/tickets/:id/reopen` | requester, team, HA | a Resolved or Closed ticket back to Open. The requester has seven days from when it was resolved (409 `reopen_window_closed`); the team is not bound by that. 409 `not_resolved`. |
+| `GET /api/tickets/queue?status=&priority=&assignee=&teamId=&companyId=&locationId=&categoryId=&sla=&q=&page=&pageSize=` | team, HA | the tickets the reader serves, running clocks first and nearest due date first. `assignee`: `unassigned`, `me` or a person's id. `sla`: `on_track`, `at_risk` (75% of the target used), `breached`; paused and finished tickets match none. Anyone else: 403. |
+| `GET /api/tickets/queue/options` | team, HA | `{ teams, agents: [{ id, displayNameEn, displayNameAr, teamId, role }], categories, locations, companies, priorities, statuses }` for the filters and the assign menu |
+| `GET /api/tickets/canned-replies?teamId=` | team, HA | the active canned replies of the reader's teams: `{ items: [{ id, teamId, titleEn, titleAr, bodyEn, bodyAr }] }` |
+| `PATCH /api/tickets/:id` | team, HA | any of `{ assigneeId, status, priority, categoryId }` → the ticket in full. `assigneeId` must be a member of the ticket's team, or `null`; an agent may assign a ticket that is unassigned or their own, and only a Lead (or HA) may take one from someone else (403 `lead_only`). `status` is `Open`, `WaitingOnRequester`, `Resolved` or `Closed`. `categoryId` must be one of the same team's. From the requester: 403. 400 `unknown_assignee`, `unknown_category`. |
+
+A summary: `{ id, number, subject, status, priority, source, team, category, location,
+company, requester, assignee, createdAt, updatedAt, firstRespondedAt, resolvedAt, closedAt,
+sla: { state, firstResponseDueAt, resolveDueAt, dueAt, pausedMinutes }, mine }`. The ticket
+in full adds `description`, `assetTag`, `createdBy` and `can: { comment, internalNote,
+attach, reopen, manage, reassign }`. `sla.state` is `on_track`, `at_risk`, `breached`,
+`paused`, `met` or `missed`; `sla.dueAt` is the date in force (first response until an
+agent has answered, then resolution).
+
+**Status flow.** The first public comment by an agent sets `firstRespondedAt` and moves a
+New ticket to Open; so does assigning it. A requester's reply while the ticket is
+WaitingOnRequester returns it to Open. A requester's reply to a Resolved ticket reopens it.
+A Resolved ticket closes itself three working days later (`jobs/closeResolvedTickets.js`,
+every half hour; the event has no actor).
+
+**SLA.** Targets are business minutes on the team's calendar (default Sunday to Thursday,
+08:00 to 17:00, `Africa/Cairo` by IANA name, public holidays skipped): P1 1 h to first
+response and 4 h to resolve, P2 4 h and 8 h, P3 8 h and 24 h, P4 16 h and 40 h. The clock
+runs while a ticket is New or Open. Time spent WaitingOnRequester, or Resolved and later
+reopened, is added to `pausedMinutes` and both due dates move by as much. A change of
+priority works both dates out again from creation. A change to targets, hours or holidays
+applies to a ticket the next time its status or priority changes.
+
+**Configuration** (`/api/admin/helpdesk`). HoldingAdmin, except where a team's Lead is named.
+
+| Route | Who | Notes |
+|---|---|---|
+| `GET /teams` | HA, Lead | teams with `{ id, code, nameEn, nameAr, servesAllCompanies, companyIds, isActive, members: [{ id, displayNameEn, displayNameAr, email, isActive, role }], calendar, sla, updatedAt }`; a Lead sees the teams they lead |
+| `POST /teams` | HA | `{ code, nameEn, nameAr, servesAllCompanies?, companyIds? }`; starts with the default hours and targets. `code` (2 to 10 letters or digits) prefixes its ticket numbers and cannot be changed. 409 `code_taken`. |
+| `PATCH /teams/:id` | HA | `{ nameEn?, nameAr?, servesAllCompanies?, companyIds?, isActive? }`; 400 `unknown_company` |
+| `PUT /teams/:id/members/:userId` | HA | `{ role: 'Agent' \| 'Lead' }` adds the person or changes their role; 400 `unknown_user` |
+| `DELETE /teams/:id/members/:userId` | HA | off the team; their tickets stay assigned until moved |
+| `PUT /teams/:id/sla` | HA | `{ policies: [{ priority, firstResponseMinutes, resolveMinutes }] }`, all four priorities |
+| `PUT /teams/:id/calendar` | HA | `{ timeZone, workingDays: [0-6], startMin, endMin }`; `timeZone` must be an IANA name |
+| `GET /categories?teamId=`, `POST /categories`, `PATCH /categories/:id` | HA, Lead | `{ teamId, nameEn, nameAr, defaultPriority?, sortOrder? }`; update also takes `isActive`. 409 `name_taken`. A Lead only for their own team (another team's is 404). |
+| `GET /canned-replies?teamId=`, `POST /canned-replies`, `PATCH /canned-replies/:id` | HA, Lead | `{ teamId, titleEn, titleAr, bodyEn, bodyAr, sortOrder? }`; update also takes `isActive` |
+| `GET /locations`, `POST /locations`, `PATCH /locations/:id` | HA | `{ nameEn, nameAr, sortOrder? }`; update also takes `isActive`. 409 `name_taken`. |
+| `GET /holidays?year=`, `POST /holidays`, `PATCH /holidays/:id`, `DELETE /holidays/:id` | HA | `{ date: 'YYYY-MM-DD', nameEn, nameAr }`, group-wide. 409 `date_taken`. |
+
+Audit, one entry per write, filed under no company: `helpdesk.team.create`,
+`helpdesk.team.update`, `helpdesk.member.add`, `helpdesk.member.update`,
+`helpdesk.member.remove`, `helpdesk.sla.update`, `helpdesk.calendar.update`,
+`helpdesk.category.create`, `helpdesk.category.update`, `helpdesk.canned.create`,
+`helpdesk.canned.update`, `helpdesk.location.create`, `helpdesk.location.update`,
+`helpdesk.holiday.create`, `helpdesk.holiday.update`, `helpdesk.holiday.remove`. What
+happens to a ticket itself (comments, assignment, status, priority, category, files) is
+its own timeline (`TicketEvent`), not the audit log.
+
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-support tickets and notifications.
+the Tickets page (next) and notifications.

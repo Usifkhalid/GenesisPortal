@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { COMPANIES, DEPARTMENTS, USERS, fakeEntraObjectId } from '../prisma/seed-data.js';
+import {
+  COMPANIES,
+  DEPARTMENTS,
+  HOLIDAYS,
+  SUPPORT_TEAMS,
+  TICKET_LOCATIONS,
+  USERS,
+  fakeEntraObjectId,
+} from '../prisma/seed-data.js';
 import { seed } from '../prisma/seed.js';
 import { env } from '../src/config/env.js';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma.js';
@@ -33,8 +41,8 @@ describe('seed data', () => {
     }
   });
 
-  test('twelve users: 1 HoldingAdmin, 1 CompanyAdmin per company, the rest Users', () => {
-    assert.equal(USERS.length, 12);
+  test('fourteen users: 1 HoldingAdmin, 1 CompanyAdmin per company, the rest Users', () => {
+    assert.equal(USERS.length, 14);
 
     const byRole = countBy(USERS, 'role');
     assert.equal(byRole[ROLES.HOLDING_ADMIN].length, 1);
@@ -44,7 +52,7 @@ describe('seed data', () => {
       'HLD',
       'MSR',
     ]);
-    assert.equal(byRole[ROLES.USER].length, 8);
+    assert.equal(byRole[ROLES.USER].length, 10);
 
     for (const { code } of COMPANIES)
       assert.ok(
@@ -78,6 +86,75 @@ describe('seed data', () => {
         );
       }
     }
+  });
+
+  test('the IT helpdesk: one team for every company, a lead and two agents, in both languages', () => {
+    assert.equal(SUPPORT_TEAMS.length, 1);
+    const [it] = SUPPORT_TEAMS;
+    assert.equal(it.code, 'IT');
+    assert.equal(it.servesAllCompanies, true);
+    assert.deepEqual(it.members.map((m) => m.role).sort(), ['Agent', 'Agent', 'Lead']);
+    for (const member of it.members) {
+      assert.ok(
+        USERS.some((u) => u.email === member.email),
+        member.email
+      );
+    }
+    assert.deepEqual(
+      it.categories.map((c) => c.nameEn),
+      [
+        'Laptop / PC',
+        'Printer / scanner',
+        'Email & Teams',
+        'Accounts & passwords',
+        'Network / Wi-Fi / VPN',
+        'Software & installs',
+        'Phone',
+        'New equipment request',
+        'Other',
+      ]
+    );
+    assert.deepEqual(
+      it.sla.map((p) => [p.priority, p.firstResponseMinutes / 60, p.resolveMinutes / 60]),
+      [
+        ['P1', 1, 4],
+        ['P2', 4, 8],
+        ['P3', 8, 24],
+        ['P4', 16, 40],
+      ]
+    );
+    assert.deepEqual(it.calendar, {
+      timeZone: 'Africa/Cairo',
+      workingDays: '0,1,2,3,4',
+      startMin: 480,
+      endMin: 1020,
+    });
+    assert.equal(it.cannedReplies.length, 4);
+    assert.deepEqual(
+      TICKET_LOCATIONS.map((l) => l.nameEn),
+      ['HQ Cairo', 'Sebaiya site', 'Dakhla site', 'Masar project site', 'Remote / other']
+    );
+    for (const row of [...it.categories, ...TICKET_LOCATIONS, ...HOLIDAYS]) {
+      assert.match(row.nameAr, ARABIC, row.nameEn);
+    }
+    for (const reply of it.cannedReplies) {
+      assert.match(reply.titleAr, ARABIC);
+      assert.match(reply.bodyAr, ARABIC);
+      assert.match(reply.bodyEn, LATIN);
+    }
+    assert.equal(new Set(HOLIDAYS.map((h) => h.date)).size, HOLIDAYS.length);
+    for (const { date } of HOLIDAYS) assert.match(date, /^202[67]-\d{2}-\d{2}$/);
+  });
+
+  test('seeded people keep the ids the mocked Graph gives them', () => {
+    // The first twelve by position; the helpdesk agents carry their own.
+    const sherif = USERS.find((u) => u.email === 'sherif.awad@mgholding.example');
+    assert.equal(sherif.entraObjectId, '00000000-0000-4000-9000-000000000003');
+    assert.equal(
+      USERS.findIndex((u) => u.entraObjectId),
+      12
+    );
+    assert.equal(USERS[4].email, 'hany.soliman@genesismining-eg.com');
   });
 
   test('fake Entra object ids are distinct UUID-shaped strings', () => {
@@ -122,7 +199,26 @@ describe('seed()', () => {
     const db = createFakePrisma();
     const counts = await seed(db);
 
-    assert.deepEqual(counts, { companies: 3, departments: 9, users: 12, rooms: 6 });
+    assert.deepEqual(counts, { companies: 3, departments: 9, users: 14, rooms: 6 });
+
+    // The helpdesk, with its members resolved to people.
+    assert.equal(db.supportTeam.rows.length, 1);
+    const emailOf = (id) => db.userProfile.rows.find((u) => u.id === id).email;
+    assert.deepEqual(db.supportTeamMember.rows.map((m) => [emailOf(m.userId), m.role]).sort(), [
+      ['omar.fahmy@mgholding.example', 'Lead'],
+      ['sherif.awad@mgholding.example', 'Agent'],
+      ['tamer.gad@mgholding.example', 'Agent'],
+    ]);
+    assert.equal(db.ticketCategory.rows.length, 9);
+    assert.deepEqual(
+      db.ticketCategory.rows.map((c) => c.sortOrder),
+      [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    );
+    assert.equal(db.slaPolicy.rows.length, 4);
+    assert.equal(db.businessCalendar.rows.length, 1);
+    assert.equal(db.cannedReply.rows.length, 4);
+    assert.equal(db.ticketLocation.rows.length, 5);
+    assert.equal(db.holiday.rows.length, HOLIDAYS.length);
     assert.equal(db.room.rows.length, 6);
     assert.ok(db.room.rows.every((r) => typeof r.equipment === 'string' && r.capacity > 0));
     assertSeeded({
@@ -141,9 +237,16 @@ describe('seed()', () => {
 
     assert.equal(db.company.rows.length, 3);
     assert.equal(db.department.rows.length, 9);
-    assert.equal(db.userProfile.rows.length, 12);
-    assert.equal(db.roleAssignment.rows.length, 12);
+    assert.equal(db.userProfile.rows.length, 14);
+    assert.equal(db.roleAssignment.rows.length, 14);
     assert.equal(db.room.rows.length, 6);
+    assert.equal(db.supportTeam.rows.length, 1);
+    assert.equal(db.supportTeamMember.rows.length, 3);
+    assert.equal(db.ticketCategory.rows.length, 9);
+    assert.equal(db.slaPolicy.rows.length, 4);
+    assert.equal(db.cannedReply.rows.length, 4);
+    assert.equal(db.ticketLocation.rows.length, 5);
+    assert.equal(db.holiday.rows.length, HOLIDAYS.length);
     assert.deepEqual(
       db.userProfile.rows.map((u) => u.id),
       ids
@@ -175,7 +278,16 @@ describe('seed() against SQL Server', async () => {
 
     const emails = USERS.map((u) => u.email);
     const users = await prisma.userProfile.findMany({ where: { email: { in: emails } } });
-    assert.equal(users.length, 12);
+    assert.equal(users.length, 14);
+
+    const team = await prisma.supportTeam.findUnique({ where: { code: 'IT' } });
+    assert.equal(await prisma.supportTeamMember.count({ where: { teamId: team.id } }), 3);
+    assert.equal(await prisma.ticketCategory.count({ where: { teamId: team.id } }), 9);
+    assert.equal(await prisma.slaPolicy.count({ where: { teamId: team.id } }), 4);
+    assert.equal(await prisma.cannedReply.count({ where: { teamId: team.id } }), 4);
+    assert.equal(await prisma.businessCalendar.count({ where: { teamId: team.id } }), 1);
+    assert.equal(await prisma.ticketLocation.count(), 5);
+    assert.equal(await prisma.holiday.count(), HOLIDAYS.length);
 
     assertSeeded({
       companies: await prisma.company.findMany(),

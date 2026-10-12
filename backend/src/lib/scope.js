@@ -19,6 +19,10 @@
  *
  * Another company's record answers 404, not 403, so its existence is not
  * disclosed (docs/API.md).
+ *
+ * One table is deliberately not scoped here: Ticket. A helpdesk ticket is
+ * read by its requester and by its support team, whatever their companies
+ * (modules/tickets/rules.js, docs/DECISIONS.md D99). Nothing else may follow it.
  */
 
 import { HttpError } from '../middleware/errors.js';

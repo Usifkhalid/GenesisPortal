@@ -5,7 +5,7 @@ Internal portal for MG Holding (code HLD) and its companies Genesis Mining (GEN,
 Users: HQ staff in Cairo on desktops, and site staff (mines, construction sites) on Android phones with weak connectivity.
 Languages: English and Arabic, both first-class, full RTL.
 Roles: HoldingAdmin (all companies), CompanyAdmin (one company), User. Ticket agents are members of a support team.
-MVP modules: app shell, sign-in, company admin, announcements, directory, room booking, support tickets, notifications, audit log.
+MVP modules: app shell, sign-in, company admin, announcements, directory, room booking, support tickets (an IT helpdesk: one holding team serves every company), notifications, audit log.
 
 ## Stack
 - Frontend: plain HTML, CSS, JavaScript (ES modules). No framework, no bundler, no build step. Served as static files by the backend from /frontend.
@@ -32,7 +32,7 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 
 ## Rules (always)
-1. Company scoping: every business table has companyId. All reads and writes go through lib/scope.js using req.user. Never trust a companyId from the client without checking the user's scope. Every module has a test proving a user of one company cannot read or change another company's records.
+1. Company scoping: every business table has companyId. All reads and writes go through lib/scope.js using req.user. Never trust a companyId from the client without checking the user's scope. Every module has a test proving a user of one company cannot read or change another company's records. One exception, for helpdesk agents only: a ticket is read by its requester and by its support team across companies, never through company scope (docs/DECISIONS.md D99, backend/src/modules/tickets/rules.js).
 2. No hard-coded UI text. Every string lives in assets/i18n/en.json and ar.json with the same keys.
 3. RTL: CSS logical properties only (margin-inline-start, padding-inline, inset-inline-end, text-align: start). Never left/right. <html lang dir> follows the language. Directional icons flip in RTL.
 4. Design: follow PRODUCT.md and DESIGN.md. Page CSS uses tokens from tokens.css only, no raw colours or sizes. Use /impeccable commands for design work. Company branding (logo, accent colour) comes from the Company record at runtime as CSS variables, so every screen must work with any accent.

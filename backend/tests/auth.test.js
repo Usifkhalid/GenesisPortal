@@ -156,7 +156,8 @@ describe('mock sign-in', () => {
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.companies.map((c) => c.code).sort(), ['GEN', 'HLD', 'MSR']);
     for (const company of res.body.companies) {
-      assert.equal(company.users.length, 4);
+      // Four each, and the IT helpdesk's two agents at the holding.
+      assert.equal(company.users.length, company.code === 'HLD' ? 6 : 4);
       assert.match(company.accentColor, /^#[0-9a-f]{6}$/);
       assert.ok(company.nameEn && company.nameAr);
     }
@@ -164,7 +165,7 @@ describe('mock sign-in', () => {
     const hld = res.body.companies.find((c) => c.code === 'HLD');
     assert.deepEqual(
       hld.users.map((u) => u.role),
-      [ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN, ROLES.USER, ROLES.USER]
+      [ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN, ROLES.USER, ROLES.USER, ROLES.USER, ROLES.USER]
     );
     assert.doesNotMatch(JSON.stringify(res.body), /@|entraObjectId|phone/);
   });

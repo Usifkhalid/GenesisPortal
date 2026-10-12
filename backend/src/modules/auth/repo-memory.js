@@ -9,7 +9,10 @@
 import {
   COMPANIES,
   DEPARTMENTS,
+  HOLIDAYS,
   ROOMS,
+  SUPPORT_TEAMS,
+  TICKET_LOCATIONS,
   USERS,
   fakeEntraObjectId,
 } from '../../../prisma/seed-data.js';
@@ -52,7 +55,7 @@ export function createMemoryUserRepo() {
     );
     return {
       id: fakeId(2, i),
-      entraObjectId: fakeEntraObjectId(i),
+      entraObjectId: user.entraObjectId ?? fakeEntraObjectId(i),
       email: user.email,
       companyId: company.id,
       displayNameEn: user.displayNameEn,
@@ -102,6 +105,71 @@ export function createMemoryUserRepo() {
     updatedAt: now,
   }));
 
+  // The helpdesk as seed.js would load it (modules/tickets/store-memory.js).
+  const stamp = { createdAt: now, updatedAt: now };
+  const helpdesk = {
+    team: [],
+    teamCompany: [],
+    member: [],
+    category: [],
+    location: TICKET_LOCATIONS.map((location, i) => ({
+      id: fakeId(7, i),
+      ...location,
+      sortOrder: i,
+      isActive: true,
+      ...stamp,
+    })),
+    sla: [],
+    calendar: [],
+    holiday: HOLIDAYS.map((holiday, i) => ({ id: fakeId(8, i), ...holiday, ...stamp })),
+    canned: [],
+    ticket: [],
+    comment: [],
+    attachment: [],
+    event: [],
+    /** "IT/2026" → the last number given out. */
+    sequences: new Map(),
+  };
+  SUPPORT_TEAMS.forEach((seed, t) => {
+    const { members, calendar, sla, categories, cannedReplies, ...team } = seed;
+    const teamId = fakeId(6, t);
+    const nth = (n) => t * 100 + n;
+    helpdesk.team.push({ id: teamId, ...team, isActive: true, ...stamp });
+    members.forEach((m, i) =>
+      helpdesk.member.push({
+        id: fakeId(9, nth(i)),
+        teamId,
+        userId: byEmail.get(m.email).id,
+        role: m.role,
+        ...stamp,
+      })
+    );
+    helpdesk.calendar.push({ id: fakeId('a', t), teamId, ...calendar, ...stamp });
+    sla.forEach((policy, i) =>
+      helpdesk.sla.push({ id: fakeId('b', nth(i)), teamId, ...policy, ...stamp })
+    );
+    categories.forEach((category, i) =>
+      helpdesk.category.push({
+        id: fakeId('c', nth(i)),
+        teamId,
+        ...category,
+        sortOrder: i,
+        isActive: true,
+        ...stamp,
+      })
+    );
+    cannedReplies.forEach((reply, i) =>
+      helpdesk.canned.push({
+        id: fakeId('d', nth(i)),
+        teamId,
+        ...reply,
+        sortOrder: i,
+        isActive: true,
+        ...stamp,
+      })
+    );
+  });
+
   return {
     /** The rows themselves, so a test can deactivate someone or change a role. */
     companies,
@@ -116,6 +184,8 @@ export function createMemoryUserRepo() {
     bookings: [],
     /** The mocked Graph's calendar (integrations/graph/mock-calendar.js). */
     mockCalendarEvents: [],
+    /** Teams, their settings and tickets (modules/tickets/store-memory.js). */
+    helpdesk,
 
     async listCompaniesWithUsers() {
       return companies

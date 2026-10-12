@@ -980,3 +980,111 @@ mirrored "10:45–10:30" was read as the wrong meeting. One place writes a range
 translation strings, `textContent` and accessible names (find summary, booking dialog, my
 bookings, admin bookings, Home card, conflicts). The sideways range in a narrow block runs top
 to bottom, start first. `rooms.spec.js` measures where the two times sit on screen.
+
+### D99. Helpdesk tickets: an explicit exception to company scoping (rule 1), for agents only
+
+The ticket system is an IT helpdesk. One holding IT team serves every company from one
+queue, so its members read and work tickets of companies they do not belong to. That
+breaks CLAUDE.md rule 1 on purpose, and only here:
+
+- `Ticket.companyId` is the requester's company and is kept for reporting. It does not
+  decide who reads the ticket, and ticket queries do not go through `scopeWhere`.
+- A ticket is read by its requester (whoever logged it), by the members of its support
+  team for the companies that team serves (`servesAllCompanies`, or its
+  `SupportTeamCompany` list), and by a HoldingAdmin. The rule lives in one place,
+  `modules/tickets/rules.js` (`staffRoleOn`), and every route starts from `loadTicket` or
+  from a filter carrying the viewer's id or team scopes.
+- It is narrower than company scope for everyone else: a user never sees a colleague's
+  ticket, and a CompanyAdmin who is not on the team sees none, their own company's included.
+- Out of reach is always 404. `counts.queue` is `null` for non-staff, search runs inside
+  the caller's own set, and an attachment address is checked against its ticket.
+- Membership is read on every request, so someone taken off the team loses the queue at once.
+
+The permission matrix is tested in `tickets.test.js` ("who can see a ticket"). Nothing
+else may use this exception.
+
+### D100. Teams are configuration; only IT is seeded
+
+`SupportTeam` (code, names, the companies it serves), `SupportTeamMember` (Agent or Lead),
+and per team its categories, SLA targets, working calendar and canned replies. Another
+department's helpdesk is a new team made in the admin API with no code change (the test
+makes "HR"). Locations and public holidays are group-wide. Model names carry a `Support`
+or `Ticket` prefix because `Team`, `Category` and `Location` alone would not say whose
+they are. A category belongs to one team, so choosing a category chooses the team.
+
+Seeded: team `IT` "IT Support" serving all companies; Omar Fahmy as Lead; two agents,
+Sherif Awad and Tamer Gad, added to the seed users (now fourteen) because only two IT
+people were seeded. Both already exist in the mocked Graph, so they carry the ids it gives
+them (`entraObjectId` in seed-data.js) and sit last in `USERS` to leave the first twelve
+ids as they were. The seeded holidays are examples: the fixed dates are right, the Islamic
+ones are estimates and are named so.
+
+### D101. Who may do what on a ticket
+
+The brief said both "assign (self or other agent)" and "Leads can also reassign", and
+"Leads … edit categories" beside agents changing a ticket's category. Read as:
+
+- An agent may assign a ticket that is unassigned or their own (take it, hand it on, give
+  it back). Taking one from a colleague is the Lead's (or a HoldingAdmin's): `lead_only`.
+- Any agent may change a ticket's status, priority and category. A Lead may also manage
+  the team's category list and its canned replies, both audited.
+- A requester's ticket starts at its category's default priority. Only the team sets a
+  priority, a source or another requester (logging a call or a walk-in).
+- A HoldingAdmin acts as a Lead on every team but can be assigned a ticket only as a member.
+- Assigning a New ticket makes it Open, as an agent's first public reply does.
+- A requester's reply to a Resolved ticket reopens it. That is what "closes after three
+  working days without a requester reply" needs, and it is inside the seven-day window.
+- The seven days are calendar days from `resolvedAt`; the three working days are
+  three full days of the team's business hours.
+
+### D102. Ticket numbers come from a counter row, not from counting tickets
+
+`TicketSequence (prefix, year, last)`. The create transaction first runs
+`UPDATE … SET last = last + 1` on its row, then reads it back. The update holds the row's
+lock until the transaction ends, so concurrent creates queue on it and each reads its own
+number; a failed create rolls its number back, so there are no gaps. The row for a new
+year is made before the transaction (a lost race on that insert is ignored). `Ticket.number`
+is unique as a backstop. The year is the one on the team's calendar zone, so 00:30 on
+1 January in Cairo is already the new year. Proven with forty concurrent creates on SQL
+Server (`tickets-store.test.js`).
+
+### D103. SLA: business minutes, pauses as a number, three derived columns
+
+`lib/sla.js` takes a calendar (IANA zone, weekdays, opening minutes) and the holidays and
+answers "this many business minutes after that instant" by asking the zone for each day's
+opening and closing instants. No offset is stored or assumed; the DST tests cross both of
+Egypt's changes.
+
+A pause is not a second clock. The ticket keeps `slaPausedMinutes` (business minutes it
+stood still) and `slaPausedAt` (when the current pause began). A due date is always
+"target plus paused minutes, from creation", which equals stopping and restarting. The
+clock runs in New and Open. Leaving WaitingOnRequester, or reopening, adds the business
+minutes of the pause. Closing an already Resolved ticket changes nothing, so its met or
+missed result cannot be rewritten by the auto-close.
+
+`nextDueAt`, `nextRiskAt` and `slaActive` are stored so the queue filters by SLA state and
+sorts by nearest due date in SQL. "At risk" is 75% of the target in force.
+
+Dates are worked out again from the team's current targets whenever a ticket's status,
+priority or first response changes. So an admin's change to targets, hours or holidays
+reaches an open ticket at its next such change, not at once. Recalculating every open
+ticket on a settings change was left out; say if it is wanted.
+
+### D104. Attachments: one file per request, checked by signature against extension
+
+No multipart parser was added. A file is the raw body of
+`POST /api/tickets/:id/attachments?name=`, like a logo or a room photo. `lib/file-type.js`
+accepts a file only when its extension is on the allow-list and its bytes are what that
+extension should be. A newer Office file is a zip, so a zip passes only when it holds
+`[Content_Types].xml` and the folder its extension names; plain text must decode and hold
+no control bytes. Downloads are always `Content-Disposition: attachment` under
+`default-src 'none'; sandbox`. The files sent with the description count as one comment
+(five). Not checked: macros inside Office files, and no virus scan.
+
+### D105. Home and the nav show the helpdesk's real numbers
+
+Home's "open" and "waiting on you" cards read `GET /api/tickets/mine`. The number beside
+Tickets is the person's own active tickets, or for helpdesk staff the unassigned tickets
+in their queue, with the breaching-soon count in its accessible name. The demo tickets
+are gone from `demo-data.js`; the bell's sample notification stays until notifications
+exist. A ticket links to `#tickets/<id>`, which the next session builds.

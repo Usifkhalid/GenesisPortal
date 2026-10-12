@@ -6,6 +6,7 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
+import { startTicketAutoClose } from './jobs/closeResolvedTickets.js';
 import { startSessionPruning } from './jobs/prune-sessions.js';
 import { startNightlySync } from './jobs/syncUsers.js';
 import { disconnectPrisma, warmPrisma } from './lib/prisma.js';
@@ -34,11 +35,15 @@ const pruning = startSessionPruning(app.locals.sessionStore, logger);
 // Directory sync at 02:00 Cairo time (jobs/syncUsers.js).
 const nightlySync = startNightlySync(app.locals.syncRunner, logger);
 
+// Resolved tickets close after three working days (jobs/closeResolvedTickets.js).
+const autoClose = startTicketAutoClose(app.locals.tickets, logger);
+
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     server.close(async () => {
       pruning.stop();
       nightlySync.stop();
+      autoClose.stop();
       await disconnectPrisma();
       process.exit(0);
     });
