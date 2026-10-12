@@ -41,10 +41,11 @@ export const createBody = z.strictObject({
   categoryId: id,
   locationId: id.nullish(),
   assetTag: z.string().trim().max(100).nullish(),
-  // The three below are for agents logging a ticket for someone else.
+  /** How urgent the requester says it is; the category's default when left out. */
+  priority: priority.optional(),
+  // The two below are for agents logging a ticket for someone else.
   requesterId: id.optional(),
   source: z.enum(SOURCES).optional(),
-  priority: priority.optional(),
 });
 
 export const mineQuery = z.strictObject({ status: statusFilter, q: search, ...paging });

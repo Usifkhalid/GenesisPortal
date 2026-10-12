@@ -1028,8 +1028,9 @@ The brief said both "assign (self or other agent)" and "Leads can also reassign"
   it back). Taking one from a colleague is the Lead's (or a HoldingAdmin's): `lead_only`.
 - Any agent may change a ticket's status, priority and category. A Lead may also manage
   the team's category list and its canned replies, both audited.
-- A requester's ticket starts at its category's default priority. Only the team sets a
-  priority, a source or another requester (logging a call or a walk-in).
+- A requester's ticket starts at the urgency they choose (D106), or its category's default.
+  Only the team sets a source or another requester (logging a call or a walk-in), and only
+  the team changes the priority afterwards.
 - A HoldingAdmin acts as a Lead on every team but can be assigned a ticket only as a member.
 - Assigning a New ticket makes it Open, as an agent's first public reply does.
 - A requester's reply to a Resolved ticket reopens it. That is what "closes after three
@@ -1088,3 +1089,14 @@ Tickets is the person's own active tickets, or for helpdesk staff the unassigned
 in their queue, with the breaching-soon count in its accessible name. The demo tickets
 are gone from `demo-data.js`; the bell's sample notification stays until notifications
 exist. A ticket links to `#tickets/<id>`, which the next session builds.
+
+### D106. The requester chooses the urgency; the category default only preselects it
+
+Before, `priority` on `POST /api/tickets` was for the team and a requester always got the
+category's default. A requester knows best how much it hurts, and the helpdesk can still
+correct it, so: any requester may send `priority` (P1..P4); left out, the category's default
+applies, and the form preselects that default. The due dates follow the chosen priority. A
+later change is the team's (D101), recorded as a `priority` event with from/to like any other.
+Cost accepted: people may pick Urgent for everything; the queue's history shows the change
+when IT corrects it, and Leads can see the pattern. Requesters see the four levels in plain
+language ("Urgent", "High", "Normal", "Low" with an example); P1..P4 stay in IT views.

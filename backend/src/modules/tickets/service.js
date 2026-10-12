@@ -440,7 +440,7 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
       priorities: PRIORITIES,
       statuses: STATUSES,
       sources: SOURCES,
-      /** May log a ticket for someone else, with a source and a priority. */
+      /** May log a ticket for someone else, with a source. */
       canLogForOthers: staffTeams.size > 0,
       attachments: {
         maxBytes: MAX_ATTACHMENT_BYTES,
@@ -461,8 +461,9 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
     const isMember =
       viewer.holdingAdmin || viewer.memberships.some((m) => m.teamId === team.id);
     const forOther = body.requesterId !== undefined && body.requesterId !== viewer.user.id;
-    const agentFields =
-      forOther || body.priority !== undefined || (body.source ?? 'portal') !== 'portal';
+    // The priority is the requester's own answer to "how urgent is it?"; only
+    // the source and another requester are for the team (D106).
+    const agentFields = forOther || (body.source ?? 'portal') !== 'portal';
     if (agentFields && !isMember) throw forbidden();
 
     const [requester] = await store.getUsers([forOther ? body.requesterId : viewer.user.id]);

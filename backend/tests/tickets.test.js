@@ -193,7 +193,38 @@ describe('raising a ticket', () => {
     assert.equal(bad.body.error.code, 'unknown_location');
   });
 
-  test('a user cannot set the priority, the source or another requester', async () => {
+  test('a user chooses the urgency; the category default is only the starting value', async () => {
+    const w = await world();
+    const body = {
+      subject: 'Printer',
+      description: 'Jammed.',
+      categoryId: w.category('Printer / scanner').id,
+    };
+    const chosen = await w.gen.post('/api/tickets', { ...body, priority: 'P1' });
+    assert.equal(chosen.status, 201);
+    assert.equal(chosen.body.ticket.priority, 'P1');
+    // P1 due dates, not the category's.
+    assert.equal(iso(chosen.body.ticket.sla.firstResponseDueAt), iso(cairo(SUNDAY, '12:00')));
+
+    const left = await w.gen.post('/api/tickets', body);
+    assert.equal(left.body.ticket.priority, 'P3');
+
+    const bad = await w.gen.post('/api/tickets', { ...body, priority: 'P9' });
+    assert.equal(bad.status, 400);
+
+    // Afterwards only the team changes it, and the history says so.
+    const own = chosen.body.ticket;
+    assert.equal((await w.gen.patch(`/api/tickets/${own.id}`, { priority: 'P4' })).status, 403);
+    const changed = await w.change(w.agent, own.id, { priority: 'P4' });
+    assert.equal(changed.priority, 'P4');
+    const detail = await w.ticket(w.agent, own.id);
+    assert.deepEqual(
+      detail.timeline.filter((e) => e.type === 'priority').map((e) => [e.from, e.to]),
+      [['P1', 'P4']]
+    );
+  });
+
+  test('a user cannot set the source or another requester', async () => {
     const w = await world();
     const base = {
       subject: 'Printer',
@@ -201,7 +232,6 @@ describe('raising a ticket', () => {
       categoryId: w.category('Printer / scanner').id,
     };
     for (const extra of [
-      { priority: 'P1' },
       { source: 'phone' },
       { requesterId: w.gen2.user.id },
     ]) {
