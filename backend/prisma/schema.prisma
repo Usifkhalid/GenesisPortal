@@ -396,6 +396,9 @@ model Booking {
   cancelledAt    DateTime?
   /// Who cancelled it in the portal; NULL when Exchange no longer has the event.
   cancelledById  String?   @db.NVarChar(36)
+  /// Why, in the canceller's words. Always set when an administrator cancels
+  /// someone else's meeting; NULL when the organiser gave none.
+  cancelReason   String?   @db.NVarChar(500)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

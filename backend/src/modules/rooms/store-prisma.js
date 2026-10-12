@@ -216,11 +216,16 @@ function operations(db) {
       return bookingView(row);
     },
 
-    async cancelBookings(ids, { at, byId }) {
+    async cancelBookings(ids, { at, byId, reason = null }) {
       for (let i = 0; i < ids.length; i += 500) {
         await db.booking.updateMany({
           where: { id: { in: ids.slice(i, i + 500) }, status: { not: 'cancelled' } },
-          data: { status: 'cancelled', cancelledAt: at, cancelledById: byId },
+          data: {
+            status: 'cancelled',
+            cancelledAt: at,
+            cancelledById: byId,
+            cancelReason: reason,
+          },
         });
       }
     },

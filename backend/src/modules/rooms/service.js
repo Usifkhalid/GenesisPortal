@@ -168,6 +168,7 @@ export function createRoomService({
       end: b.endAt,
       status: b.status,
       cancelledAt: b.cancelledAt,
+      cancelReason: full ? (b.cancelReason ?? null) : null,
       recurring: Boolean(b.seriesMasterId),
       // Only the series' own people may tell which meetings belong together.
       seriesId: full ? (b.seriesMasterId ?? null) : null,
@@ -604,10 +605,16 @@ export function createRoomService({
   }
 
   /** One occurrence, or it and every later one of its series. */
-  async function cancelBooking(req, id, { scope }) {
+  async function cancelBooking(req, id, { scope, reason }) {
     const user = requireUser(req);
     const row = await managedBooking(req, id);
     const at = now();
+    // Someone else's meeting is not taken away without a word: the reason is
+    // kept on the booking and in the audit log, for the organiser to be told.
+    const byAdmin = row.organiserId !== user.id;
+    if (byAdmin && !reason) {
+      throw new HttpError(400, 'reason_required', 'Say why this booking is being cancelled.');
+    }
     if (scope === 'series' && !row.seriesMasterId) {
       throw new HttpError(400, 'not_recurring', 'This booking is not part of a series.');
     }
@@ -638,16 +645,22 @@ export function createRoomService({
     await store.transaction(async (tx) => {
       await tx.cancelBookings(
         targets.map((t) => t.id),
-        { at, byId: user.id }
+        { at, byId: user.id, reason: reason ?? null }
       );
       // The organiser is told by the notifications module, when it exists.
-      if (row.organiserId !== user.id) {
+      if (byAdmin) {
         await writeAudit(
           req,
           'booking.admin.cancel',
           'Booking',
           bookingSnapshot(row),
-          { ...bookingSnapshot(row), status: 'cancelled', scope, cancelled: targets.length },
+          {
+            ...bookingSnapshot(row),
+            status: 'cancelled',
+            scope,
+            cancelled: targets.length,
+            reason,
+          },
           { tx, entityId: row.id, companyId: row.companyId }
         );
       }

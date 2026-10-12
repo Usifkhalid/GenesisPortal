@@ -919,3 +919,40 @@ and no calendar call to know what can be booked. A booking view carries `seriesI
 where the reader may not see the subject), so My bookings folds a series into one entry
 (its next meeting, how it repeats, how many more) and cancels "this one" or "this and all
 later" through the existing cancel route.
+
+### D94. The cold start and the e2e suite: warm the database, cap the workers
+
+The full e2e suite failed at random (5 to 29 tests, mostly at sign-in). Stopping the dev
+servers did not cure it. Measured, in order: (1) the port opened 0.3 s after start but the
+first query took 1.3 s (Prisma's engine, then each pooled connection's handshake with SQL
+Server, about 0.8 s apiece), so the first people after a start all waited; (2) with that
+fixed, a suite run still added 72 s of `PAGEIOLATCH_SH`, 85 s of memory waits, 16 s queued
+for query compiles and 494 worker-thread waits to SQL Server: Playwright's default of six
+workers (half of twelve cores) squeezes the one SQL Server for memory and disk, and plain
+single-row statements take seconds. No deadlock and no blocking chain was recorded during
+those runs, and a probe on a connection of its own stayed fast, so the app is not holding
+locks.
+
+Fixes: `warmPrisma` connects and opens eight pooled connections before `listen`, so
+"listening" and `/api/health` mean ready (also right for an App Service cold start);
+`getPrisma` keeps the promise, so concurrent first requests share one client instead of
+each making one; `playwright.config.js` runs three workers (`E2E_WORKERS` overrides) and
+gives every expectation 10 s. If a later machine or CI is roomier, raise the workers there.
+
+### D95. An administrator who cancels someone's booking says why
+
+`POST /api/bookings/:id/cancel` takes an optional `reason` (500 characters). When the
+canceller is not the organiser it is required (400 `reason_required`). It is stored on the
+booking (`Booking.cancelReason`, migration `20261011070000_booking_cancel_reason`), returned
+to anyone who may read the subject, and written into the `booking.admin.cancel` audit entry.
+The organiser's own cancel stays unaudited and may carry a reason or not. Notifications
+(next) will send it to the organiser.
+
+### D96. Rooms and bookings in Company admin
+
+`#admin/rooms` (holding admin): list, add from an Exchange room mailbox the portal does not
+use yet, edit, photo (saved when chosen, like a logo), and "in use" instead of delete.
+`#admin/bookings` (holding and company admins): every booking of their companies by room,
+company, dates and status, with cancel. The mock Graph lists four spare room mailboxes so
+"add a room" can be built and tested without a tenant. Audit actions that are also the stem
+of another (`directory.sync` beside `directory.sync.failed`) keep their label under `_`.

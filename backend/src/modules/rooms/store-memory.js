@@ -191,13 +191,14 @@ export function createMemoryRoomStore(repo) {
       return bookingView(row);
     },
 
-    async cancelBookings(ids, { at, byId: cancelledById }) {
+    async cancelBookings(ids, { at, byId: cancelledById, reason = null }) {
       for (const row of bookings) {
         if (!ids.includes(row.id) || row.status === 'cancelled') continue;
         Object.assign(row, {
           status: 'cancelled',
           cancelledAt: at,
           cancelledById,
+          cancelReason: reason,
           updatedAt: at,
         });
       }

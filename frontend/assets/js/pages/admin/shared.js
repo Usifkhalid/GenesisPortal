@@ -21,6 +21,10 @@ const CODE_KEYS = {
   logo_too_large: 'admin.error.logoTooLarge',
   empty_upload: 'admin.error.emptyUpload',
   nothing_to_change: 'admin.error.nothingToChange',
+  mailbox_taken: 'admin.error.mailboxTaken',
+  photo_too_large: 'admin.error.photoTooLarge',
+  unknown_company: 'admin.error.unknownCompany',
+  reason_required: 'admin.error.reasonRequired',
 };
 
 export const isStale = (err) => err?.code === 'stale_record';

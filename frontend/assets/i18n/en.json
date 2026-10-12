@@ -535,7 +535,9 @@
       "departments": "Departments",
       "admins": "Administrators",
       "quality": "Data quality",
-      "sync": "Directory sync"
+      "sync": "Directory sync",
+      "rooms": "Rooms",
+      "bookings": "Bookings"
     },
     "filter": {
       "all": "All",
@@ -668,7 +670,11 @@
       "domainRequired": "Enter at least one mail domain.",
       "domainsMax": "A company can have up to five mail domains.",
       "domainsDuplicate": "Each domain can be listed once.",
-      "domainFormat": "“{domain}” is not a valid domain. Use a form like masar.eg."
+      "domainFormat": "“{domain}” is not a valid domain. Use a form like masar.eg.",
+      "mailboxTaken": "A room already uses that mailbox.",
+      "photoTooLarge": "The photo is larger than 2 MB. Use a smaller image.",
+      "unknownCompany": "One of those companies no longer exists. Reload and try again.",
+      "reasonRequired": "Say why this booking is being cancelled."
     },
     "toast": {
       "saved": "Saved",
@@ -803,6 +809,57 @@
         "other": "Warning: {code}"
       },
       "loadFailed": "The sync history could not be loaded."
+    },
+    "rooms": {
+      "lead": "Meeting rooms are Exchange room mailboxes the portal describes. A room no longer used is made inactive, never deleted.",
+      "add": "Add a room",
+      "empty": "No rooms yet. Add the first from an Exchange room mailbox.",
+      "caption": "Meeting rooms, inactive ones included.",
+      "mailbox": "Room mailbox",
+      "mailboxHelp": "The Exchange room mailboxes the portal does not use yet. It cannot be changed later.",
+      "mailboxRequired": "Choose the room mailbox.",
+      "companies": "Companies",
+      "companiesHelp": "Tick the companies that may book this room. With none ticked, every company may.",
+      "editNamed": "Edit {name}",
+      "editTitle": "Room details",
+      "back": "Back to rooms",
+      "notesHelp": "Shown to people choosing a room: how to find it, what to know.",
+      "photoTitle": "Photo",
+      "photo": "Photo file",
+      "photoHelp": "PNG, JPEG or WebP, up to 2 MB. It is saved as soon as you choose it.",
+      "photoRemove": "Remove photo",
+      "photoType": "The photo must be a PNG, JPEG or WebP image.",
+      "photoTooLarge": "The photo is larger than 2 MB. Use a smaller image.",
+      "photoSaved": "Photo saved",
+      "photoRemoved": "Photo removed",
+      "useTitle": "In use",
+      "active": "People can book this room",
+      "activeHelp": "Untick to take the room out of use. Its bookings and history stay.",
+      "create": "Add room",
+      "created": "Room added",
+      "capacityError": "Enter the number of seats, from 1 to 500."
+    },
+    "bookings": {
+      "lead": "Every booking of the companies you administer. Cancelling someone else’s meeting needs a reason, and is written to the audit log.",
+      "filters": "Filter bookings",
+      "allCompanies": "All companies",
+      "from": "From",
+      "to": "To",
+      "status": {
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "all": "All"
+      },
+      "count": "{count} bookings",
+      "emptyTitle": "No bookings match",
+      "emptyText": "Widen the dates, or choose another room or status.",
+      "caption": "Bookings, soonest first.",
+      "pages": "Booking pages",
+      "pageOf": "Page {page} of {pages}",
+      "organiser": "Booked by",
+      "reason": "Reason",
+      "reasonHelp": "Kept on the booking and in the audit log, for the person who booked it.",
+      "reasonRequired": "Say why this booking is being cancelled."
     }
   },
   "audit": {
@@ -902,6 +959,24 @@
         },
         "quality": {
           "export": "Data-quality report exported"
+        },
+        "sync": {
+          "_": "Directory synced",
+          "failed": "Directory sync failed"
+        }
+      },
+      "room": {
+        "create": "Room added",
+        "update": "Room changed",
+        "photo": {
+          "update": "Room photo changed",
+          "remove": "Room photo removed"
+        }
+      },
+      "booking": {
+        "admin": {
+          "update": "Booking changed by an administrator",
+          "cancel": "Booking cancelled by an administrator"
         }
       }
     },
@@ -914,7 +989,9 @@
       "UserProfile": "Person",
       "DirectoryImport": "Directory import",
       "DirectoryReport": "Directory report",
-      "SyncRun": "Directory sync"
+      "SyncRun": "Directory sync",
+      "Room": "Room",
+      "Booking": "Booking"
     },
     "field": {
       "code": "Code",
@@ -955,7 +1032,28 @@
       "unknown": "Unknown emails",
       "outOfScope": "Outside the admin’s companies",
       "invalid": "Rows skipped",
-      "names": "Names"
+      "names": "Names",
+      "mailboxEmail": "Room mailbox",
+      "floor": "Floor",
+      "capacity": "Seats",
+      "equipment": "Equipment",
+      "notes": "Notes",
+      "photoUrl": "Photo",
+      "companyIds": "Companies that may book",
+      "roomId": "Room",
+      "organiserId": "Booked by",
+      "subject": "Subject",
+      "startAt": "Starts",
+      "endAt": "Ends",
+      "recurring": "Part of a series",
+      "scope": "Meetings cancelled",
+      "cancelled": "Number cancelled",
+      "reason": "Reason",
+      "source": "Started by",
+      "created": "People added",
+      "updated": "People updated",
+      "deactivated": "People deactivated",
+      "warnings": "Warnings"
     }
   },
   "ann": {

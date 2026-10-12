@@ -8,9 +8,13 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { startSessionPruning } from './jobs/prune-sessions.js';
 import { startNightlySync } from './jobs/syncUsers.js';
-import { disconnectPrisma } from './lib/prisma.js';
+import { disconnectPrisma, warmPrisma } from './lib/prisma.js';
 
 const app = createApp();
+
+// The port opens only once the database has answered, so "listening" (and the
+// health check that deploys and the e2e runner wait on) means ready to serve.
+if (!app.locals.inMemory) await warmPrisma(logger);
 
 const server = app.listen(env.PORT, () => {
   logger.info(

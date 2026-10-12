@@ -309,3 +309,24 @@ too (login page stuck "loading" for >5 s at cold start, 5-11 failures in older s
 MM/DD/YYYY in English. No room photos supplied. Room names/floors still placeholders; real Graph
 unproven (session 19). No notification when an admin cancels. Not keyboard-walked by a person.
 Next: notifications, then support tickets; find why cold-start sign-in is slow under full-suite load.
+
+## Session 17 — e2e stability, admin rooms and bookings, audit labels, directory polish (2026-10-12)
+
+Done: **1** the flaky full e2e suite traced and fixed (D94): not the dev servers; the first
+query after a start took 1.3 s and six parallel workers starved the one SQL Server (72 s of page
+reads per run, no deadlocks). `warmPrisma` before `listen`, one shared client promise, three e2e
+workers, 10 s expectations. **2** what was missing from earlier briefs: `#admin/rooms` (list, add
+from a mailbox, edit, photo, in use), `#admin/bookings` (filters, paging, cancel with a required
+reason, D95-D96), `Booking.cancelReason` (migration `20261011070000`), bilingual audit labels for
+room, booking and sync actions, entities and fields, `/impeccable polish` of the directory (names
+in the other language now align with their row), field errors clear when the field is put right.
+Files: backend/{prisma/*,src/lib/prisma.js,src/server.js,src/modules/rooms/*,src/integrations/graph/mock.js},
+backend/tests/rooms.test.js, frontend/assets/{js/pages/admin.js,js/pages/admin/{rooms,bookings,shared}.js,
+js/pages/audit-log.js,js/pages/rooms/booking.js,css/pages/{admin,directory}.css,css/components.css,i18n/*},
+tests/e2e/{rooms-admin.spec,rooms.spec,helpers}.js, playwright.config.js, docs/*.
+Open issues: `prisma generate` could not swap the engine DLL (EPERM) because a server started by
+another Claude session at 18:47 held it on port 3000; the client code was regenerated and works,
+run `npm run db:generate` once nothing is running. The organiser is still not told of an admin's
+cancel (notifications). An admin cannot move a booking from the screen (the API can). Real Graph
+unproven (session 19). Native date fields show MM/DD/YYYY in English.
+Next: notifications, then support tickets.

@@ -39,6 +39,18 @@ const eventView = (row) => ({
  *   where events are kept; the MockCalendarEvent table when omitted
  * @returns {import('./index.js').GraphClient}
  */
+/**
+ * Room mailboxes Exchange has and the portal does not use yet: what an
+ * administrator adds a room from (Company admin, Rooms). Placeholders, like
+ * the seeded six.
+ */
+const SPARE_ROOMS = ['A', 'B', 'C', 'D'].map((letter, i) => ({
+  mailboxEmail: `room-site-${letter.toLowerCase()}@mgholding.example`,
+  nameEn: `Site Meeting Room ${letter}`,
+  floor: 'G',
+  capacity: 30 + i * 2,
+}));
+
 export function createClient(data, { calendar = createPrismaCalendar() } = {}) {
   const { users, managers } = data ?? JSON.parse(readFileSync(FILE, 'utf8'));
   const byId = new Map(users.map((u) => [u.id, u]));
@@ -79,7 +91,7 @@ export function createClient(data, { calendar = createPrismaCalendar() } = {}) {
     },
 
     async listRooms() {
-      return ROOMS.map((room) => ({
+      return [...ROOMS, ...SPARE_ROOMS].map((room) => ({
         id: `mock-room-${room.mailboxEmail}`,
         displayName: room.nameEn,
         emailAddress: room.mailboxEmail,

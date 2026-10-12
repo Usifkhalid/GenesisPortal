@@ -293,6 +293,10 @@ export async function openBookingDialog(env, preset, onFindAnother) {
       if (name === 'date') syncRepeat();
     });
   }
+  // A field put right stops saying it is wrong, without waiting for Confirm.
+  form.addEventListener('input', (event) => {
+    if (event.target.id) setFieldError(form, event.target.id, '');
+  });
   el('repeat').addEventListener('input', syncRepeat);
   el('people').addEventListener('input', () => {
     peopleEdited = true;

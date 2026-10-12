@@ -267,7 +267,7 @@ Exchange is the source of truth: a room is a resource mailbox, a booking is an e
 organiser's calendar with the room as a resource attendee, and whether a room is free is
 always asked of Exchange. The portal keeps the room's details and one reference row per
 meeting. The screens are `#rooms` (find a room), `#rooms/day`, `#rooms/mine` and
-`#rooms/<id>` (a room's panel).
+`#rooms/<id>` (a room's panel); administrators have `#admin/rooms` and `#admin/bookings`.
 
 Instants are ISO 8601 with `Z` or an offset and are stored in UTC. A calendar day
 (`2026-10-25`) or a clock time (`10:30`) in a query is Cairo's.
@@ -283,7 +283,7 @@ Instants are ISO 8601 with `Z` or an offset and are stored in UTC. A calendar da
 | `GET /api/bookings/mine` | any | my confirmed bookings that have not ended, soonest first, checked against Exchange (one deleted or moved in Outlook is cancelled or moved here) |
 | `GET /api/bookings/:id` | organiser, attendee, admin | anyone else: 404 |
 | `PATCH /api/bookings/:id` | organiser, admin | `{ subject?, start?, end? }` (`start` and `end` together) for this occurrence; the rules and conflicts are checked again. An attendee is 403, anyone else 404. |
-| `POST /api/bookings/:id/cancel` | organiser, admin | `{ scope: 'one' \| 'series' }` → `{ cancelled: [id] }`. `series` cancels this occurrence and every later one. |
+| `POST /api/bookings/:id/cancel` | organiser, admin | `{ scope: 'one' \| 'series' }` → `{ cancelled: [id] }`, with an optional `reason` (500 characters). `series` cancels this occurrence and every later one. `reason` is required when the canceller is not the organiser (400 `reason_required`); it is kept on the booking as `cancelReason` and in the audit entry. |
 | `GET /api/admin/bookings?roomId=&companyId=&from=&to=&status=&page=&pageSize=` | HA, CA | every booking of the admin's companies, subjects included. `status`: `confirmed` (default), `cancelled`, `all`. Another company's `companyId` is 404. |
 | `GET /api/admin/rooms` | HA | all rooms, inactive too, with `mailboxEmail`, `companyIds`, `isActive`, `updatedAt` |
 | `GET /api/admin/rooms/mailboxes` | HA | Exchange's room mailboxes and, for each, the portal room that uses it (`roomId`) |
@@ -292,9 +292,10 @@ Instants are ISO 8601 with `Z` or an offset and are stored in UTC. A calendar da
 | `PUT /api/admin/rooms/:id/photo?updatedAt=` | HA | body: the image itself (PNG, JPEG or WebP, 2 MB), checked by its signature like an announcement cover |
 | `DELETE /api/admin/rooms/:id/photo?updatedAt=` | HA | |
 
-A booking: `{ id, room, organiser, start, end, status, cancelledAt, recurring, seriesId,
-subject, recurrence, attendeeCount, attendeeIds, companyId, mine, canManage }`. The fields
-from `seriesId` to `companyId` are empty for a reader who may not see the subject.
+A booking: `{ id, room, organiser, start, end, status, cancelledAt, cancelReason, recurring,
+seriesId, subject, recurrence, attendeeCount, attendeeIds, companyId, mine, canManage }`.
+`cancelReason` and the fields from `seriesId` to `companyId` are empty for a reader who may
+not see the subject.
 `seriesId` is the same on every occurrence of one series, so a screen can fold them.
 
 **Booking rules.** Computed on Cairo's clock through the IANA zone (Egypt observes

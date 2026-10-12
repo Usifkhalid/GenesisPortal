@@ -105,6 +105,8 @@ export const bookingUpdateBody = z
 export const bookingCancelBody = z.strictObject({
   /** `series` cancels this occurrence and every later one of its series. */
   scope: z.enum(['one', 'series']).default('one'),
+  /** Why. Required of an administrator cancelling someone else's meeting. */
+  reason: z.string().trim().min(1).max(500).optional(),
 });
 
 export const adminBookingQuery = z.strictObject({

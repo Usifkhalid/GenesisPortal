@@ -635,3 +635,77 @@
   justify-content: space-between;
   gap: var(--space-3);
 }
+
+/* --- Rooms and bookings --------------------------------------------------- */
+
+/* A form with nothing beside it keeps to a readable column. */
+.admin-form--single {
+  grid-template-columns: minmax(0, 1fr);
+  max-inline-size: 48rem;
+}
+
+.admin-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+}
+
+.admin-mail {
+  overflow-wrap: anywhere;
+}
+
+.admin-photo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.admin-photo__tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 12rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-control);
+}
+
+.admin-photo__img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.admin-photo__none {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.admin-filters {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+.admin-fieldset--plain {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-subject {
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.admin-reason {
+  margin: var(--space-1) 0 0;
+  color: var(--text-body);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}

@@ -132,3 +132,45 @@ export async function shot(page, name) {
   const project = page.context()._options?.viewport?.width ?? 'x';
   await page.screenshot({ path: `test-results/shots/${name}-${project}.png`, fullPage: true });
 }
+
+/** 0..3 for this run: language by screen. The four run in parallel on one database. */
+export function runIndex(page, lang) {
+  const wide = page.viewportSize().width > 600;
+  return (lang === 'en' ? 0 : 2) + (wide ? 0 : 1);
+}
+
+/**
+ * A working day (Sunday to Thursday) at least a week away, different for each
+ * of the 4 runs and each numbered test, as "YYYY-MM-DD".
+ */
+export function bookableDay(page, lang, testNo) {
+  const days = [];
+  const date = new Date();
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + 7);
+  while (days.length < 40) {
+    if (date.getUTCDay() <= 4) days.push(date.toISOString().slice(0, 10));
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return days[testNo * 4 + runIndex(page, lang)];
+}
+
+/** The header a request that changes state needs, for the page's own session. */
+export async function csrfHeaders(page) {
+  const config = await (await page.request.get('/api/auth/config')).json();
+  return { 'X-CSRF-Token': config.csrfToken };
+}
+
+/**
+ * An instant for a Cairo wall time, asked of the browser (which knows the
+ * zone's rules) so a spec carries no offset table of its own.
+ */
+export async function cairoInstant(page, day, time) {
+  return page.evaluate(
+    async ([ymd, hhmm]) => {
+      const { fromCairoInput } = await import('/assets/js/format.js');
+      return fromCairoInput(`${ymd}T${hhmm}`);
+    },
+    [day, time]
+  );
+}

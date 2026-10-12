@@ -762,7 +762,15 @@ describe('changing and cancelling', () => {
     assert.equal(JSON.parse(edit.before).startAt, at(MONDAY, '10:00'));
     assert.equal(JSON.parse(edit.after).startAt, at(MONDAY, '15:00'));
 
-    const cancelled = await w.ha.post(`/api/bookings/${booking.id}/cancel`);
+    // An administrator says why: without a reason nothing is cancelled.
+    const silent = await w.ha.post(`/api/bookings/${booking.id}/cancel`);
+    assert.equal(silent.status, 400);
+    assert.equal(silent.body.error.code, 'reason_required');
+    assert.equal(w.repo.bookings[0].status, 'confirmed');
+
+    const cancelled = await w.ha.post(`/api/bookings/${booking.id}/cancel`, {
+      reason: 'The room is closed for repairs',
+    });
     assert.equal(cancelled.status, 200, JSON.stringify(cancelled.body));
     assert.deepEqual(cancelled.body.cancelled, [booking.id]);
     const cancel = w.repo.auditLogs[1];
@@ -771,7 +779,16 @@ describe('changing and cancelling', () => {
       ['booking.admin.cancel', w.ha.user.id, w.genId]
     );
     assert.equal(JSON.parse(cancel.after).status, 'cancelled');
+    assert.equal(JSON.parse(cancel.after).reason, 'The room is closed for repairs');
     assert.equal(w.repo.bookings[0].cancelledById, w.ha.user.id);
+    assert.equal(w.repo.bookings[0].cancelReason, 'The room is closed for repairs');
+    // The organiser reads the reason on their booking; the admin list shows it too.
+    assert.equal(
+      (await w.gen.get(`/api/bookings/${booking.id}`)).body.cancelReason,
+      'The room is closed for repairs'
+    );
+    const listed = (await w.ha.get('/api/admin/bookings?status=cancelled')).body.items;
+    assert.equal(listed[0].cancelReason, 'The room is closed for repairs');
 
     // Cancelled is final, and the room is free again.
     assert.equal(
@@ -823,6 +840,28 @@ describe('changing and cancelling', () => {
     assert.equal(wrong.body.error.code, 'not_recurring');
   });
 
+  test('an organiser may cancel with or without a reason, and it is kept', async () => {
+    const w = await world();
+    const [first] = await w.mustBook(w.gen);
+    assert.equal((await w.gen.post(`/api/bookings/${first.id}/cancel`)).status, 200);
+    assert.equal(w.repo.bookings[0].cancelReason, null);
+
+    const [second] = await w.mustBook(w.gen);
+    const res = await w.gen.post(`/api/bookings/${second.id}/cancel`, {
+      reason: 'Moved online',
+    });
+    assert.equal(res.status, 200);
+    assert.equal(w.repo.bookings[1].cancelReason, 'Moved online');
+    // Their own bookings are not an admin action: nothing is audited.
+    assert.equal(w.repo.auditLogs.length, 0);
+    // Too long is refused, not cut.
+    const [third] = await w.mustBook(w.gen);
+    const long = await w.gen.post(`/api/bookings/${third.id}/cancel`, {
+      reason: 'x'.repeat(501),
+    });
+    assert.equal(long.status, 400);
+  });
+
   test('an admin cancelling a series is one audit entry with the count', async () => {
     const w = await world();
     const items = await w.mustBook(w.msr, {
@@ -833,11 +872,16 @@ describe('changing and cancelling', () => {
       (await w.caGen.post(`/api/bookings/${items[0].id}/cancel`, { scope: 'series' })).status,
       404
     );
-    const res = await w.caMsr.post(`/api/bookings/${items[0].id}/cancel`, { scope: 'series' });
+    const res = await w.caMsr.post(`/api/bookings/${items[0].id}/cancel`, {
+      scope: 'series',
+      reason: 'Replaced by the site visit',
+    });
     assert.equal(res.body.cancelled.length, 3);
     assert.equal(w.repo.auditLogs.length, 1);
     const after = JSON.parse(w.repo.auditLogs[0].after);
     assert.deepEqual([after.scope, after.cancelled, after.status], ['series', 3, 'cancelled']);
+    assert.equal(after.reason, 'Replaced by the site visit');
+    assert.ok(w.repo.bookings.every((b) => b.cancelReason === 'Replaced by the site visit'));
     assert.equal(w.repo.auditLogs[0].companyId, w.msrId);
     assertConsistent(w);
   });
@@ -1191,8 +1235,14 @@ describe('administering rooms and bookings', () => {
   test('the mailbox list shows Exchange’s rooms and which the portal has', async () => {
     const w = await world();
     const { items } = (await w.ha.get('/api/admin/rooms/mailboxes')).body;
-    assert.equal(items.length, 6);
-    assert.ok(items.every((m) => m.roomId && m.emailAddress.startsWith('room-hq-')));
+    // The six seeded rooms, and four mailboxes no room uses yet.
+    const used = items.filter((m) => m.roomId);
+    assert.equal(used.length, 6);
+    assert.ok(used.every((m) => m.emailAddress.startsWith('room-hq-')));
+    assert.deepEqual(
+      items.filter((m) => !m.roomId).map((m) => m.emailAddress),
+      ['a', 'b', 'c', 'd'].map((x) => `room-site-${x}@mgholding.example`)
+    );
   });
 
   test('admins list bookings within their companies; a user cannot', async () => {

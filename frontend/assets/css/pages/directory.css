@@ -231,9 +231,13 @@
   outline-offset: calc(var(--border-2) * -1);
 }
 
+/* Each line keeps to the row's own start edge: a name that exists only in the
+ * other language carries its own direction, and would otherwise align itself
+ * to the far side from the job title under it. */
 .dir-row__text {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   flex: 1;
   min-inline-size: 0;
 }
@@ -319,6 +323,8 @@
 .typeahead__option {
   display: flex;
   flex-direction: column;
+  /* As in the panel's rows: a name in the other language stays at the start. */
+  align-items: flex-start;
   gap: var(--space-1);
   min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-3);

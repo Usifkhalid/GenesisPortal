@@ -2689,6 +2689,8 @@ a.person {
 .picker__text {
   display: flex;
   flex-direction: column;
+  /* A name in the other language keeps to the row's start edge. */
+  align-items: flex-start;
   min-width: 0;
 }
 

@@ -26,7 +26,12 @@ function label(key, raw) {
   return text === key ? raw : text;
 }
 
-const actionLabel = (action) => label(`audit.action.${action}`, action);
+/**
+ * An action that is also the stem of others ("directory.sync" beside
+ * "directory.sync.failed") keeps its own words under "_".
+ */
+const actionLabel = (action) =>
+  label(`audit.action.${action}`, label(`audit.action.${action}._`, action));
 const entityLabel = (entity) => label(`audit.entity.${entity}`, entity);
 const fieldLabel = (name) => label(`audit.field.${name}`, name);
 

@@ -19,10 +19,17 @@ export default defineConfig({
   testDir: 'tests/e2e',
   testMatch: '**/*.spec.js',
   fullyParallel: true,
+  // Every worker drives the one server and the one SQL Server on this machine.
+  // At Playwright's default (half the cores, six here) the database is squeezed
+  // for memory and disk and answers take seconds, so tests fail at random; three
+  // keeps it responsive. Measured in session 16 (docs/DECISIONS.md D94).
+  workers: Number(process.env.E2E_WORKERS ?? 3),
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: [['list']],
   outputDir: 'test-results',
+  // Twice the default: a wait on the server is a wait on a shared database.
+  expect: { timeout: 10_000 },
 
   use: {
     baseURL: `http://localhost:${PORT}`,

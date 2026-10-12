@@ -14,6 +14,10 @@
 
 import {
   LANGUAGES,
+  bookableDay,
+  cairoInstant,
+  csrfHeaders,
+  runIndex,
   expect as strictExpect,
   expectLanguage,
   expectNoSidewaysScroll,
@@ -37,33 +41,6 @@ const ROOM_NAMES = {
     'قاعة التدريب',
   ],
 };
-
-/** 0..3 for this run: language by screen. */
-function runIndex(page, lang) {
-  const wide = page.viewportSize().width > 600;
-  return (lang === 'en' ? 0 : 2) + (wide ? 0 : 1);
-}
-
-/**
- * A working day (Sunday to Thursday) at least a week away, different for each
- * of the 4 runs and each of the tests, as "YYYY-MM-DD".
- */
-function bookableDay(page, lang, testNo) {
-  const days = [];
-  const date = new Date();
-  date.setUTCHours(12, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() + 7);
-  while (days.length < 24) {
-    if (date.getUTCDay() <= 4) days.push(date.toISOString().slice(0, 10));
-    date.setUTCDate(date.getUTCDate() + 1);
-  }
-  return days[testNo * 4 + runIndex(page, lang)];
-}
-
-async function csrfHeaders(page) {
-  const config = await (await page.request.get('/api/auth/config')).json();
-  return { 'X-CSRF-Token': config.csrfToken };
-}
 
 for (const lang of LANGUAGES) {
   test.describe(`in ${lang}`, () => {
@@ -250,18 +227,4 @@ for (const lang of LANGUAGES) {
       await expect(page).toHaveURL(/#rooms\?date=/);
     });
   });
-}
-
-/**
- * An instant for a Cairo wall time, asked of the browser (which knows the
- * zone's rules) so the spec carries no offset table of its own.
- */
-async function cairoInstant(page, day, time) {
-  return page.evaluate(
-    async ([ymd, hhmm]) => {
-      const { fromCairoInput } = await import('/assets/js/format.js');
-      return fromCairoInput(`${ymd}T${hhmm}`);
-    },
-    [day, time]
-  );
 }

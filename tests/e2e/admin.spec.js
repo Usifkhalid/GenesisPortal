@@ -196,8 +196,9 @@ for (const lang of LANGUAGES) {
       expect(me.nav.some((item) => item.key === 'admin')).toBe(true);
 
       await page.goto('/#admin');
-      // Departments, and the data-quality report for their own company.
-      await expect(page.locator('.subnav__link')).toHaveCount(2);
+      // Departments, the data-quality report and the bookings of their own company.
+      await expect(page.locator('.subnav__link')).toHaveCount(3);
+      await expect(page.locator('.subnav__link[href="#admin/rooms"]')).toHaveCount(0);
       // Parallel runs may have made this same person admin of another test
       // company too, so the picker may list several, but only test companies.
       const picker = page.locator('#companyPick');
