@@ -14,7 +14,7 @@ import {
   cairoYmd,
   clockOf,
   formatDay,
-  formatTime,
+  formatTimeRange,
   weekdayOf,
 } from '../../format.js';
 import { esc } from '../../html.js';
@@ -63,8 +63,8 @@ export const roomLine = (room) => `${seatsLabel(room)} · ${floorLabel(room)}`;
 /** "Sun, 25 Oct" for a calendar day. */
 export const dayLabel = (ymd, weekday = 'short') => formatDay(ymd, { weekday });
 
-/** "10:00–11:30" for two instants. */
-export const spanLabel = (start, end) => `${formatTime(start)}–${formatTime(end)}`;
+/** "10:00–11:30" for two instants, left to right in Arabic too. */
+export const spanLabel = (start, end) => formatTimeRange(start, end);
 
 /** "Sun, 25 Oct, 10:00–11:30" for a booking or a free slot. */
 export const whenLabel = (start, end) =>

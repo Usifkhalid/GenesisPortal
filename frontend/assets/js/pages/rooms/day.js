@@ -12,8 +12,9 @@
  * the day that are still free, and what is booked.
  *
  * Every booking says its exact time in words, never only by where it sits:
- * the range comes first in the block ("10:30–10:45"), a block too narrow for a
- * line of text turns the range on its side, and hover, keyboard focus or a
+ * the range comes first in the block ("10:30–10:45", start on the left in
+ * Arabic as in English), a block too narrow for a line of text turns the
+ * range on its side, and hover, keyboard focus or a
  * tap opens a small panel with the range, the length, who booked it (or the
  * subject of your own) and the room. A free stretch says the quarter hour
  * under the pointer before it is booked.
@@ -26,7 +27,15 @@ import { api } from '../../api.js';
 import { icon } from '../../components/icons.js';
 import { loadFailedNotice } from '../../components/notice.js';
 import { namesOf } from '../../components/person.js';
-import { addDays, cairoMinutes, cairoYmd, clockOf, formatDay } from '../../format.js';
+import {
+  addDays,
+  cairoMinutes,
+  cairoYmd,
+  clockOf,
+  formatDay,
+  rangeHtml,
+  rangeOf,
+} from '../../format.js';
 import { esc } from '../../html.js';
 import { t } from '../../i18n.js';
 import { openBookingDialog } from './booking.js';
@@ -45,14 +54,6 @@ const DAY = 1440;
 const HOUR = 60;
 /** How far the panel stands off the thing it describes, in px. */
 const POP_GAP = 6;
-
-/**
- * "10:30–10:45". Digits are Latin and the clock is 24-hour in both languages.
- * The string carries no direction of its own on purpose: inside Arabic text
- * the two times are laid out right to left, start first, which is how an
- * Arabic reader reads a range; inside English, left to right.
- */
-const rangeText = (from, to) => `${clockOf(from)}–${clockOf(to)}`;
 
 /** The minute of Cairo's day `ymd` that an instant falls on, clamped to the day. */
 function minuteOn(ymd, instant) {
@@ -243,7 +244,7 @@ export function render(root, ctx) {
   /** A booking's panel: the range, then its length, who or what, and the room. */
   function bookingPop({ room, from, to, item }) {
     const organiser = item.organiser ? namesOf(item.organiser).primary.text : '';
-    return `<p class="day-pop__time">${esc(rangeText(from, to))}</p>
+    return `<p class="day-pop__time">${rangeHtml(from, to)}</p>
       <p class="day-pop__status">${esc(t(item.mine ? 'rooms.day.yours' : 'rooms.day.busy'))}</p>
       <dl class="day-pop__list">
         ${popRow(t('rooms.day.pop.length'), durationLabel(to - from))}
@@ -260,7 +261,7 @@ export function render(root, ctx) {
     const start = clientX === undefined ? null : startUnder(button, clientX);
     const shown = start === null ? { from, to } : { from: start, to: start + SLOT };
     return `<p class="day-pop__time">${esc(
-      t('rooms.day.freeAt', { range: rangeText(shown.from, shown.to) })
+      t('rooms.day.freeAt', { range: rangeOf(shown.from, shown.to) })
     )}</p>
       <p class="day-pop__hint">${esc(
         t('rooms.day.freeHint', { from: clockOf(shown.from), to: clockOf(to) })
@@ -438,7 +439,7 @@ export function render(root, ctx) {
                 data-pop="${key}" aria-label="${esc(busyName(room, block))}"
                 style="--at:${pct(lo, hours)}%;--size:${pct(hi, hours) - pct(lo, hours)}%">
                 <span class="day-busy__body" aria-hidden="true">
-                  <span class="day-busy__time">${rangeText(from, to)}</span>
+                  <span class="day-busy__time">${rangeHtml(from, to)}</span>
                   <span class="day-busy__what">${esc(busyWhat(item))}</span>
                 </span>
               </button>`;
@@ -453,7 +454,7 @@ export function render(root, ctx) {
                 }%" aria-label="${esc(freeLabel(room, part))}">
                 <span class="day-free__body" aria-hidden="true">
                   ${icon('plus', 'day-free__icon')}
-                  <span class="day-free__text">${rangeText(part.from, part.to)}</span>
+                  <span class="day-free__text">${rangeHtml(part.from, part.to)}</span>
                 </span>
               </button>`
             )
@@ -485,7 +486,7 @@ export function render(root, ctx) {
                 (part) => `<li><button type="button" class="day-slot" data-free
                   data-room="${esc(room.id)}" data-from="${part.from}" data-to="${part.to}"
                   aria-label="${esc(freeLabel(room, part))}">
-                  <span class="day-slot__time">${rangeText(part.from, part.to)}</span>
+                  <span class="day-slot__time">${rangeHtml(part.from, part.to)}</span>
                   <span class="day-slot__length">${esc(durationLabel(part.to - part.from))}</span>
                   ${icon('plus', 'day-slot__icon')}
                 </button></li>`
@@ -505,7 +506,7 @@ export function render(root, ctx) {
                   (block) => `<li><button type="button"
                     class="day-slot day-slot--booked${block.item.mine ? ' day-slot--mine' : ''}"
                     data-pop="${block.key}" aria-label="${esc(busyName(room, block))}">
-                    <span class="day-slot__time">${rangeText(block.from, block.to)}</span>
+                    <span class="day-slot__time">${rangeHtml(block.from, block.to)}</span>
                     <span class="day-slot__what">${esc(busyWhat(block.item))}</span>
                     ${
                       block.item.mine

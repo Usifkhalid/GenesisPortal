@@ -22,7 +22,7 @@ import {
   cairoYmd,
   formatDay,
   formatNumber,
-  formatTime,
+  formatTimeRange,
 } from '../../format.js';
 import { esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
@@ -34,9 +34,10 @@ const STATUSES = ['confirmed', 'cancelled', 'all'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const when = (b) =>
-  `${formatDay(cairoYmd(b.start), { weekday: 'short', year: true })}, ${formatTime(
-    b.start
-  )}–${formatTime(b.end)}`;
+  `${formatDay(cairoYmd(b.start), { weekday: 'short', year: true })}, ${formatTimeRange(
+    b.start,
+    b.end
+  )}`;
 
 /**
  * Asks why, and for a series which meetings. Resolves { scope, reason } or null.

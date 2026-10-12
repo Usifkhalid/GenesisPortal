@@ -969,3 +969,14 @@ hour and a lighter line every quarter; "now" is a line with its time on the axis
 shows the quarter hour under the pointer ("10:45–11:00, free") and books from there, so presses
 now snap to 15 minutes, not 30. A range is plain text with no direction of its own: in Arabic
 the two times are laid out start-first from the right. The phone list shows booked times too.
+
+### D98. A time range reads left to right in Arabic too
+
+Replaces the last point of D97. "10:30–10:45" is drawn start on the left in both languages:
+Arabic readers of a 24-hour Latin-digit clock read the pair as one left-to-right token, and a
+mirrored "10:45–10:30" was read as the wrong meeting. One place writes a range, `format.js`:
+`rangeHtml` (`<bdi dir="ltr">`) for markup (day blocks, panel, phone list) and `rangeOf` /
+`formatTimeRange` (wrapped in the Unicode isolates U+2066/U+2069) for text that passes through
+translation strings, `textContent` and accessible names (find summary, booking dialog, my
+bookings, admin bookings, Home card, conflicts). The sideways range in a narrow block runs top
+to bottom, start first. `rooms.spec.js` measures where the two times sit on screen.

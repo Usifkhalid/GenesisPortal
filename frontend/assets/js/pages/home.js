@@ -16,7 +16,7 @@
  */
 
 import { api } from '../api.js';
-import { cairoYmd, formatDate, formatDay, formatTime } from '../format.js';
+import { cairoYmd, formatDate, formatDay, formatTimeRange } from '../format.js';
 import { t, getLocale, localized } from '../i18n.js';
 import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
@@ -186,7 +186,7 @@ function bookingRow(_ctx, booking) {
   const ymd = cairoYmd(booking.start);
   const day =
     ymd === cairoYmd(new Date()) ? t('home.today') : formatDay(ymd, { weekday: 'short' });
-  const time = `${formatTime(booking.start)}–${formatTime(booking.end)}`;
+  const time = formatTimeRange(booking.start, booking.end);
   return `<li class="record">
     <dl class="labelstrip labelstrip--compact">
       ${pair(t('room.name'), esc(localized(booking.room)))}

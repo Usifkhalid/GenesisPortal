@@ -43,6 +43,38 @@ const ROOM_NAMES = {
   ],
 };
 
+/**
+ * A time range is drawn start first from the left ("10:30–10:45") in Arabic
+ * exactly as in English, and from the top when it stands on its side. Read off
+ * the screen: where the first and the second time of the range actually sit.
+ */
+async function expectStartFirst(locator) {
+  const drawn = await locator.first().evaluate((el) => {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.data.search(/\d\d:\d\d–\d\d:\d\d/);
+      if (at < 0) continue;
+      const box = (from, to) => {
+        const range = document.createRange();
+        range.setStart(node, from);
+        range.setEnd(node, to);
+        return range.getBoundingClientRect();
+      };
+      const start = box(at, at + 5);
+      const end = box(at + 6, at + 11);
+      const sideways = getComputedStyle(node.parentElement).writingMode.startsWith('vertical');
+      return {
+        sideways,
+        startFirst: sideways ? start.bottom <= end.top + 1 : start.right <= end.left + 1,
+      };
+    }
+    return null;
+  });
+  expect(drawn, 'a time range in the element').not.toBeNull();
+  expect(drawn.startFirst, 'the start of the range is drawn first, left to right').toBe(true);
+  return drawn;
+}
+
 for (const lang of LANGUAGES) {
   test.describe(`in ${lang}`, () => {
     test('a user books a room in two taps, sees it on Home, and cancels it', async ({
@@ -60,6 +92,7 @@ for (const lang of LANGUAGES) {
       const rows = page.locator('#freeBody .record');
       await expect(rows.first()).toContainText(ROOM_NAMES[lang][0]);
       await expect(page.locator('#freeSummary')).toContainText('10:00–11:00');
+      await expectStartFirst(page.locator('#freeSummary'));
       await shot(page, `rooms-find-${lang}`);
       await expectNoSidewaysScroll(page);
 
@@ -261,6 +294,10 @@ for (const lang of LANGUAGES) {
       const block = page.locator(`${wide ? '.day-timeline' : '.day-list'} [data-pop]`);
       await expect(block).toHaveCount(1);
       await expect(block).toContainText(RANGE);
+      // Drawn 10:30 then 10:45 in Arabic too; on a desktop the quarter-hour
+      // block is too narrow for a line, so the range stands on its side.
+      const drawn = await expectStartFirst(block);
+      expect(drawn.sideways).toBe(wide);
       await expect(block).toHaveAttribute(
         'aria-label',
         fill('rooms.day.mineNamed', { name: roomLabel, from: '10:30', to: '10:45', subject })
@@ -273,6 +310,7 @@ for (const lang of LANGUAGES) {
       else await block.tap();
       await expect(pop).toBeVisible();
       await expect(pop).toContainText(RANGE);
+      await expectStartFirst(pop);
       await expect(pop).toContainText(fill('rooms.time.minutes', { count: '15' }));
       await expect(pop).toContainText(subject);
       await expect(pop).toContainText(roomLabel);
@@ -297,9 +335,12 @@ for (const lang of LANGUAGES) {
         // A free stretch says the quarter hour under the pointer before it is booked.
         await page.locator('.day-free').first().hover();
         await expect(pop).toContainText(/09:(00|15)–09:(15|30)/);
+        await expectStartFirst(pop);
+        await expectStartFirst(page.locator('.day-free__text'));
       } else {
         // The phone list gives each free stretch its exact times as well.
         await expect(page.locator('.day-slot__time').first()).toHaveText('08:00–10:30');
+        await expectStartFirst(page.locator('.day-slot__time'));
       }
 
       // Someone else sees it as busy, with the range and who booked it.
@@ -315,6 +356,7 @@ for (const lang of LANGUAGES) {
       if (wide) await block.hover();
       else await block.tap();
       await expect(pop).toContainText(RANGE);
+      await expectStartFirst(pop);
       await expect(pop).toContainText(who);
       await shot(page, `rooms-day-quarter-busy-${lang}`);
 

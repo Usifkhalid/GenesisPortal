@@ -134,6 +134,21 @@ export const clockOf = (minutes) => `${two(Math.floor(minutes / 60))}:${two(minu
 /** An instant as "14:30" on Cairo's clock. */
 export const formatTime = (value) => clockOf(cairoMinutes(value));
 
+/**
+ * "10:30–10:45" from two clock minutes, as plain text. A range of times reads
+ * left to right in Arabic as it does in English, start on the left: the two
+ * isolate marks around it keep the surrounding right-to-left text from
+ * swapping the times. For text content, attributes and accessible names;
+ * markup uses `rangeHtml`.
+ */
+export const rangeOf = (from, to) => `⁦${clockOf(from)}–${clockOf(to)}⁩`;
+
+/** The same range as markup: `<bdi dir="ltr">10:30–10:45</bdi>`. */
+export const rangeHtml = (from, to) => `<bdi dir="ltr">${clockOf(from)}–${clockOf(to)}</bdi>`;
+
+/** The range between two instants on Cairo's clock, as plain text. */
+export const formatTimeRange = (start, end) => rangeOf(cairoMinutes(start), cairoMinutes(end));
+
 /** "2026-10-25" moved by whole days. */
 export function addDays(ymd, days) {
   const date = new Date(`${ymd}T12:00:00Z`);

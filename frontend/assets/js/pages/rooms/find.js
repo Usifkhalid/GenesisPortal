@@ -18,7 +18,7 @@ import { icon } from '../../components/icons.js';
 import { showToast } from '../../components/toast.js';
 import { recordSkeleton } from '../../components/skeleton.js';
 import { setBusy } from '../../components/form.js';
-import { cairoYmd, clockOf } from '../../format.js';
+import { cairoYmd, clockOf, rangeOf } from '../../format.js';
 import { esc } from '../../html.js';
 import { t } from '../../i18n.js';
 import { openBookingDialog } from './booking.js';
@@ -262,7 +262,8 @@ export function render(root, ctx) {
   function showResult(search, result, { confirmation = '' } = {}) {
     found = { search, rooms: result.rooms };
     body.setAttribute('aria-busy', 'false');
-    const label = `${dayLabel(search.date)}, ${clockOf(search.start)}–${clockOf(
+    const label = `${dayLabel(search.date)}, ${rangeOf(
+      search.start,
       search.start + search.duration
     )}`;
 

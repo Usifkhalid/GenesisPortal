@@ -22,7 +22,14 @@ import {
 import { icon } from '../../components/icons.js';
 import { createPeoplePicker } from '../../components/people-picker.js';
 import { showToast } from '../../components/toast.js';
-import { addDays, cairoYmd, clockOf, fromCairoInput, weekdayOf } from '../../format.js';
+import {
+  addDays,
+  cairoYmd,
+  clockOf,
+  fromCairoInput,
+  rangeOf,
+  weekdayOf,
+} from '../../format.js';
 import { esc } from '../../html.js';
 import { t } from '../../i18n.js';
 import {
@@ -253,10 +260,9 @@ export async function openBookingDialog(env, preset, onFindAnother) {
 
   function drawSummary() {
     const s = slot();
+    const from = s ? Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3)) : 0;
     const text = s
-      ? `${roomName(roomNow())} · ${dayLabel(s.date)}, ${s.time}–${clockOf(
-          Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3)) + s.minutes
-        )}`
+      ? `${roomName(roomNow())} · ${dayLabel(s.date)}, ${rangeOf(from, from + s.minutes)}`
       : roomName(roomNow());
     dialog.querySelector('#bkSummary').textContent = text;
   }
