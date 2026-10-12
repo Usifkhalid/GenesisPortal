@@ -1100,3 +1100,48 @@ later change is the team's (D101), recorded as a `priority` event with from/to l
 Cost accepted: people may pick Urgent for everything; the queue's history shows the change
 when IT corrects it, and Leads can see the pattern. Requesters see the four levels in plain
 language ("Urgent", "High", "Normal", "Low" with an example); P1..P4 stay in IT views.
+
+### D107. One Tickets page; IT's views are courtesy links, the API is the lock
+
+`#tickets` is one page module with a view per address (new, my tickets, one ticket, queue,
+settings). Whether someone is on a support team comes from `GET /api/tickets/counts`
+(`queue` is null for everyone else); that and the reader's role in `queue/options` decide
+which links appear. A non-IT person who types `#tickets/queue` sees "no access", and the
+queue API answers them 403 regardless (tested). Requesters read plain words (Urgent / High /
+Normal / Low, "Reply expected by"); P1..P4, "SLA clock" and "breached" are written only by
+functions that are given `staff` (`pages/tickets/shared.js`).
+
+### D108. Files go after the ticket, with progress; a pasted screenshot is a file
+
+The API cannot take a file before the ticket exists, so the new-ticket form creates the ticket
+and then sends each file in turn with its own progress bar (`api.upload`, XMLHttpRequest,
+because fetch has no upload progress). A file that fails does not undo the ticket: the
+confirmation says how many did not go and the ticket's reply box takes them again. Type and
+size are checked in the browser against `GET /api/tickets/options` first (the server still
+decides). Ctrl+V of an image anywhere in the form or the reply box becomes a file named
+"Screenshot <date time>.png".
+
+### D109. A canned reply is inserted in the requester's language
+
+The ticket in full now carries `requesterLanguage` (`en`/`ar`) for the team only, from
+the requester's profile. "Insert reply" puts that language's text in the box (the other
+language when one is empty) and the agent edits it before sending. The select shows titles
+in the agent's own language. Nothing is sent without a click.
+
+### D110. Smaller choices in the helpdesk screens
+
+- **Internal notes** are drawn apart on three signals (dashed warm edge, a lock and the words
+  "Internal note", and the whole reply box turns that way before the first keystroke), because
+  sending one by mistake is the module's one costly error. The requester's API response does
+  not contain them at all.
+- **"Closed" in My tickets** reads Resolved and Closed as two requests and merges them by
+  update time; the API filters one status at a time and a person has few of these.
+- **Bulk assign** is one PATCH per ticket, so the server's own rule (an agent may not take a
+  colleague's ticket, D101) answers for each; the toast says how many went.
+- **Configuration** is one module (`tickets/config.js`) mounted at `#admin/helpdesk`
+  (HoldingAdmin: team, categories, locations, targets and hours, holidays, canned replies) and
+  at `#tickets/settings` (a Lead: categories and canned replies of their team).
+  SLA targets are typed in working hours and sent as minutes.
+- **Home** shows IT an extra card (unassigned, mine, at risk, breached, each a link into the
+  queue). At risk and breached are two requests for `pageSize=1`, because the counts route's
+  "breaching soon" includes the breached ones and would not match the list it links to.

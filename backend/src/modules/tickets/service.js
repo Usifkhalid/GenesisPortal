@@ -298,6 +298,10 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
       description: t.description,
       assetTag: t.assetTag,
       createdBy: person(refs.people.get(t.createdById)),
+      /** For the team only: the language a canned reply is written in. */
+      ...(staffRole
+        ? { requesterLanguage: refs.people.get(t.requesterId)?.language === 'ar' ? 'ar' : 'en' }
+        : {}),
       can: {
         comment: !closed,
         internalNote: Boolean(staffRole),

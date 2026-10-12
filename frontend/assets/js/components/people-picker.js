@@ -31,8 +31,9 @@ const LIMIT = 6;
  * @param {string} options.label  translated
  * @param {string} [options.help]  translated
  * @param {number} [options.max]  most people that may be chosen
+ * @param {boolean} [options.required]  say "required" in place of "optional"
  */
-export function createPeoplePicker({ host, id, label, help = '', max = 50 }) {
+export function createPeoplePicker({ host, id, label, help = '', max = 50, required = false }) {
   /** @type {Map<string, object>} */
   const chosen = new Map();
   let found = [];
@@ -43,7 +44,9 @@ export function createPeoplePicker({ host, id, label, help = '', max = 50 }) {
   host.classList.add('picker');
   host.innerHTML = `
     <label class="field__label" for="${esc(id)}"><span>${esc(label)}</span>
-      <span class="field__optional">(${esc(t('field.optional'))})</span></label>
+      <span class="${required ? 'field__required' : 'field__optional'}">(${esc(
+        t(required ? 'field.required' : 'field.optional')
+      )})</span></label>
     <div class="input-group">
       ${icon('search', 'input-group__icon')}
       <input class="input" id="${esc(id)}" type="search" autocomplete="off"
@@ -69,6 +72,10 @@ export function createPeoplePicker({ host, id, label, help = '', max = 50 }) {
     },
     get count() {
       return chosen.size;
+    },
+    /** The chosen people, as the directory sent them. */
+    get people() {
+      return [...chosen.values()];
     },
     input,
   };

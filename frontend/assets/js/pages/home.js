@@ -17,7 +17,14 @@
  */
 
 import { api } from '../api.js';
-import { cairoYmd, formatDate, formatDay, formatTime, formatTimeRange } from '../format.js';
+import {
+  cairoYmd,
+  formatDate,
+  formatDay,
+  formatNumber,
+  formatTime,
+  formatTimeRange,
+} from '../format.js';
 import { t, getLocale, localized } from '../i18n.js';
 import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
@@ -462,6 +469,64 @@ async function fillCard(home, card, ctx) {
   }
 }
 
+/* ------------------------------------------------------- IT's queue card */
+
+/**
+ * For the support team only: what is waiting in the queue, each number a
+ * link into it. The card is not part of CARDS because most people never have
+ * it; it is added once the server has said this person is on a team.
+ */
+async function addQueueCard(home) {
+  let counts;
+  try {
+    counts = await api('/api/tickets/counts', { quiet: true });
+  } catch {
+    return;
+  }
+  if (!counts.queue || !home.isConnected) return;
+
+  const sla = async (state) => {
+    try {
+      const page = await api(`/api/tickets/queue?status=active&sla=${state}&pageSize=1`, {
+        quiet: true,
+      });
+      return page.total;
+    } catch {
+      return null;
+    }
+  };
+  const [atRisk, breached] = await Promise.all([sla('at_risk'), sla('breached')]);
+  if (!home.isConnected) return;
+
+  const link = (filter, label, value) =>
+    `<div class="labelstrip__pair">
+      <dt class="labelstrip__key">${esc(label)}</dt>
+      <dd class="labelstrip__value"><a class="link-quiet" href="#tickets/queue?f=${filter}">${esc(
+        value == null ? '—' : formatNumber(value)
+      )}</a></dd>
+    </div>`;
+
+  const card = document.createElement('section');
+  card.className = 'card home__queue';
+  card.dataset.card = 'queue';
+  card.setAttribute('aria-labelledby', 'home-queue-title');
+  card.innerHTML = `${cardHead({
+    id: 'home-queue-title',
+    tag: t('nav.tickets'),
+    title: t('home.queue.title'),
+    href: '#tickets/queue',
+    openLabel: t('home.queue.open'),
+  })}
+    <dl class="labelstrip labelstrip--compact">
+      ${link('unassigned', t('tk.queue.quick.unassigned'), counts.queue.unassigned)}
+      ${link('mine', t('tk.queue.quick.mine'), counts.queue.assignedToMe)}
+      ${link('atRisk', t('tk.queue.quick.atRisk'), atRisk)}
+      ${link('breached', t('tk.queue.quick.breached'), breached)}
+    </dl>`;
+  home.classList.add('home--staff');
+  home.querySelector('.banner').after(card);
+}
+
 /* ---------------------------------------------------------------- render */
 
 /**
@@ -490,6 +555,7 @@ export function render(root, ctx) {
   });
 
   for (const card of CARDS) fillCard(home, card, ctx);
+  addQueueCard(home);
 
   // Keep the Cairo clock honest while the page stays open.
   const clock = setInterval(() => {

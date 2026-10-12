@@ -173,6 +173,62 @@ async function request(path, { method, body, redirectOn401 }) {
 }
 
 /**
+ * Sends a file as its own bytes, reporting how much has gone. fetch cannot
+ * tell how far an upload has got and a phone on weak 3G is slow enough for
+ * that to matter, so this one uses XMLHttpRequest. It never toasts: the
+ * caller says what a failed file means.
+ *
+ * @param {string} path
+ * @param {Blob} blob
+ * @param {{ onProgress?: (fraction: number) => void }} [options]
+ * @returns {Promise<any>} the parsed JSON body
+ */
+export async function upload(path, blob, { onProgress } = {}) {
+  if (!csrfToken) await refreshCsrfToken();
+
+  const attempt = () =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', path);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.setRequestHeader('Content-Type', blob.type || 'application/octet-stream');
+      if (csrfToken) xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+      });
+      xhr.addEventListener('error', () => reject(new ApiError(0, 'network')));
+      xhr.addEventListener('abort', () => reject(new ApiError(0, 'network')));
+      xhr.addEventListener('load', () => {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(xhr.responseText);
+        } catch {
+          // Not JSON: a proxy answered, or the body was empty.
+        }
+        resolve({ status: xhr.status, body: parsed });
+      });
+      xhr.send(blob);
+    });
+
+  let res = await attempt();
+  if (res.status === 403 && res.body?.error?.code === 'csrf_invalid') {
+    await refreshCsrfToken();
+    res = await attempt();
+  }
+  if (res.status === 401) {
+    location.replace(LOGIN_PAGE);
+    return new Promise(() => {});
+  }
+  if (res.status < 200 || res.status > 299) {
+    const error = res.body?.error;
+    throw new ApiError(res.status, error?.code ?? 'unknown', error?.details);
+  }
+  onProgress?.(1);
+  return res.body;
+}
+
+/**
  * @param {string} path  e.g. '/api/me'
  * @param {object} [options]
  * @param {string} [options.method]

@@ -1,0 +1,749 @@
+/* ============================================================================
+ * pages/tickets.css — the IT helpdesk: raising a ticket, my tickets, one
+ * ticket (the requester's reading and IT's handling), IT's queue and the
+ * helpdesk configuration.
+ *
+ * Tokens only, logical properties only. Everything answers to the page
+ * container, not the viewport (the rail may be open or not). A record is a
+ * label strip over its body, as everywhere else in the portal; what is
+ * particular here is the conversation: a requester's message, the team's
+ * answer, and the internal note that is drawn so that it cannot be mistaken
+ * for either (a dashed edge, the warning wash and a lock) because sending one
+ * by mistake is the one error in this module that matters.
+ * ========================================================================= */
+
+/* --- Raise a ticket ------------------------------------------------------- */
+.tk-form {
+  gap: var(--space-6);
+  /* A form is read in a column: past this the eye loses the line it is on. */
+  max-inline-size: 46rem;
+}
+
+.tk-form__lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tk-fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Category tiles: two to a row on the narrowest phone, three from a tablet.
+ * The radio is the real control; the face is what is drawn. */
+.tk-tiles {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container page (min-width: 36rem) {
+  .tk-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tk-tile {
+  display: block;
+  position: relative;
+  cursor: pointer;
+}
+
+.tk-tile__input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tk-tile__face {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-block-size: calc(var(--tap-min) * 1.5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  color: var(--text-strong);
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.tk-tile:hover .tk-tile__face {
+  background: var(--surface-hover);
+}
+
+.tk-tile__icon {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  color: var(--text-muted);
+}
+
+.tk-tile__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+/* Chosen: the accent edge, the wash, and a second heavier rule, so the choice
+ * reads in greyscale and in sunlight. */
+.tk-tile__input:checked + .tk-tile__face {
+  background: var(--brand-accent-wash);
+  border-color: var(--brand-accent-edge);
+  box-shadow: inset 0 0 0 var(--border-1) var(--brand-accent-edge);
+}
+
+.tk-tile__input:checked + .tk-tile__face .tk-tile__icon {
+  color: var(--brand-accent-ink);
+}
+
+.tk-tile__input:focus-visible + .tk-tile__face {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+/* How urgent: four plain choices, each with its example under it. */
+.tk-urgency__list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@container page (min-width: 40rem) {
+  .tk-urgency__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tk-urgency__option {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.tk-urgency__option:has(:checked) {
+  border-color: var(--brand-accent-edge);
+  background: var(--brand-accent-wash);
+}
+
+.tk-urgency__option:has(:focus-visible) {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+.tk-form__actions {
+  padding-block-start: var(--space-2);
+}
+
+/* --- Files: the add button, the list and its progress ---------------------- */
+.tk-files {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tk-files__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tk-files__bar .field__help {
+  margin: 0;
+}
+
+.tk-filelist {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tk-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.tk-file[data-state='failed'] {
+  border-color: var(--danger-edge);
+  background: var(--danger-surface);
+}
+
+.tk-file__icon {
+  flex: none;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  color: var(--text-muted);
+}
+
+.tk-file[data-state='done'] .tk-file__icon {
+  color: var(--success-ink);
+}
+
+.tk-file[data-state='failed'] .tk-file__icon {
+  color: var(--danger-ink);
+}
+
+.tk-file__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1;
+}
+
+.tk-file__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.tk-file__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.tk-file[data-state='failed'] .tk-file__meta {
+  color: var(--danger-ink);
+}
+
+.tk-file__bar {
+  inline-size: 100%;
+  block-size: var(--space-1);
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-active);
+  overflow: hidden;
+}
+
+.tk-file__bar::-webkit-progress-bar {
+  background: var(--surface-active);
+}
+
+.tk-file__bar::-webkit-progress-value {
+  background: var(--brand-accent-edge);
+}
+
+.tk-file__bar::-moz-progress-bar {
+  background: var(--brand-accent-edge);
+}
+
+/* Files already on a ticket: a link that downloads. */
+.tk-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  border: var(--border-1) solid var(--rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.tk-chip:hover {
+  background: var(--surface-hover);
+}
+
+.tk-chip__icon {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  color: var(--text-muted);
+}
+
+.tk-chip__name {
+  overflow-wrap: anywhere;
+}
+
+.tk-chip__size {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* --- Confirmation -------------------------------------------------------- */
+.tk-done {
+  gap: var(--space-5);
+}
+
+.tk-done__body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tk-done__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tk-done__icon {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  color: var(--success-ink);
+}
+
+/* --- My tickets: the toolbar --------------------------------------------- */
+.tk-toolbar {
+  display: grid;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+@container page (min-width: 40rem) {
+  .tk-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.tk-more {
+  display: flex;
+  justify-content: center;
+  padding-block-start: var(--space-4);
+}
+
+/* --- One ticket ----------------------------------------------------------- */
+.tk-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tk-detail__back {
+  margin: 0;
+}
+
+.tk-detail__grid {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@container page (min-width: 60rem) {
+  .tk-detail[data-staff='true'] .tk-detail__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  }
+
+  .tk-detail__side {
+    position: sticky;
+    inset-block-start: var(--space-4);
+  }
+}
+
+.tk-ticket__subject {
+  overflow-wrap: anywhere;
+}
+
+.tk-prose p {
+  margin: 0 0 var(--space-3);
+  max-inline-size: var(--measure);
+  overflow-wrap: anywhere;
+}
+
+.tk-prose p:last-child {
+  margin-block-end: 0;
+}
+
+/* The conversation. A requester's message sits on the surface; the team's
+ * answer carries the accent wash; an internal note is dashed and warm. */
+.tk-timeline {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tk-entry {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+.tk-entry--team {
+  background: var(--brand-accent-wash);
+  border-color: var(--rule-strong);
+}
+
+.tk-entry--internal {
+  background: var(--warning-surface);
+  border: var(--border-2) dashed var(--warning-edge);
+}
+
+.tk-entry__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tk-entry__who {
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.tk-entry__time {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.tk-entry__flag {
+  color: var(--warning-ink);
+  background: transparent;
+  border-color: var(--warning-edge);
+}
+
+.tk-entry__note {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--warning-ink);
+}
+
+/* A change to the record: one quiet line. */
+.tk-event {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.tk-event__icon {
+  flex: none;
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  align-self: center;
+}
+
+.tk-event__time {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+/* The reply box. In note mode the whole box turns: it must be obvious
+ * before the first keystroke who will read what is written in it. */
+.tk-reply__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tk-reply--internal {
+  background: var(--warning-surface);
+  border: var(--border-2) dashed var(--warning-edge);
+}
+
+.tk-reply__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--warning-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.tk-reply__warn-icon {
+  flex: none;
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  margin-block-start: var(--space-1);
+}
+
+.tk-canned .select {
+  max-inline-size: 28rem;
+}
+
+/* IT's side panel. */
+.tk-side {
+  gap: var(--space-4);
+}
+
+.tk-side__take {
+  align-self: flex-start;
+  margin-block-start: var(--space-2);
+}
+
+.tk-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.tk-facts > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tk-facts dt {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.tk-facts dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.tk-contact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.tk-contact__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.tk-contact__name {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.tk-contact__other,
+.tk-contact__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.tk-contact__links {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tk-contact__links a {
+  align-self: flex-start;
+}
+
+/* --- IT's queue ----------------------------------------------------------- */
+.tk-queue__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tk-searchrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.tk-searchrow .tk-search {
+  flex: 1 1 16rem;
+}
+
+.tk-quick {
+  flex-wrap: wrap;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+
+.tk-quick__count {
+  margin-inline-start: var(--space-2);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.tk-quick__count:empty {
+  display: none;
+}
+
+.tk-filters__form {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+.tk-filters__form[hidden] {
+  display: none;
+}
+
+.tk-search {
+  max-inline-size: 32rem;
+}
+
+.tk-bulk {
+  position: sticky;
+  inset-block-start: var(--space-2);
+  z-index: var(--z-sticky);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  border-color: var(--brand-accent-edge);
+  background: var(--brand-accent-wash);
+}
+
+.tk-bulk[hidden] {
+  display: none;
+}
+
+.tk-bulk__count {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
+.tk-queue__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tk-table__subject {
+  display: block;
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.tk-table__meta {
+  display: block;
+  margin-block-start: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-normal);
+  color: var(--text-muted);
+}
+
+.tk-table__pick {
+  inline-size: var(--tap-min);
+  padding-inline-end: 0;
+}
+
+/* --- Configuration -------------------------------------------------------- */
+.tk-config__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tk-config__help {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tk-config__team,
+.tk-config__year {
+  max-inline-size: 20rem;
+}
+
+.tk-config__add {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.tk-config__add .picker {
+  flex: 1 1 16rem;
+}
+
+.tk-config__preview {
+  white-space: pre-line;
+}
+
+.tk-names {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tk-sla {
+  display: grid;
+  gap: var(--space-3) var(--space-4);
+  align-items: center;
+  grid-template-columns: minmax(7rem, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.tk-sla__head {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.tk-sla__name {
+  font-weight: var(--weight-bold);
+}
+
+.tk-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+
+.tk-days .field__label {
+  inline-size: 100%;
+}
+
+/* The configuration's section switch is made of buttons; they wear the link
+ * look of .subnav. */
+.tk-config .subnav__link {
+  background: none;
+  border-block-start: 0;
+  border-inline: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tk-config .subnav__link:hover {
+  background: var(--surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-tile__face {
+    transition: none;
+  }
+}

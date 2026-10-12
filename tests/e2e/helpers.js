@@ -27,6 +27,9 @@ const IGNORED_ERRORS = [
   // By design: a room taken while its booking dialog was open answers 409
   // room_conflict, and the dialog says so (rooms.spec.js makes it happen).
   /status of 409 .*\/api\/bookings\)$/,
+  // By design: someone else's ticket is 404, so a ticket's existence is not
+  // learned from its address (tickets.spec.js opens one as other people).
+  /status of 404 .*\/api\/tickets\/[\w-]+\)$/,
 ];
 
 export const test = base.extend({

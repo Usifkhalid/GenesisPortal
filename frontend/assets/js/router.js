@@ -35,7 +35,7 @@ const ROUTES = {
   home: { nav: 'home', title: 'nav.home', page: 'home', skeleton: homeSkeleton },
   announcements: { nav: 'announcements', title: 'nav.announcements', page: 'announcements' },
   rooms: { nav: 'rooms', title: 'nav.rooms', page: 'rooms' },
-  tickets: { nav: 'tickets', title: 'nav.tickets', page: null },
+  tickets: { nav: 'tickets', title: 'nav.tickets', page: 'tickets' },
   directory: { nav: 'directory', title: 'nav.directory', page: 'directory' },
   admin: { nav: 'admin', title: 'nav.admin', page: 'admin' },
   'audit-log': { nav: 'auditLog', title: 'nav.auditLog', page: 'audit-log' },

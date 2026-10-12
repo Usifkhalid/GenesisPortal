@@ -224,6 +224,15 @@ describe('raising a ticket', () => {
     );
   });
 
+  test('the team is told the requester’s language; the requester is not', async () => {
+    const w = await world();
+    const ticket = await w.raise(w.gen);
+    const asAgent = await w.ticket(w.agent, ticket.id);
+    assert.match(asAgent.ticket.requesterLanguage, /^(en|ar)$/);
+    const asRequester = await w.ticket(w.gen, ticket.id);
+    assert.equal('requesterLanguage' in asRequester.ticket, false);
+  });
+
   test('a user cannot set the source or another requester', async () => {
     const w = await world();
     const base = {
@@ -231,10 +240,7 @@ describe('raising a ticket', () => {
       description: 'Jammed.',
       categoryId: w.category('Printer / scanner').id,
     };
-    for (const extra of [
-      { source: 'phone' },
-      { requesterId: w.gen2.user.id },
-    ]) {
+    for (const extra of [{ source: 'phone' }, { requesterId: w.gen2.user.id }]) {
       const res = await w.gen.post('/api/tickets', { ...base, ...extra });
       assert.equal(res.status, 403, JSON.stringify(extra));
     }

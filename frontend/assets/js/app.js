@@ -316,7 +316,7 @@ function pageContext() {
   const name = localized(state.user, 'displayName');
   return {
     company: state.company,
-    user: { name, firstName: name.trim().split(/\s+/)[0] ?? name },
+    user: { id: state.user.id, name, firstName: name.trim().split(/\s+/)[0] ?? name },
     admin: isAdmin(),
   };
 }

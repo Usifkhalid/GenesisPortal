@@ -61,6 +61,7 @@ const PERSON = {
   displayNameAr: true,
   companyId: true,
   officeLocation: true,
+  language: true,
   isActive: true,
 };
 

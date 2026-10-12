@@ -136,6 +136,7 @@ export function createMemoryTicketStore(repo) {
           displayNameAr: u.displayNameAr,
           companyId: u.companyId,
           officeLocation: u.officeLocation ?? null,
+          language: u.language ?? 'en',
           isActive: u.isActive,
         }));
     },

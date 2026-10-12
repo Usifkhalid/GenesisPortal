@@ -335,7 +335,7 @@ its requester's `companyId` for reporting, but company scope does not decide who
 the companies that team serves, and by a HoldingAdmin. Nobody else, a CompanyAdmin of the
 requester's company included. Anything out of reach is 404 on every route, so a ticket's
 existence cannot be learned from an id, a list, a search, a count or an attachment address.
-Only Home's cards and the nav count use this API so far; the Tickets page comes next.
+Used by the Tickets page (`#tickets`: new, my tickets, one ticket, the IT queue and settings), by the Admin area's helpdesk section and by Home's cards and the nav count.
 
 Priorities are `P1` Urgent, `P2` High, `P3` Normal, `P4` Low. Statuses are `New`, `Open`,
 `WaitingOnRequester`, `Resolved`, `Closed`. Sources are `portal`, `phone`, `walkIn`. Numbers
@@ -361,7 +361,7 @@ counter row bumped inside the create transaction, so concurrent creates never sh
 A summary: `{ id, number, subject, status, priority, source, team, category, location,
 company, requester, assignee, createdAt, updatedAt, firstRespondedAt, resolvedAt, closedAt,
 sla: { state, firstResponseDueAt, resolveDueAt, dueAt, pausedMinutes }, mine }`. The ticket
-in full adds `description`, `assetTag`, `createdBy` and `can: { comment, internalNote,
+in full adds `description`, `assetTag`, `createdBy`, `requesterLanguage` (`en`/`ar`, for the team only: the language a canned reply is inserted in) and `can: { comment, internalNote,
 attach, reopen, manage, reassign }`. `sla.state` is `on_track`, `at_risk`, `breached`,
 `paused`, `met` or `missed`; `sla.dueAt` is the date in force (first response until an
 agent has answered, then resolution).
@@ -408,4 +408,4 @@ its own timeline (`TicketEvent`), not the audit log.
 ### The rest
 
 Nothing else exists yet. Each module documents its routes here as it lands:
-the Tickets page (next) and notifications.
+notifications.
