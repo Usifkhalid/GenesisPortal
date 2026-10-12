@@ -23,6 +23,7 @@ import {
   expectNoSidewaysScroll,
   shot,
   signIn,
+  signOut,
   t,
   test,
 } from './helpers.js';
@@ -225,6 +226,103 @@ for (const lang of LANGUAGES) {
       await page.keyboard.press('Escape');
       await expect(panel).toHaveCount(0);
       await expect(page).toHaveURL(/#rooms\?date=/);
+    });
+
+    test('a 15-minute booking says its exact time in the day view and in its panel', async ({
+      page,
+    }) => {
+      const organiser = await signIn(page, { company: 'GEN', role: 'User', lang });
+      const day = bookableDay(page, lang, 5);
+      const wide = page.viewportSize().width > 600;
+      const subject = `Quarter ${lang} ${runIndex(page, lang)}`;
+      const RANGE = '10:30–10:45';
+      const fill = (key, vars) =>
+        Object.entries(vars).reduce((text, [k, v]) => text.replace(`{${k}}`, v), t(lang, key));
+
+      const rooms = (await (await page.request.get('/api/rooms')).json()).items;
+      const room = rooms.find((r) => r.nameEn === 'Meeting Room 1');
+      const roomLabel = lang === 'ar' ? room.nameAr : room.nameEn;
+      const booked = await page.request.post('/api/bookings', {
+        headers: await csrfHeaders(page),
+        data: {
+          roomId: room.id,
+          subject,
+          start: await cairoInstant(page, day, '10:30'),
+          end: await cairoInstant(page, day, '10:45'),
+        },
+      });
+      expect(booked.ok(), 'the 15-minute booking').toBeTruthy();
+      const bookingId = (await booked.json()).items[0].id;
+
+      await page.goto(`/#rooms/day?date=${day}&room=${room.id}`);
+      await expect(page.locator('#dayBody')).toHaveAttribute('aria-busy', 'false');
+
+      // The block itself says the range, however narrow it is, and so does its name.
+      const block = page.locator(`${wide ? '.day-timeline' : '.day-list'} [data-pop]`);
+      await expect(block).toHaveCount(1);
+      await expect(block).toContainText(RANGE);
+      await expect(block).toHaveAttribute(
+        'aria-label',
+        fill('rooms.day.mineNamed', { name: roomLabel, from: '10:30', to: '10:45', subject })
+      );
+
+      // The panel: hover on a desktop, a tap on a phone.
+      const pop = page.locator('#dayPop');
+      await expect(pop).toBeHidden();
+      if (wide) await block.hover();
+      else await block.tap();
+      await expect(pop).toBeVisible();
+      await expect(pop).toContainText(RANGE);
+      await expect(pop).toContainText(fill('rooms.time.minutes', { count: '15' }));
+      await expect(pop).toContainText(subject);
+      await expect(pop).toContainText(roomLabel);
+      await shot(page, `rooms-day-quarter-${lang}`);
+      await expectNoSidewaysScroll(page);
+
+      await page.keyboard.press('Escape');
+      await expect(pop).toBeHidden();
+
+      if (wide) {
+        // Keyboard focus opens it too.
+        await block.focus();
+        await expect(pop).toContainText(RANGE);
+        await page.keyboard.press('Escape');
+
+        // An hour label every hour, a lighter line every quarter between.
+        await expect(page.locator('.day-axis__label')).toHaveCount(11);
+        await expect(
+          page.locator('.day-track').first().locator('.day-tick--quarter')
+        ).toHaveCount(30);
+
+        // A free stretch says the quarter hour under the pointer before it is booked.
+        await page.locator('.day-free').first().hover();
+        await expect(pop).toContainText(/09:(00|15)–09:(15|30)/);
+      } else {
+        // The phone list gives each free stretch its exact times as well.
+        await expect(page.locator('.day-slot__time').first()).toHaveText('08:00–10:30');
+      }
+
+      // Someone else sees it as busy, with the range and who booked it.
+      await signOut(page);
+      await signIn(page, { company: 'GEN', role: 'CompanyAdmin', lang });
+      await page.goto(`/#rooms/day?date=${day}&room=${room.id}`);
+      await expect(block).toContainText(RANGE);
+      const who = lang === 'ar' ? organiser.displayNameAr : organiser.displayNameEn;
+      await expect(block).toHaveAttribute(
+        'aria-label',
+        fill('rooms.day.busyNamed', { name: roomLabel, from: '10:30', to: '10:45', who })
+      );
+      if (wide) await block.hover();
+      else await block.tap();
+      await expect(pop).toContainText(RANGE);
+      await expect(pop).toContainText(who);
+      await shot(page, `rooms-day-quarter-busy-${lang}`);
+
+      const cancelled = await page.request.post(`/api/bookings/${bookingId}/cancel`, {
+        headers: await csrfHeaders(page),
+        data: { scope: 'one', reason: 'End of the test' },
+      });
+      expect(cancelled.ok()).toBeTruthy();
     });
   });
 }

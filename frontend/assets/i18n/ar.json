@@ -1377,10 +1377,22 @@
       "goto": "اذهب إلى {day}",
       "freeNamed": "احجز {name}، متاحة من {from} إلى {to}",
       "yours": "حجزك",
-      "booked": "محجوزة",
       "summary": "{count} من {total} قاعات لديها وقت متاح",
       "noneFree": "لا يوجد وقت متاح لبقية اليوم.",
-      "noneLeft": "متاحة طوال اليوم."
+      "noneLeft": "متاحة طوال اليوم.",
+      "busy": "مشغولة",
+      "busyNamed": "{name}، مشغولة من {from} إلى {to}، المنظِّم {who}",
+      "busyNamedPlain": "{name}، مشغولة من {from} إلى {to}",
+      "mineNamed": "{name}، حجزك من {from} إلى {to}، {subject}",
+      "freeAt": "{range}، متاحة",
+      "freeHint": "اضغط للحجز من {from}. متاحة حتى {to}.",
+      "now": "الآن {time}",
+      "freeTimes": "الأوقات المتاحة",
+      "bookedTimes": "المحجوز",
+      "pop": {
+        "length": "المدة",
+        "organiser": "المنظِّم"
+      }
     },
     "mine": {
       "tag": "القادمة",

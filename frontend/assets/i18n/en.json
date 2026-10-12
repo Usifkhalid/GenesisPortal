@@ -1377,10 +1377,22 @@
       "goto": "Go to {day}",
       "freeNamed": "Book {name}, free from {from} to {to}",
       "yours": "Yours",
-      "booked": "Booked",
       "summary": "{count} of {total} rooms have free time",
       "noneFree": "Nothing free for the rest of the day.",
-      "noneLeft": "Free all day."
+      "noneLeft": "Free all day.",
+      "busy": "Busy",
+      "busyNamed": "{name}, busy {from} to {to}, organiser {who}",
+      "busyNamedPlain": "{name}, busy {from} to {to}",
+      "mineNamed": "{name}, your booking {from} to {to}, {subject}",
+      "freeAt": "{range}, free",
+      "freeHint": "Press to book from {from}. Free until {to}.",
+      "now": "Now {time}",
+      "freeTimes": "Free times",
+      "bookedTimes": "Booked",
+      "pop": {
+        "length": "Length",
+        "organiser": "Organiser"
+      }
     },
     "mine": {
       "tag": "Upcoming",

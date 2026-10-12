@@ -956,3 +956,16 @@ use yet, edit, photo (saved when chosen, like a logo), and "in use" instead of d
 company, dates and status, with cancel. The mock Graph lists four spare room mailboxes so
 "add a room" can be built and tested without a tenant. Audit actions that are also the stem
 of another (`directory.sync` beside `directory.sync.failed`) keep their label under `_`.
+
+### D97. Day view: a booking always says its time in words
+
+Position on the axis is not enough to read a time from, least of all for a quarter hour. Every
+block is a button whose text starts with the range ("10:30–10:45"), then "Busy · organiser" or,
+for the reader's own, the subject. Each block is a size container: under 4.75rem the range turns
+on its side and stands alone (forced top-to-bottom, start first, in Arabic too) and the rest is
+in a panel that opens on hover, keyboard focus or a tap (range, length, subject or organiser,
+room). The accessible name carries room, status, range and organiser. The grid has a label every
+hour and a lighter line every quarter; "now" is a line with its time on the axis. A free stretch
+shows the quarter hour under the pointer ("10:45–11:00, free") and books from there, so presses
+now snap to 15 minutes, not 30. A range is plain text with no direction of its own: in Arabic
+the two times are laid out start-first from the right. The phone list shows booked times too.

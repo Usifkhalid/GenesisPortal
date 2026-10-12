@@ -330,3 +330,18 @@ run `npm run db:generate` once nothing is running. The organiser is still not to
 cancel (notifications). An admin cannot move a booking from the screen (the API can). Real Graph
 unproven (session 19). Native date fields show MM/DD/YYYY in English.
 Next: notifications, then support tickets.
+
+## Session 18 — Day view time clarity (2026-10-12)
+
+Done: every booking block in the Rooms day view shows its exact range first, then "Busy ·
+organiser" or my subject; narrow blocks show the range on its side; one panel (hover, focus,
+tap) gives range, length, subject or organiser and room; full accessible names; hour labels,
+quarter-hour lines and a labelled "now" line; free stretches say the quarter hour under the
+pointer; the phone list shows booked times with their ranges. `/impeccable polish` on the day
+view (detector clean): sideways range forced start-first in Arabic, free-slot text off the grid
+lines. D97.
+Files: frontend/assets/{js/pages/rooms/day.js,css/pages/rooms.css,i18n/*}, tests/e2e/rooms.spec.js, docs/*.
+Open issues: the "now" line and its label only appear on today's date, which the e2e tests (future
+days) do not cover; not seen by a person on a real phone; `npm run db:generate` still to be run
+once nothing holds the Prisma engine (session 17).
+Next: notifications, then support tickets.
