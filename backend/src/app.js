@@ -24,6 +24,8 @@ import { csrfProtection } from './middleware/csrf.js';
 import { apiNotFound, errorHandler, pageNotFound } from './middleware/errors.js';
 import { apiLimiter, authLimiter } from './middleware/rate-limit.js';
 import { requestLog } from './middleware/request-log.js';
+import { createMemoryOutbox } from './integrations/graph/mock-mail.js';
+import { createNotifier } from './lib/notify.js';
 import { defaultStorage } from './lib/storage.js';
 import { adminRoutes, logoRoutes } from './modules/admin/routes.js';
 import { createAdminService } from './modules/admin/service.js';
@@ -34,6 +36,10 @@ import { createAnnouncementService } from './modules/announcements/service.js';
 import { createMemoryAnnouncementStore } from './modules/announcements/store-memory.js';
 import { createPrismaAnnouncementStore } from './modules/announcements/store-prisma.js';
 import { createMemoryUserRepo } from './modules/auth/repo-memory.js';
+import { devOutboxRoutes, notificationRoutes } from './modules/notifications/routes.js';
+import { createNotificationService } from './modules/notifications/service.js';
+import { createMemoryNotificationStore } from './modules/notifications/store-memory.js';
+import { createPrismaNotificationStore } from './modules/notifications/store-prisma.js';
 import {
   adminDirectoryRoutes,
   readerRoutes as directoryRoutes,
@@ -77,6 +83,7 @@ import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
  * @param {object} [options.roomStore]  see modules/rooms/store-prisma.js
  * @param {object} [options.ticketStore]  see modules/tickets/store-prisma.js
  * @param {object} [options.graph]  a Graph client in place of the configured one, for tests
+ * @param {object} [options.notificationStore]  see modules/notifications/store-prisma.js
  * @param {() => Date} [options.now]  the clock the announcements, rooms, tickets and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
@@ -108,25 +115,44 @@ export function createApp(options = {}) {
     store: adminStore,
     storage: options.storage ?? defaultStorage(),
   });
+  const directoryStore =
+    options.directoryStore ??
+    (repo.companies ? createMemoryDirectoryStore(repo) : createPrismaDirectoryStore());
+  // One Graph client for the app. In memory the mocked calendar is kept in
+  // memory too, beside the rooms and bookings that refer to it.
+  // Under test the mocked mail is kept in an array (app.locals.mailOutbox),
+  // never written to backend/mock/outbox/.
+  const mailOutbox = isTest ? createMemoryOutbox() : undefined;
+  let graphClient = options.graph ? Promise.resolve(options.graph) : null;
+  const getGraph = () => {
+    graphClient ??= repo.mockCalendarEvents
+      ? createGraph({ memoryCalendar: repo.mockCalendarEvents, outbox: mailOutbox })
+      : graph();
+    return graphClient;
+  };
+
+  // Notifications: one notifier for every module that has something to say.
+  const notificationStore =
+    options.notificationStore ??
+    (repo.companies ? createMemoryNotificationStore(repo) : createPrismaNotificationStore());
+  const notify = createNotifier({
+    store: notificationStore,
+    getGraph,
+    config,
+    now: options.now,
+  });
+  const notifications = createNotificationService({
+    store: notificationStore,
+    now: options.now,
+  });
   const announcements = createAnnouncementService({
     store:
       options.announcementStore ??
       (repo.companies ? createMemoryAnnouncementStore(repo) : createPrismaAnnouncementStore()),
     storage: options.storage ?? defaultStorage(),
     now: options.now,
+    notify,
   });
-  const directoryStore =
-    options.directoryStore ??
-    (repo.companies ? createMemoryDirectoryStore(repo) : createPrismaDirectoryStore());
-  // One Graph client for the app. In memory the mocked calendar is kept in
-  // memory too, beside the rooms and bookings that refer to it.
-  let graphClient = options.graph ? Promise.resolve(options.graph) : null;
-  const getGraph = () => {
-    graphClient ??= repo.mockCalendarEvents
-      ? createGraph({ memoryCalendar: repo.mockCalendarEvents })
-      : graph();
-    return graphClient;
-  };
   const syncRunner = createSyncRunner({
     store: directoryStore,
     getGraph,
@@ -140,6 +166,7 @@ export function createApp(options = {}) {
     storage: options.storage ?? defaultStorage(),
     getGraph,
     now: options.now,
+    notify,
   });
   const ticketStore =
     options.ticketStore ??
@@ -148,10 +175,14 @@ export function createApp(options = {}) {
     store: ticketStore,
     storage: options.storage ?? defaultStorage(),
     now: options.now,
+    notify,
   });
   const helpdeskAdmin = createHelpdeskAdminService({ store: ticketStore });
   app.locals.sessionStore = store;
   app.locals.tickets = tickets;
+  app.locals.announcements = announcements;
+  app.locals.notify = notify;
+  app.locals.mailOutbox = mailOutbox;
   app.locals.syncRunner = syncRunner;
   app.locals.inMemory = !useDatabase;
 
@@ -250,6 +281,10 @@ export function createApp(options = {}) {
 
   app.use('/api/admin/helpdesk', helpdeskAdminRoutes(helpdeskAdmin));
   app.use('/api/tickets', ticketRoutes(tickets));
+
+  app.use('/api/notifications', notificationRoutes(notifications));
+  // What the mocked Graph "sent": for developers, never in production.
+  if (!isProduction) app.use('/api/dev', devOutboxRoutes(getGraph));
 
   // Module routers mount here as they are built.
   options.protectedRoutes?.(app);

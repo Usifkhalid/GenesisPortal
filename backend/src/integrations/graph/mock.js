@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { ROOMS } from '../../../prisma/seed-data.js';
 import { GraphError } from './errors.js';
 import { createPrismaCalendar } from './mock-calendar.js';
+import { createFileOutbox } from './mock-mail.js';
 
 const FILE = new URL('../../../mock/graph-users.json', import.meta.url);
 
@@ -37,6 +38,8 @@ const eventView = (row) => ({
  * @param {object} [options]
  * @param {ReturnType<import('./mock-calendar.js').createMemoryCalendar>} [options.calendar]
  *   where events are kept; the MockCalendarEvent table when omitted
+ * @param {ReturnType<import('./mock-mail.js').createMemoryOutbox>} [options.outbox]
+ *   where "sent" mail goes; backend/mock/outbox/ when omitted
  * @returns {import('./index.js').GraphClient}
  */
 /**
@@ -51,7 +54,10 @@ const SPARE_ROOMS = ['A', 'B', 'C', 'D'].map((letter, i) => ({
   capacity: 30 + i * 2,
 }));
 
-export function createClient(data, { calendar = createPrismaCalendar() } = {}) {
+export function createClient(
+  data,
+  { calendar = createPrismaCalendar(), outbox = createFileOutbox() } = {}
+) {
   const { users, managers } = data ?? JSON.parse(readFileSync(FILE, 'utf8'));
   const byId = new Map(users.map((u) => [u.id, u]));
 
@@ -176,6 +182,25 @@ export function createClient(data, { calendar = createPrismaCalendar() } = {}) {
     async listMyEvents({ organiser, start, end }) {
       const rows = await calendar.find({ organiserEmail: organiser.email, start, end });
       return rows.map(eventView);
+    },
+
+    async sendMail({ from, to, subject, html, text }) {
+      if (!to?.length) throw new GraphError('no_recipient', 'A message needs a recipient.');
+      const stored = await outbox.add({ from, to, subject, html, text });
+      return { id: stored.id };
+    },
+
+    /** Teams activity feed: not wired yet (the real tenant is not reachable). */
+    async sendActivityNotification() {
+      return { delivered: false };
+    },
+
+    /** Mock only: what has been "sent", newest first, for the dev outbox page. */
+    async listOutbox() {
+      return outbox.list();
+    },
+    async clearOutbox() {
+      return outbox.clear();
     },
   };
 }

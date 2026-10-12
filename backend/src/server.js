@@ -7,7 +7,9 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { startTicketAutoClose } from './jobs/closeResolvedTickets.js';
+import { startPinnedAnnouncements } from './jobs/pinnedAnnouncements.js';
 import { startSessionPruning } from './jobs/prune-sessions.js';
+import { startSlaWatch } from './jobs/slaWatch.js';
 import { startNightlySync } from './jobs/syncUsers.js';
 import { disconnectPrisma, warmPrisma } from './lib/prisma.js';
 
@@ -38,12 +40,20 @@ const nightlySync = startNightlySync(app.locals.syncRunner, logger);
 // Resolved tickets close after three working days (jobs/closeResolvedTickets.js).
 const autoClose = startTicketAutoClose(app.locals.tickets, logger);
 
+// Alerts at 75% and 100% of a ticket's SLA, every five minutes (jobs/slaWatch.js).
+const slaWatch = startSlaWatch(app.locals.tickets, logger);
+
+// Scheduled pinned announcements are announced when they go live.
+const pinned = startPinnedAnnouncements(app.locals.announcements, logger);
+
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     server.close(async () => {
       pruning.stop();
       nightlySync.stop();
       autoClose.stop();
+      slaWatch.stop();
+      pinned.stop();
       await disconnectPrisma();
       process.exit(0);
     });

@@ -1156,3 +1156,61 @@ limit is at least 1000 (`authLimitFor`); every other environment uses AUTH_RATE_
 Logout skips the CSRF check, swallows a failing session store and always clears the cookie;
 the frontend `signOut()` goes to the login page whatever the request returned, so the
 `nav.signOutFailed` string is gone.
+
+### D112. One notifier, called after the change, that cannot fail the change
+
+`lib/notify.js` is `notify(userIds, templateKey, data)`. Services call it **after** their
+transaction commits, and it never throws for a delivery problem (a down mail server, a bad
+address): the ticket, booking or post has already happened and must not roll back or answer 500
+because an email did not go. Failures are logged. An email that failed leaves no row, so a keyed
+alert is simply tried again at the next run; an unknown template key is a bug and does throw.
+The person who did the thing is never told of it. Services take `notify` as a dependency (a
+silent one by default), so a service built without it behaves as before.
+
+### D113. A notification is a template key and variables; the words are in the i18n files
+
+The row stores `templateKey` and a JSON payload `{ link, vars }`, never a sentence, so it is
+written in the language of whoever reads it, and an English notification written yesterday reads
+in Arabic today. The strings live in `assets/i18n` under `notification.tpl.<key>` (CLAUDE.md
+rule 2), and the backend reads the same two files (`lib/messages.js`) to write the email, so no
+sentence exists in two places. `notification-text.js` is the shared module, in the same way as
+`markdown.js` and `accent.js`: it imports nothing, so the backend loads it too. Names and
+room names go in as `{ en, ar }` pairs resolved when read. A test checks every template has both
+languages with the same placeholders.
+
+### D114. Channels, switches and what is left for later
+
+Two channels: in the portal and email. A person has one switch per category (tickets, bookings,
+announcements) and channel; a switch never saved is **on**, so a new person hears everything and
+a new category needs no migration. Switching a category off in the portal is allowed: it is
+their bell. Teams is only the Graph adapter's `sendActivityNotification`, stubbed in both
+clients and not offered in the preferences until the Teams app exists. There is no per-template
+switch and no quiet hours yet. Email comes from `NOREPLY_MAILBOX` (the real client needs
+`Mail.Send` on it; unproven until the tenant is reachable, session 19).
+
+### D115. SLA alerts: keyed, once per threshold, breach wins
+
+`jobs/slaWatch.js` runs the ticket service's `watchSla` at startup and every five minutes. It
+reads the tickets whose running clock is past `nextRiskAt` (an indexed filter the queue already
+uses). The key is `sla:<ticket>:<firstResponse|resolution>:<75|100>`, per person and channel, so
+a ticket is warned once per phase and threshold, and a priority change that moves the dates does
+not warn twice. A ticket already past its target gets the breach alert only, never the 75% one
+on top. Recipients: the assignee and the team's leads; the leads alone while unassigned. A paused
+or resolved ticket (clock stopped) is never alerted. The job does not run on top of itself.
+
+### D116. Pinned announcements: told at the moment they are live, once
+
+Pinned-and-live is a moment, reached three ways (publish now, pinning something already live,
+or a schedule arriving), so `tellPinned` is idempotent (key `announcement:<id>`) and called
+from publish and update; `jobs/pinnedAnnouncements.js` covers the schedule every five minutes.
+Only posts that went live in the last two days are announced, so deploying this does not tell
+everyone about every old pin, and a late edit of an old pinned post stays silent.
+
+### D117. The bell polls the count only; the mocked mail is a folder
+
+The shell asks `GET /api/notifications/unread-count` once a minute, only while the tab is
+visible (a phone in a pocket does not poll), and fetches the six latest when the bell is opened.
+Following a notification marks it read. In development the mocked Graph writes each message as a
+JSON file under `backend/mock/outbox/` (gitignored, the latest 200 kept) and `#dev` lists them
+in sandboxed frames; under test it keeps them in an array (`app.locals.mailOutbox`), so a run
+leaves nothing on disk. `/api/dev/*` is not mounted in production.

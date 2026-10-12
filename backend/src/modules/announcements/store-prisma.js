@@ -155,6 +155,30 @@ function bind(db) {
       return out;
     },
 
+    /** Everyone an announcement reaches: a company's active people, or all of them. */
+    async audienceUserIds(companyId) {
+      const rows = await db.userProfile.findMany({
+        where: {
+          isActive: true,
+          company: { isActive: true },
+          ...(companyId ? { companyId } : {}),
+        },
+        select: { id: true },
+      });
+      return rows.map((r) => r.id);
+    },
+
+    /** Pinned posts that went live since `since` and are still live at `now`. */
+    async listPinnedLiveSince({ since, now }) {
+      return db.announcement.findMany({
+        where: {
+          isPinned: true,
+          AND: [{ publishAt: { not: null, gte: since, lte: now } }, notExpired(now)],
+        },
+        include: INCLUDE,
+      });
+    },
+
     async create(data) {
       return db.announcement.create({ data, include: INCLUDE });
     },

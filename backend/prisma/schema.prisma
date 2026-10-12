@@ -65,6 +65,7 @@ model Company {
   roleAssignments   RoleAssignment[]
   auditLogs         AuditLog[]
   notifications     Notification[]
+  notificationPrefs NotificationPreference[]
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
   roomRestrictions  RoomCompany[]
@@ -142,6 +143,7 @@ model UserProfile {
   roleAssignments   RoleAssignment[]
   auditLogs         AuditLog[]
   notifications     Notification[]
+  notificationPrefs NotificationPreference[]
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
   syncRuns          SyncRun[]
@@ -222,6 +224,9 @@ model Notification {
   templateKey String    @db.VarChar(100)
   /// JSON values for the template.
   payload     String    @db.NVarChar(Max)
+  /// Set when the same thing must reach a person once: "sla:<ticket>:<phase>:75".
+  /// A repeat of the key for the same user and channel is skipped (lib/notify.js).
+  dedupeKey   String?   @db.NVarChar(200)
   readAt      DateTime?
   sentAt      DateTime?
   createdAt   DateTime  @default(now())
@@ -230,7 +235,30 @@ model Notification {
   user    UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([userId, readAt, createdAt])
+  @@index([userId, channel, readAt, createdAt])
+  @@index([companyId])
+  @@index([userId, dedupeKey])
+}
+
+/// One switch: whether a person wants a category of notification on a channel.
+/// A missing row means "on" (lib/notify.js, modules/notifications/rules.js).
+model NotificationPreference {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  userId    String   @db.NVarChar(36)
+  /// The recipient's company, copied from the user like Notification's.
+  companyId String   @db.NVarChar(36)
+  /// tickets | bookings | announcements.
+  category  String   @db.VarChar(30)
+  /// inApp | email.
+  channel   String   @db.VarChar(20)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, category, channel])
   @@index([companyId])
 }
 

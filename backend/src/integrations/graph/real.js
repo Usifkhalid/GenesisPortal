@@ -345,5 +345,37 @@ export function createClient(deps = {}) {
       );
       return events.filter((e) => !e.isCancelled).map(eventOf);
     },
+
+    /**
+     * One message as the no-reply mailbox, with the application's own
+     * Mail.Send permission. Graph answers 202 with no body; the message is not
+     * kept in that mailbox's Sent Items.
+     */
+    async sendMail({ from, to, subject, html }) {
+      if (!to?.length) throw new GraphError('no_recipient', 'A message needs a recipient.');
+      await call('POST', `${GRAPH}/users/${encodeURIComponent(from)}/sendMail`, {
+        body: {
+          message: {
+            subject,
+            body: { contentType: 'HTML', content: html },
+            toRecipients: to.map((address) => ({ emailAddress: { address } })),
+          },
+          saveToSentItems: false,
+        },
+      });
+      return { id: null };
+    },
+
+    /**
+     * Teams activity feed (POST /users/{id}/teamwork/sendActivityNotification)
+     * needs the portal's Teams app installed for the person. Not built: the
+     * channel preference does not offer it yet.
+     */
+    async sendActivityNotification() {
+      throw new GraphError(
+        'not_implemented',
+        'Teams activity notifications are not built yet.'
+      );
+    },
   };
 }

@@ -407,7 +407,45 @@ Audit, one entry per write, filed under no company: `helpdesk.team.create`,
 happens to a ticket itself (comments, assignment, status, priority, category, files) is
 its own timeline (`TicketEvent`), not the audit log.
 
+### Notifications (`/api/notifications`)
+
+Everything is the signed-in person's own: the person comes from the session and every query
+carries their id. There is no way to read, count or mark another person's notification (an id
+that is not yours is ignored, not reported), and no role changes that, a HoldingAdmin included.
+
+| Route | Body / query | Answer |
+| --- | --- | --- |
+| `GET /api/notifications` | `unread=true`, `page`, `pageSize` (20, max 100) | `{ total, page, pageSize, unread, items: [{ id, templateKey, link, vars, readAt, createdAt }] }`, newest first, in-app only |
+| `GET /api/notifications/unread-count` | | `{ unread }`: the number on the bell |
+| `POST /api/notifications/read` | `{ ids: [uuid] }` (1 to 100) | `{ marked, unread }` |
+| `POST /api/notifications/read-all` | | `{ marked, unread: 0 }` |
+| `GET /api/notifications/preferences` | | `{ categories, channels, items: [{ category, channel, enabled }] }`: all six switches, a switch never saved is on |
+| `PUT /api/notifications/preferences` | `{ items: [{ category, channel, enabled }] }` | the same as GET. Categories `tickets`, `bookings`, `announcements`; channels `inApp`, `email`. Anything else is 400. |
+
+A row is a template key and its variables, not text: the page writes it in the language in use
+(`notification.tpl.<key>.title` and `.detail` in the i18n files, `describe()` in
+`frontend/assets/js/notification-text.js`), and the email is written from the same strings in the
+recipient's `language`. A variable is a string or an `{ en, ar }` pair. `link` is a hash
+address (`#tickets/<id>`).
+
+| Template | Told | When |
+| --- | --- | --- |
+| `ticket.created` | the requester; the team's leads (not the person who raised it) | a ticket is raised |
+| `ticket.assigned` | the new assignee (not the person who assigned) | an assignment |
+| `ticket.comment` | requester's reply: the assignee, or the leads while unassigned; an agent's reply: the requester. An internal note: nobody | a public comment |
+| `ticket.status` | the requester, unless they set it | any status change, a reopening, the auto-close |
+| `ticket.slaAtRisk` | the assignee and the team's leads | 75% of the target in force is used (once) |
+| `ticket.slaBreached` | the same | 100% is used (once; a ticket that jumped past both gets this only) |
+| `booking.confirmed` | the organiser | a booking, or a series (one notification) |
+| `booking.cancelled` | the organiser | any cancel; an administrator's carries who and why |
+| `announcement.pinned` | everyone in the audience except the author | a pinned post goes live (at publish, at pinning, or on its schedule), once per post |
+
+Development only, never mounted in production, and answering 404 unless Graph is mocked:
+
+| Route | Answer |
+| --- | --- |
+| `GET /api/dev/outbox` | `{ items: [{ id, from, to, subject, html, text, sentAt }] }`: what the portal "sent", newest first, from `backend/mock/outbox/`. The page is `#dev`. |
+
 ### The rest
 
-Nothing else exists yet. Each module documents its routes here as it lands:
-notifications.
+Nothing else exists yet.

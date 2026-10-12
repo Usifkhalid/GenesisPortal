@@ -1,0 +1,195 @@
+/* ============================================================================
+ * pages/notifications.css — the bell's list, the notification centre, the
+ * preferences and the development outbox.
+ *
+ * A notification is a link to what it is about: a title, an optional second
+ * line and when it happened. Unread is said three ways, so no one way has to
+ * carry it: a visually hidden "Unread", a heavier title and a dot. Tokens
+ * only; logical properties only.
+ * ========================================================================= */
+
+/* --- The bell's popover -------------------------------------------------- */
+.menu--notices {
+  inline-size: 18rem;
+  max-block-size: min(32rem, 75dvh);
+  overflow-y: auto;
+}
+
+@media (min-width: 48rem) {
+  .menu--notices {
+    inline-size: 24rem;
+    max-inline-size: 24rem;
+  }
+}
+
+/* --- One notification, in the bell and on the page ----------------------- */
+.notice-item,
+.notice-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-6) var(--space-3);
+  min-block-size: var(--tap-min);
+  border-radius: var(--radius-control);
+  color: var(--text-body);
+  text-decoration: none;
+}
+
+.notice-item:hover,
+.notice-page:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+.notice-item__title,
+.notice-page__title {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-strong);
+}
+
+.notice-item__detail,
+.notice-page__detail {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.notice-item__time,
+.notice-page__time {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* The dot stands where the row starts; a read row leaves the space empty so
+ * titles line up whatever is read. */
+.notice-item--unread::before,
+.notice-page--unread::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  inset-block-start: var(--space-3);
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--brand-accent-fill);
+}
+
+.notice-item--unread .notice-item__title,
+.notice-page--unread .notice-page__title {
+  font-weight: var(--weight-bold);
+}
+
+.notice-item:focus-visible,
+.notice-page:focus-visible {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: calc(-1 * var(--border-2));
+}
+
+/* --- The notification centre --------------------------------------------- */
+.notify__filter {
+  align-items: flex-start;
+}
+
+.notify-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+.notify-list__item + .notify-list__item {
+  border-block-start: var(--border-1) solid var(--rule-muted);
+}
+
+.notify-list .notice-page {
+  padding-block: var(--space-3);
+  padding-inline: var(--space-8) var(--space-4);
+  border-radius: 0;
+}
+
+.notify-list .notice-page--unread::before {
+  inset-inline-start: var(--space-4);
+  inset-block-start: var(--space-4);
+}
+
+.notice-page--skeleton {
+  gap: var(--space-2);
+}
+
+.notify__count {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* --- Preferences --------------------------------------------------------- */
+.prefs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-inline-size: 40rem;
+}
+
+.prefs__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+.prefs__name {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.prefs__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.prefs__switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-8);
+  padding-block-start: var(--space-2);
+}
+
+/* --- Development outbox -------------------------------------------------- */
+.outbox {
+  margin-block-start: var(--space-2);
+}
+
+.outbox > summary {
+  min-block-size: var(--tap-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-body);
+}
+
+.outbox-frame {
+  margin-block-start: var(--space-2);
+  inline-size: 100%;
+  block-size: 24rem;
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}

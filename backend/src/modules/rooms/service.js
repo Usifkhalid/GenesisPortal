@@ -38,6 +38,8 @@ import { GraphError } from '../../integrations/graph/errors.js';
 import { writeAudit } from '../../lib/audit.js';
 import { detectImage } from '../../lib/image-type.js';
 import { logger } from '../../lib/logger.js';
+import { bothLanguages } from '../../lib/messages.js';
+import { silentNotify } from '../../lib/notify.js';
 import {
   adminCompanyIdsFor,
   assertCompanyAdmin,
@@ -52,6 +54,7 @@ import {
   cairoDayStart,
   cairoWallOf,
   cairoWallToUtc,
+  describeRange,
   weekdayOfYmd,
 } from '../../lib/time.js';
 import { HttpError } from '../../middleware/errors.js';
@@ -122,6 +125,8 @@ const bookingSnapshot = (b) => ({
  * @param {() => Promise<import('../../integrations/graph/index.js').GraphClient>} deps.getGraph
  * @param {() => Date} [deps.now]
  * @param {{ warn: Function }} [deps.log]
+ * @param {(userIds: string[], key: string, data?: object) => Promise<object>} [deps.notify]
+ *   see lib/notify.js
  */
 export function createRoomService({
   store,
@@ -129,7 +134,39 @@ export function createRoomService({
   getGraph,
   now = () => new Date(),
   log = logger,
+  notify = silentNotify,
 }) {
+  /**
+   * Tells the organiser of a booking what happened to it. The booking has
+   * already changed: a failure here is logged and never fails the request.
+   * @param {object} first  the booking row (the first of a series)
+   * @param {{ nameEn: string, nameAr: string } | null} room
+   * @param {'booking.confirmed' | 'booking.cancelled'} key
+   * @param {number} count  how many occurrences the change covers
+   * @param {object} [extra]
+   */
+  async function tellOrganiser(first, room, key, count, extra = {}) {
+    try {
+      await notify([first.organiserId], key, {
+        link: '#rooms/mine',
+        room: room ? { en: room.nameEn, ar: room.nameAr || room.nameEn } : '',
+        when: describeRange(first.startAt, first.endAt),
+        // " (and 3 more)" for a series, nothing for one meeting.
+        more:
+          count > 1
+            ? {
+                en: ` ${bothLanguages('notification.more', { count: count - 1 }).en}`,
+                ar: ` ${bothLanguages('notification.more', { count: count - 1 }).ar}`,
+              }
+            : '',
+        subject: first.subject,
+        ...extra,
+      });
+    } catch (err) {
+      log.warn({ err, bookingId: first.id, key }, 'booking notification failed');
+    }
+  }
+
   /* --------------------------------------------------------------- helpers */
 
   /** A restricted room exists only for its companies' own people. */
@@ -467,6 +504,7 @@ export function createRoomService({
         .catch((undo) => log.warn({ err: undo }, 'could not undo a calendar event'));
       throw err;
     }
+    await tellOrganiser(saved[0], room, 'booking.confirmed', saved.length);
     return { items: saved.map((b) => bookingView(req, b)) };
   }
 
@@ -647,7 +685,7 @@ export function createRoomService({
         targets.map((t) => t.id),
         { at, byId: user.id, reason: reason ?? null }
       );
-      // The organiser is told by the notifications module, when it exists.
+      // The organiser is told once this is saved (tellOrganiser, below).
       if (byAdmin) {
         await writeAudit(
           req,
@@ -664,6 +702,19 @@ export function createRoomService({
           { tx, entityId: row.id, companyId: row.companyId }
         );
       }
+    });
+    // The organiser is always told: a receipt for their own, the reason for
+    // an administrator's.
+    const room = await store.getRoom(row.roomId).catch(() => null);
+    let actor = '';
+    if (byAdmin) {
+      const [person] = await store.getUsers([user.id]).catch(() => []);
+      actor = person
+        ? { en: person.displayNameEn, ar: person.displayNameAr || person.displayNameEn }
+        : '';
+    }
+    await tellOrganiser(row, room, 'booking.cancelled', targets.length, {
+      ...(byAdmin ? { actor, reason: reason ?? '' } : {}),
     });
     return { cancelled: targets.map((t) => t.id) };
   }

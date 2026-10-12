@@ -26,7 +26,8 @@
     "collapse": "Collapse",
     "switchCompany": "Switch company",
     "companyCurrent": "Company: {company}. Switch company",
-    "roomsShort": "Rooms"
+    "roomsShort": "Rooms",
+    "devOutbox": "Mail outbox"
   },
   "lang": {
     "label": "Language",
@@ -176,10 +177,93 @@
   "notification": {
     "unreadLabel": "Notifications, {count} unread",
     "empty": "No new notifications.",
-    "sample1Title": "Your ticket {ticket} was assigned to I. Fahmy",
-    "sample1Time": "10 minutes ago",
-    "sample2Title": "Quarry meeting room booking confirmed for Sunday",
-    "sample2Time": "Yesterday"
+    "more": "(and {count} more)",
+    "title": "Notifications",
+    "lead": "What happened to your tickets, bookings and announcements.",
+    "markAll": "Mark all as read",
+    "markOne": "Mark as read",
+    "unread": "Unread",
+    "settings": "Notification settings",
+    "loadingLabel": "Loading notifications",
+    "filter": {
+      "label": "Show",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "emptyTitle": "You are all caught up",
+    "emptyText": "New notifications appear here, and in the bell at the top.",
+    "emptyUnreadTitle": "Nothing unread",
+    "emptyUnreadText": "Every notification has been read.",
+    "status": "Showing {from}–{to} of {total}",
+    "pagination": "Notification pages",
+    "phase": {
+      "firstResponse": "first response",
+      "resolution": "resolution"
+    },
+    "tpl": {
+      "ticket": {
+        "created": {
+          "title": "New ticket {number}",
+          "detail": "{subject}"
+        },
+        "assigned": {
+          "title": "{actor} assigned {number} to you",
+          "detail": "{subject}"
+        },
+        "comment": {
+          "title": "{actor} replied on {number}",
+          "detail": "{excerpt}"
+        },
+        "status": {
+          "title": "{number} is now: {status}",
+          "detail": "{subject}"
+        },
+        "slaAtRisk": {
+          "title": "{number}: 75% of the {phase} time is used",
+          "detail": "{subject}"
+        },
+        "slaBreached": {
+          "title": "{number} has passed its {phase} deadline",
+          "detail": "{subject}"
+        }
+      },
+      "booking": {
+        "confirmed": {
+          "title": "Booked: {room}, {when}{more}",
+          "detail": "{subject}"
+        },
+        "cancelled": {
+          "title": "Booking cancelled: {room}, {when}{more}",
+          "detail": "Cancelled by {actor}. Reason: {reason}"
+        }
+      },
+      "announcement": {
+        "pinned": {
+          "title": "Pinned announcement: {title}",
+          "detail": "{summary}"
+        }
+      }
+    },
+    "prefs": {
+      "title": "Notification settings",
+      "lead": "Choose how you hear about each kind of event. Anything you leave on reaches you both ways.",
+      "back": "Back to notifications",
+      "saved": "Settings saved",
+      "categories": {
+        "tickets": "Support tickets",
+        "bookings": "Room bookings",
+        "announcements": "Pinned announcements"
+      },
+      "hints": {
+        "tickets": "A ticket you raised or were given, replies and status changes, and tickets running out of time.",
+        "bookings": "Confirmations of your bookings, and a booking cancelled by someone else.",
+        "announcements": "When an announcement for you is pinned."
+      },
+      "channels": {
+        "inApp": "In the portal",
+        "email": "Email"
+      }
+    }
   },
   "home": {
     "lead": "Here is what needs you today.",
@@ -1922,6 +2006,25 @@
         "bodyEn": "Text in English",
         "bodyAr": "Text in Arabic"
       }
+    }
+  },
+  "email": {
+    "open": "Open in the portal",
+    "why": "You are receiving this email because of your notification settings.",
+    "settings": "Change what you receive"
+  },
+  "dev": {
+    "outbox": {
+      "title": "Mail outbox (development)",
+      "lead": "Every email the portal would have sent. Nothing leaves this machine while Graph is mocked.",
+      "empty": "No mail has been sent yet.",
+      "unavailable": "This page exists only in development, with the mocked Graph.",
+      "to": "To",
+      "from": "From",
+      "sentAt": "Sent",
+      "reload": "Refresh",
+      "preview": "Preview of the email",
+      "unavailableTitle": "Not available here"
     }
   }
 }

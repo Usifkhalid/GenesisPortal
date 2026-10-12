@@ -95,6 +95,15 @@ import { env } from '../../config/env.js';
  *   one occurrence, or the rest of its series from `from`
  * @property {(input: { organiser: GraphOrganiser, start: Date, end: Date }) =>
  *   Promise<GraphEvent[]>} listMyEvents  the organiser's own events in a range
+ * @property {(input: { from: string, to: string[], subject: string, html: string,
+ *   text?: string }) => Promise<{ id: string | null }>} sendMail  one message, sent
+ *   as the no-reply mailbox `from` (real: POST /users/{from}/sendMail with the
+ *   application's Mail.Send permission; mock: a file in backend/mock/outbox/)
+ * @property {(input: { userEmail: string, topic: string, text: string,
+ *   link?: string }) => Promise<{ delivered: boolean }>} sendActivityNotification
+ *   Teams activity feed. A stub in both clients until the Teams app exists.
+ * @property {() => Promise<object[]>} [listOutbox]  mock only, newest first
+ * @property {() => Promise<void>} [clearOutbox]  mock only
  */
 
 /** @type {GraphClient | undefined} */
@@ -105,19 +114,21 @@ let instance;
  * @param {object} [options]
  * @param {object[]} [options.memoryCalendar]  mock only: keep calendar events in
  *   this array instead of the MockCalendarEvent table (the portal in memory)
+ * @param {{ add: Function, list: Function, clear: Function }} [options.outbox]  mock
+ *   only: where sent mail goes instead of backend/mock/outbox/
  * @returns {Promise<GraphClient>}
  */
-export async function createGraph({ memoryCalendar } = {}) {
+export async function createGraph({ memoryCalendar, outbox } = {}) {
   if (env.GRAPH_MODE === 'real') return (await import('./real.js')).createClient();
 
   const [{ createClient }, { createMemoryCalendar }] = await Promise.all([
     import('./mock.js'),
     import('./mock-calendar.js'),
   ]);
-  return createClient(
-    undefined,
-    memoryCalendar ? { calendar: createMemoryCalendar(memoryCalendar) } : undefined
-  );
+  return createClient(undefined, {
+    ...(memoryCalendar ? { calendar: createMemoryCalendar(memoryCalendar) } : {}),
+    ...(outbox ? { outbox } : {}),
+  });
 }
 
 /** The process's client. @returns {Promise<GraphClient>} */

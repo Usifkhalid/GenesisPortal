@@ -30,6 +30,9 @@ const IGNORED_ERRORS = [
   // By design: someone else's ticket is 404, so a ticket's existence is not
   // learned from its address (tickets.spec.js opens one as other people).
   /status of 404 .*\/api\/tickets\/[\w-]+\)$/,
+  // By design: the development outbox draws an email in a sandboxed frame with
+  // no scripts; what is "blocked" is Playwright's own injected script.
+  /Blocked script execution in 'about:srcdoc'/,
 ];
 
 export const test = base.extend({

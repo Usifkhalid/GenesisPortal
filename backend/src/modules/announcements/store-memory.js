@@ -137,6 +137,30 @@ export function createMemoryAnnouncementStore(repo) {
       return out;
     },
 
+    async audienceUserIds(companyId) {
+      return users
+        .filter(
+          (u) =>
+            u.isActive &&
+            u.company?.isActive !== false &&
+            (!companyId || u.companyId === companyId)
+        )
+        .map((u) => u.id);
+    },
+
+    async listPinnedLiveSince({ since, now }) {
+      return rows
+        .filter(
+          (r) =>
+            r.isPinned &&
+            r.publishAt &&
+            r.publishAt >= since &&
+            r.publishAt <= now &&
+            statusOf(r, now) === 'Published'
+        )
+        .map(view);
+    },
+
     async create(data) {
       const now = new Date();
       const row = {

@@ -27,6 +27,11 @@
  * Everything that happens to a ticket is a TicketEvent row; configuration
  * changes are AuditLog rows (admin-service.js).
  *
+ * People are told through lib/notify.js after a change is saved, never before
+ * and never in a way that can fail it: the new ticket, a first assignment, a
+ * public reply, a new status, and the SLA alerts of `watchSla`. An internal
+ * note tells nobody. The person who did the thing is not told of it.
+ *
  * Errors a screen can act on carry a stable code (docs/API.md):
  *   unknown_category, unknown_location, unknown_requester, unknown_assignee,
  *   ticket_closed, not_resolved, reopen_window_closed, lead_only,
@@ -37,6 +42,8 @@ import { randomUUID } from 'node:crypto';
 
 import { ATTACHMENT_EXTENSIONS, detectAttachment } from '../../lib/file-type.js';
 import { logger } from '../../lib/logger.js';
+import { bothLanguages } from '../../lib/messages.js';
+import { silentNotify } from '../../lib/notify.js';
 import { isHoldingAdmin, requireUser } from '../../lib/scope.js';
 import {
   DEFAULT_CALENDAR,
@@ -86,8 +93,16 @@ const statusesOf = (filter) =>
  * @param {object} deps.storage  see lib/storage.js
  * @param {() => Date} [deps.now]
  * @param {{ warn: Function }} [deps.log]
+ * @param {(userIds: string[], key: string, data?: object) => Promise<object>} [deps.notify]
+ *   see lib/notify.js
  */
-export function createTicketService({ store, storage, now = () => new Date(), log = logger }) {
+export function createTicketService({
+  store,
+  storage,
+  now = () => new Date(),
+  log = logger,
+  notify = silentNotify,
+}) {
   /* ------------------------------------------------------------ the viewer */
 
   /**
@@ -134,6 +149,54 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
     if (!staffRole && !isRequester) throw notFound();
     return { viewer, ticket, staffRole, isRequester };
   }
+
+  /* -------------------------------------------------------- telling people */
+
+  /** A person's name in both languages, for a notification's text. */
+  async function nameOf(userId) {
+    if (!userId) return '';
+    const [p] = await store.getUsers([userId]);
+    return p ? { en: p.displayNameEn, ar: p.displayNameAr || p.displayNameEn } : '';
+  }
+
+  /** Ids of the team's leads who are still active. */
+  async function leadIds(teamId) {
+    const members = await store.find('member', { teamId, role: 'Lead' });
+    if (members.length === 0) return [];
+    const people = await store.getUsers(members.map((m) => m.userId));
+    return people.filter((p) => p.isActive).map((p) => p.id);
+  }
+
+  /**
+   * Tells people about a ticket, once the change is saved. Whatever goes wrong
+   * here is logged and swallowed: the ticket has already changed. The actor is
+   * left out of the recipients.
+   * @param {string[]} userIds
+   * @param {string} key  a template in notification-text.js
+   * @param {object} ticket
+   * @param {{ actorId?: string | null, extra?: object }} [options]
+   */
+  async function tell(userIds, key, ticket, { actorId = null, extra = {} } = {}) {
+    try {
+      const to = unique(userIds).filter((id) => id !== actorId);
+      if (to.length === 0) return;
+      await notify(to, key, {
+        link: `#tickets/${ticket.id}`,
+        number: ticket.number,
+        subject: ticket.subject,
+        ...extra,
+      });
+    } catch (err) {
+      log.warn({ err, ticketId: ticket.id, key }, 'ticket notification failed');
+    }
+  }
+
+  /** The requester is told of a new status, unless they set it themselves. */
+  const tellStatus = (ticket, status, actorId) =>
+    tell([ticket.requesterId], 'ticket.status', ticket, {
+      actorId,
+      extra: { status: bothLanguages(`ticket.status.${status}`) },
+    });
 
   /* ---------------------------------------------------------------- the SLA */
 
@@ -543,6 +606,10 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
       return row;
     });
 
+    // The requester gets the confirmation; the team's leads see it arrive.
+    await tell([requester.id], 'ticket.created', ticket);
+    await tell(await leadIds(team.id), 'ticket.created', ticket, { actorId: viewer.user.id });
+
     return detail(
       {
         viewer,
@@ -620,6 +687,7 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
     const at = now();
     const { patch, events } = await reopenPatch(ctx, at);
     const row = await save(ctx.ticket, patch, events, ctx.viewer.user.id, at);
+    await tellStatus(row, 'Open', ctx.viewer.user.id);
     return detail(ctx, row);
   }
 
@@ -666,6 +734,24 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
       });
       return made.id;
     });
+
+    // An internal note is between agents and tells nobody. A public reply goes
+    // to the other side: the requester's to whoever has the ticket (the leads
+    // while it is unassigned), an agent's to the requester.
+    if (!isInternal) {
+      const to = isRequester
+        ? row.assigneeId
+          ? [row.assigneeId]
+          : await leadIds(row.teamId)
+        : [row.requesterId];
+      await tell(to, 'ticket.comment', row, {
+        actorId: viewer.user.id,
+        extra: {
+          actor: await nameOf(viewer.user.id),
+          excerpt: body.length > 200 ? `${body.slice(0, 197)}…` : body,
+        },
+      });
+    }
     return detail(ctx, row);
   }
 
@@ -914,6 +1000,14 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
     if (Object.keys(changes).length)
       Object.assign(patch, await recalculate(ticket, changes, at));
     const row = events.length ? await save(ticket, patch, events, viewer.user.id, at) : ticket;
+
+    if (patch.assigneeId) {
+      await tell([patch.assigneeId], 'ticket.assigned', row, {
+        actorId: viewer.user.id,
+        extra: { actor: await nameOf(viewer.user.id) },
+      });
+    }
+    if (changes.status) await tellStatus(row, changes.status, viewer.user.id);
     return detail(ctx, row);
   }
 
@@ -983,12 +1077,59 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
           });
           return true;
         });
-        if (done) closed += 1;
+        if (done) {
+          closed += 1;
+          await tellStatus(item, 'Closed', null);
+        }
       } catch (err) {
         log.warn({ err, ticketId: item.id }, 'ticket auto-close failed');
       }
     }
     return closed;
+  }
+
+  /* -------------------------------------------------------- the SLA watch */
+
+  /**
+   * Alerts for tickets whose running clock has used 75% of its target, or all
+   * of it, once per threshold: the assignee and the team's leads (the leads
+   * alone while it is unassigned). The target in force is the first response
+   * until the ticket is answered and the resolution after, so each is warned
+   * of separately. A ticket already past its target gets the breach alert
+   * only, never the 75% one on top. Returns how many tickets were alerted.
+   */
+  async function watchSla() {
+    const at = now();
+    const PAGE = 200;
+    const out = { atRisk: 0, breached: 0 };
+
+    for (let skip = 0; skip < PAGE * 25; skip += PAGE) {
+      const { items } = await store.listTickets({
+        riskBy: at,
+        order: 'due',
+        skip,
+        take: PAGE,
+      });
+      for (const ticket of items) {
+        try {
+          const breached = ticket.nextDueAt.getTime() <= at.getTime();
+          const phase = ticket.firstRespondedAt ? 'resolution' : 'firstResponse';
+          const to = unique([ticket.assigneeId, ...(await leadIds(ticket.teamId))]);
+          const sent = await notify(to, breached ? 'ticket.slaBreached' : 'ticket.slaAtRisk', {
+            link: `#tickets/${ticket.id}`,
+            number: ticket.number,
+            subject: ticket.subject,
+            phase: bothLanguages(`notification.phase.${phase}`),
+            dedupeKey: `sla:${ticket.id}:${phase}:${breached ? 100 : 75}`,
+          });
+          if (sent.inApp + sent.email > 0) out[breached ? 'breached' : 'atRisk'] += 1;
+        } catch (err) {
+          log.warn({ err, ticketId: ticket.id }, 'SLA watch failed for a ticket');
+        }
+      }
+      if (items.length < PAGE) break;
+    }
+    return out;
   }
 
   return {
@@ -1006,5 +1147,6 @@ export function createTicketService({ store, storage, now = () => new Date(), lo
     update,
     cannedReplies,
     closeResolved,
+    watchSla,
   };
 }

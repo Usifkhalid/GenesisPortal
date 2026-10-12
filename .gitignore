@@ -10,6 +10,9 @@ backend/prisma/*.db
 # Uploaded files (company logos): the local storage adapter (lib/storage.js).
 storage/
 
+# Mail the mocked Graph "sent" (integrations/graph/mock-mail.js).
+backend/mock/outbox/
+
 # Test and tooling output.
 coverage/
 playwright-report/

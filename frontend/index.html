@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="assets/css/layout.css" />
     <link rel="stylesheet" href="assets/css/components.css" />
     <link rel="stylesheet" href="assets/css/pages/home.css" />
+    <link rel="stylesheet" href="assets/css/pages/notifications.css" />
     <link rel="stylesheet" href="assets/css/pages/admin.css" />
     <link rel="stylesheet" href="assets/css/pages/announcements.css" />
     <link rel="stylesheet" href="assets/css/pages/directory.css" />
@@ -199,21 +200,29 @@
                 <svg class="btn__icon" aria-hidden="true" focusable="false">
                   <use href="#i-notifications" />
                 </svg>
-                <span class="btn__count" id="notifCount">2</span>
+                <span class="btn__count" id="notifCount" hidden></span>
               </button>
-              <div class="menu" id="notifMenu" hidden>
-                <div class="menu__notice">
-                  <p class="menu__notice-title" id="notifSample1"></p>
-                  <p class="menu__notice-time" data-i18n="notification.sample1Time"></p>
-                </div>
-                <div class="menu__notice">
-                  <p class="menu__notice-title" data-i18n="notification.sample2Title"></p>
-                  <p class="menu__notice-time" data-i18n="notification.sample2Time"></p>
-                </div>
+              <div class="menu menu--notices" id="notifMenu" hidden>
+                <div id="notifList" aria-live="polite"></div>
                 <hr class="menu__divider" />
                 <a class="menu__item" href="#notifications" data-i18n="action.viewAll"
                   >View all</a
                 >
+                <a
+                  class="menu__item"
+                  href="#notifications/preferences"
+                  data-i18n="notification.settings"
+                  >Notification settings</a
+                >
+                <button
+                  type="button"
+                  class="menu__item"
+                  id="notifMarkAll"
+                  data-i18n="notification.markAll"
+                  hidden
+                >
+                  Mark all as read
+                </button>
               </div>
             </div>
 

@@ -8,8 +8,8 @@
  * bar, the rail/bottom-nav pair and the company switcher, and hands the work
  * area to router.js, which draws the page the address names.
  *
- * DEMO: the two notifications in the bell are samples, until notifications
- * have an API.
+ * The bell shows the unread count (polled while the tab is visible) and, when
+ * opened, the latest notifications from GET /api/notifications.
  */
 
 import { DEFAULT_LOCALE, LOCALES, setLocale, getLocale, localized, t } from './i18n.js';
@@ -22,6 +22,11 @@ import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { initials } from './components/initials.js';
 import { initPeopleSearch } from './components/people-search.js';
+import {
+  markRead as markNotificationRead,
+  notificationHtml,
+} from './components/notification-item.js';
+import { esc } from './html.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
 const STORED_RAIL_KEY = 'mgp.railCollapsed';
@@ -227,11 +232,8 @@ function renderShellData() {
 
   drawTicketCount();
 
-  // DEMO: a sample notification, until notifications have an API.
-  document.getElementById('notifSample1').textContent = t('notification.sample1Title', {
-    ticket: 'IT-2026-00042',
-  });
-  updateNotifA11y();
+  drawNotifCount();
+  drawBellList();
 }
 
 /* ------------------------------------------------------ announcement count */
@@ -488,19 +490,122 @@ function initSearchShortcut() {
 
 /* -------------------------------------------------------------- notifications */
 
+let notifUnread = 0;
+/** The latest few, as the server listed them; null before the first answer. */
+let bellItems = null;
+const BELL_ITEMS = 6;
+const NOTIF_POLL_MS = 60_000;
+
 /**
  * aria-label is explicit on the bell button, so it overrides any name the
  * browser would otherwise compute from its content — the unread count has to
  * be folded into that label directly, or a screen reader never hears it.
  */
-function updateNotifA11y() {
-  const count = Number(document.getElementById('notifCount').textContent) || 0;
+function drawNotifCount() {
+  const el = document.getElementById('notifCount');
+  el.hidden = notifUnread === 0;
+  el.textContent = notifUnread > 99 ? '99+' : String(notifUnread);
   document
     .getElementById('notifBtn')
     .setAttribute(
       'aria-label',
-      count > 0 ? t('notification.unreadLabel', { count }) : t('nav.notifications')
+      notifUnread > 0
+        ? t('notification.unreadLabel', { count: notifUnread })
+        : t('nav.notifications')
     );
+}
+
+/** The number on the bell: one small request, tried again every minute. */
+async function refreshNotifCount() {
+  try {
+    const result = await api('/api/notifications/unread-count', { quiet: true });
+    notifUnread = result.unread;
+  } catch {
+    // The bell is a convenience: keep the last number rather than a wrong one.
+  }
+  drawNotifCount();
+}
+
+function drawBellList() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  const markAll = document.getElementById('notifMarkAll');
+  markAll.hidden = notifUnread === 0;
+  if (bellItems === null) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML =
+    bellItems.length === 0
+      ? `<p class="menu__empty">${esc(t('notification.empty'))}</p>`
+      : bellItems.map((item) => notificationHtml(item)).join('');
+}
+
+/** The latest notifications, fetched when the bell is opened. */
+async function loadBellList() {
+  try {
+    const result = await api(`/api/notifications?pageSize=${BELL_ITEMS}`, { quiet: true });
+    bellItems = result.items;
+    notifUnread = result.unread;
+  } catch {
+    // Keep what was there; an empty bell on a weak connection is not "no news".
+  }
+  drawNotifCount();
+  drawBellList();
+}
+
+function initNotifications() {
+  const button = document.getElementById('notifBtn');
+  const menu = document.getElementById('notifMenu');
+
+  // initPopover has already toggled the menu by the time this runs.
+  button.addEventListener('click', () => {
+    if (!menu.hidden) loadBellList();
+  });
+
+  // Following a notification marks it read; the page it leads to is the news.
+  menu.addEventListener('click', (event) => {
+    const link = event.target.closest('[data-notification]');
+    if (link) {
+      if (link.dataset.noticeUnread === 'true')
+        markNotificationRead([link.dataset.notification]);
+      closeMenu('notifMenu');
+    }
+  });
+
+  document.getElementById('notifMarkAll').addEventListener('click', async () => {
+    try {
+      await api('/api/notifications/read-all', { method: 'POST', body: {}, quiet: true });
+      notifUnread = 0;
+      bellItems =
+        bellItems?.map((item) => ({ ...item, readAt: item.readAt ?? new Date() })) ?? null;
+      drawNotifCount();
+      drawBellList();
+    } catch {
+      // Still unread: the count stays honest.
+    }
+  });
+
+  document.addEventListener('notifications:changed', (event) => {
+    if (typeof event.detail?.unread === 'number') notifUnread = event.detail.unread;
+    drawNotifCount();
+    if (!menu.hidden) {
+      loadBellList();
+    } else {
+      // Closed: what it showed is out of date, and it is fetched again on open.
+      bellItems = null;
+      drawBellList();
+    }
+  });
+
+  // Not while the tab is hidden: a phone in a pocket should not be polling.
+  setInterval(() => {
+    if (document.visibilityState === 'visible') refreshNotifCount();
+  }, NOTIF_POLL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshNotifCount();
+  });
+  refreshNotifCount();
 }
 
 /* ----------------------------------------------------------------- sign out */
@@ -571,6 +676,7 @@ async function init() {
   initPopover('companyBtn', 'companyMenu');
   initPopover('companyBtnTop', 'companyMenuTop');
   initPopover('notifBtn', 'notifMenu');
+  initNotifications();
   initPopover('userMenuBtn', 'userMenu');
   initMoreSheet();
   initSearchShortcut();

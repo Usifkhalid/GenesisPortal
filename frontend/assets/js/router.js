@@ -39,7 +39,10 @@ const ROUTES = {
   directory: { nav: 'directory', title: 'nav.directory', page: 'directory' },
   admin: { nav: 'admin', title: 'nav.admin', page: 'admin' },
   'audit-log': { nav: 'auditLog', title: 'nav.auditLog', page: 'audit-log' },
-  notifications: { nav: null, title: 'nav.notifications', page: null },
+  notifications: { nav: null, title: 'nav.notifications', page: 'notifications' },
+  // Development only: the mail the mocked Graph "sent". Open to anyone signed
+  // in; the API behind it answers 404 outside development.
+  dev: { nav: null, title: 'nav.devOutbox', page: 'dev-outbox' },
 };
 
 function decode(part) {

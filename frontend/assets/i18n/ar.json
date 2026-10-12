@@ -26,7 +26,8 @@
     "collapse": "طيّ القائمة",
     "switchCompany": "تبديل الشركة",
     "companyCurrent": "الشركة: {company}. تبديل الشركة",
-    "roomsShort": "القاعات"
+    "roomsShort": "القاعات",
+    "devOutbox": "البريد الصادر"
   },
   "lang": {
     "label": "اللغة",
@@ -174,12 +175,95 @@
     "sampleBody": "يتحرك أتوبيس المركز الرئيسي أبكر بخمس عشرة دقيقة في أيام العمل بدءًا من الأحد. ويصبح موعد آخر رحلة عودة من موقع أبو طرطور الساعة ١٧:٣٠."
   },
   "notification": {
-    "unreadLabel": "التنبيهات، {count} غير مقروء",
-    "empty": "لا توجد تنبيهات جديدة.",
-    "sample1Title": "تم إحالة طلبك {ticket} إلى إ. فهمي",
-    "sample1Time": "منذ ١٠ دقائق",
-    "sample2Title": "تم تأكيد حجز قاعة اجتماعات المحاجر يوم الأحد",
-    "sample2Time": "أمس"
+    "unreadLabel": "الإشعارات، {count} غير مقروء",
+    "empty": "لا إشعارات جديدة.",
+    "more": "(و{count} أخرى)",
+    "title": "الإشعارات",
+    "lead": "ما جرى لطلباتك وحجوزاتك وإعلاناتك.",
+    "markAll": "تعليم الكل كمقروء",
+    "markOne": "تعليم كمقروء",
+    "unread": "غير مقروء",
+    "settings": "إعدادات الإشعارات",
+    "loadingLabel": "جارٍ تحميل الإشعارات",
+    "filter": {
+      "label": "عرض",
+      "all": "الكل",
+      "unread": "غير المقروءة"
+    },
+    "emptyTitle": "لا جديد لديك",
+    "emptyText": "تظهر الإشعارات الجديدة هنا، وفي الجرس أعلى الصفحة.",
+    "emptyUnreadTitle": "لا إشعارات غير مقروءة",
+    "emptyUnreadText": "كل الإشعارات مقروءة.",
+    "status": "عرض {from}–{to} من {total}",
+    "pagination": "صفحات الإشعارات",
+    "phase": {
+      "firstResponse": "الرد الأول",
+      "resolution": "الحل"
+    },
+    "tpl": {
+      "ticket": {
+        "created": {
+          "title": "طلب دعم جديد {number}",
+          "detail": "{subject}"
+        },
+        "assigned": {
+          "title": "أحال {actor} الطلب {number} إليك",
+          "detail": "{subject}"
+        },
+        "comment": {
+          "title": "ردّ {actor} على الطلب {number}",
+          "detail": "{excerpt}"
+        },
+        "status": {
+          "title": "أصبحت حالة الطلب {number}: {status}",
+          "detail": "{subject}"
+        },
+        "slaAtRisk": {
+          "title": "الطلب {number}: استُهلك 75% من مهلة {phase}",
+          "detail": "{subject}"
+        },
+        "slaBreached": {
+          "title": "تجاوز الطلب {number} مهلة {phase}",
+          "detail": "{subject}"
+        }
+      },
+      "booking": {
+        "confirmed": {
+          "title": "تم الحجز: {room}، {when}{more}",
+          "detail": "{subject}"
+        },
+        "cancelled": {
+          "title": "أُلغي الحجز: {room}، {when}{more}",
+          "detail": "ألغاه {actor}. السبب: {reason}"
+        }
+      },
+      "announcement": {
+        "pinned": {
+          "title": "إعلان مثبّت: {title}",
+          "detail": "{summary}"
+        }
+      }
+    },
+    "prefs": {
+      "title": "إعدادات الإشعارات",
+      "lead": "اختر كيف تعرف بكل نوع من الأحداث. ما تتركه مفعّلاً يصلك بالطريقتين.",
+      "back": "العودة إلى الإشعارات",
+      "saved": "تم حفظ الإعدادات",
+      "categories": {
+        "tickets": "طلبات الدعم",
+        "bookings": "حجوزات القاعات",
+        "announcements": "الإعلانات المثبّتة"
+      },
+      "hints": {
+        "tickets": "طلب فتحته أو أُحيل إليك، والردود وتغيّر الحالة، والطلبات التي توشك مهلتها على الانتهاء.",
+        "bookings": "تأكيد حجوزاتك، وحجز ألغاه شخص آخر.",
+        "announcements": "عند تثبيت إعلان موجّه إليك."
+      },
+      "channels": {
+        "inApp": "داخل البوابة",
+        "email": "البريد الإلكتروني"
+      }
+    }
   },
   "home": {
     "lead": "هذا ما يحتاج إليك اليوم.",
@@ -1922,6 +2006,25 @@
         "bodyEn": "النص بالإنجليزية",
         "bodyAr": "النص بالعربية"
       }
+    }
+  },
+  "email": {
+    "open": "افتح في البوابة",
+    "why": "وصلتك هذه الرسالة وفق إعدادات الإشعارات الخاصة بك.",
+    "settings": "غيّر ما يصلك"
+  },
+  "dev": {
+    "outbox": {
+      "title": "صندوق البريد الصادر (للتطوير)",
+      "lead": "كل رسالة كانت البوابة سترسلها. لا يخرج شيء من هذا الجهاز ما دام Graph تجريبياً.",
+      "empty": "لم يُرسل أي بريد بعد.",
+      "unavailable": "هذه الصفحة موجودة في بيئة التطوير فقط، مع Graph التجريبي.",
+      "to": "إلى",
+      "from": "من",
+      "sentAt": "وقت الإرسال",
+      "reload": "تحديث",
+      "preview": "معاينة الرسالة",
+      "unavailableTitle": "غير متاحة هنا"
     }
   }
 }

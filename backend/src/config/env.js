@@ -101,6 +101,12 @@ const schema = z
      */
     STORAGE_DIR: z.string().min(1).optional(),
 
+    /**
+     * The mailbox portal email is sent from (Graph sendMail). Nobody reads it:
+     * replies are not handled. The real client needs Mail.Send on this mailbox.
+     */
+    NOREPLY_MAILBOX: z.email().default('no-reply@mgholding.example'),
+
     ENTRA_TENANT_ID: z.string().optional(),
     ENTRA_CLIENT_ID: z.string().optional(),
     ENTRA_CLIENT_SECRET: z.string().optional(),
@@ -132,6 +138,13 @@ const schema = z
       require('ENTRA_TENANT_ID', why);
       require('ENTRA_CLIENT_ID', why);
       require('ENTRA_CLIENT_SECRET', why);
+    }
+    if (value.GRAPH_MODE === 'real' && value.NOREPLY_MAILBOX.endsWith('.example')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['NOREPLY_MAILBOX'],
+        message: 'required when GRAPH_MODE=real (still the placeholder)',
+      });
     }
   });
 

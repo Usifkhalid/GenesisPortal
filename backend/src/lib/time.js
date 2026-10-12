@@ -95,3 +95,40 @@ export function cairoWallOf(date) {
   const ymd = `${p.year}-${p.month}-${p.day}`;
   return { ymd, minutes: Number(p.hour) * 60 + Number(p.minute), weekday: weekdayOfYmd(ymd) };
 }
+
+const DAY_FORMAT = {
+  en: new Intl.DateTimeFormat('en-GB', {
+    timeZone: CAIRO,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }),
+  ar: new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+    timeZone: CAIRO,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }),
+};
+const CLOCK_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: CAIRO,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/**
+ * "Sun, 11 Oct, 10:30–11:00" in Cairo time, once per language, for a
+ * notification's text. The range is isolated so it reads left to right inside
+ * Arabic, like the pages' time ranges.
+ * @param {Date} start
+ * @param {Date} end
+ * @returns {{ en: string, ar: string }}
+ */
+export function describeRange(start, end) {
+  const range = `${CLOCK_FORMAT.format(start)}–${CLOCK_FORMAT.format(end)}`;
+  return {
+    en: `${DAY_FORMAT.en.format(start)}, ${range}`,
+    ar: `${DAY_FORMAT.ar.format(start)}، \u2066${range}\u2069`,
+  };
+}

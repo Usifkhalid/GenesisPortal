@@ -22,6 +22,8 @@ import {
 } from '../../../../frontend/assets/js/markdown.js';
 import { writeAudit } from '../../lib/audit.js';
 import { detectImage } from '../../lib/image-type.js';
+import { logger } from '../../lib/logger.js';
+import { silentNotify } from '../../lib/notify.js';
 import {
   adminCompanyIdsFor,
   assertCompanyAdmin,
@@ -30,6 +32,9 @@ import {
 } from '../../lib/scope.js';
 import { HttpError } from '../../middleware/errors.js';
 import { MAX_COVER_BYTES, completeLanguages, isLive, statusOf } from './rules.js';
+
+/** A pinned post is announced only while it is this new. */
+const PINNED_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
 
 const notFound = () => new HttpError(404, 'not_found');
 const stale = () =>
@@ -190,8 +195,64 @@ function validate(row, now, { checkExpiry }) {
  * @param {ReturnType<import('./store-prisma.js').createPrismaAnnouncementStore>} deps.store
  * @param {ReturnType<import('../../lib/storage.js').createLocalStorage>} deps.storage
  * @param {() => Date} [deps.now]
+ * @param {(userIds: string[], key: string, data?: object) => Promise<object>} [deps.notify]
+ *   see lib/notify.js
+ * @param {{ warn: Function }} [deps.log]
  */
-export function createAnnouncementService({ store, storage, now = () => new Date() }) {
+export function createAnnouncementService({
+  store,
+  storage,
+  now = () => new Date(),
+  notify = silentNotify,
+  log = logger,
+}) {
+  /* ---------------------------------------------------------- pinned alert */
+
+  /**
+   * A pinned announcement that has gone live tells everyone it reaches, once
+   * (the key is per announcement, so a later edit or a second sweep tells
+   * nobody twice). Only recent posts are announced: a pin on something that
+   * has been up for days is not news. The author is not told about their own.
+   */
+  async function tellPinned(row, at) {
+    if (!row?.isPinned || !row.publishAt || row.publishAt > at) return 0;
+    if (at.getTime() - row.publishAt.getTime() > PINNED_WINDOW_MS) return 0;
+    if (row.expiresAt && row.expiresAt <= at) return 0;
+    try {
+      const ids = (await store.audienceUserIds(row.companyId)).filter(
+        (id) => id !== row.authorId
+      );
+      const sent = await notify(ids, 'announcement.pinned', {
+        link: `#announcements/${row.id}`,
+        dedupeKey: `announcement:${row.id}`,
+        title: { en: row.titleEn || row.titleAr, ar: row.titleAr || row.titleEn },
+        summary: {
+          en: row.summaryEn || row.summaryAr || '',
+          ar: row.summaryAr || row.summaryEn || '',
+        },
+      });
+      return sent.inApp + sent.email;
+    } catch (err) {
+      log.warn({ err, announcementId: row.id }, 'pinned announcement notification failed');
+      return 0;
+    }
+  }
+
+  /**
+   * The job: pinned posts that went live on a schedule are announced when
+   * their time comes. Returns how many people were told.
+   */
+  async function notifyPinned() {
+    const at = now();
+    const rows = await store.listPinnedLiveSince({
+      since: new Date(at.getTime() - PINNED_WINDOW_MS),
+      now: at,
+    });
+    let told = 0;
+    for (const row of rows) told += await tellPinned(row, at);
+    return told;
+  }
+
   /* --------------------------------------------------------------- readers */
 
   const visibleToReader = (row, user, at) =>
@@ -382,7 +443,7 @@ export function createAnnouncementService({ store, storage, now = () => new Date
       checkExpiry: patch.publishAt !== undefined || patch.expiresAt !== undefined,
     });
 
-    return store.transaction(async (tx) => {
+    const result = await store.transaction(async (tx) => {
       const before = await tx.getRow(id);
       if (!before) throw notFound();
       const after = await tx.update(id, patch, new Date(updatedAt));
@@ -399,6 +460,9 @@ export function createAnnouncementService({ store, storage, now = () => new Date
       const stats = await tx.audienceCounts([after]);
       return adminDetail(after, at, stats.get(id));
     });
+    // Pinning a post that is already out announces it (once, whatever is edited later).
+    if (patch.isPinned === true) await tellPinned(await store.getRow(id), at);
+    return result;
   }
 
   /** Publish now, or at a given future instant. */
@@ -417,7 +481,7 @@ export function createAnnouncementService({ store, storage, now = () => new Date
 
     validate({ ...existing, publishAt: target }, at, { checkExpiry: true });
 
-    return store.transaction(async (tx) => {
+    const result = await store.transaction(async (tx) => {
       const before = await tx.getRow(id);
       if (!before) throw notFound();
       const after = await tx.update(id, { publishAt: target }, new Date(updatedAt));
@@ -434,6 +498,9 @@ export function createAnnouncementService({ store, storage, now = () => new Date
       const stats = await tx.audienceCounts([after]);
       return adminDetail(after, at, stats.get(id));
     });
+    // Published pinned and already live: told now. Scheduled: the job tells them when it is time.
+    await tellPinned(await store.getRow(id), at);
+    return result;
   }
 
   /** Back to a draft. Readers lose it at once; nothing is deleted. */
@@ -684,5 +751,6 @@ export function createAnnouncementService({ store, storage, now = () => new Date
     setCover,
     removeCover,
     readCover,
+    notifyPinned,
   };
 }
