@@ -4,7 +4,8 @@
  *
  * One story, step by step: a Genesis user raises a ticket with a pasted
  * screenshot and finds it under My tickets; a Masar user and a colleague of
- * another team cannot see it; an IT agent finds it in the queue, takes it,
+ * another team cannot see it; the IT Lead assigns it to an agent (an agent
+ * has no assign control, D118); the agent finds it in the queue,
  * leaves an internal note and answers with a canned reply; the requester
  * sees the answer but not the note; the agent resolves it and the requester
  * reopens it. A CompanyAdmin who is not on the IT team has no queue.
@@ -37,6 +38,7 @@ const GEN_USER = { company: 'GEN', role: 'User', name: 'Salma Ibrahim' };
 const GEN_COLLEAGUE = { company: 'GEN', role: 'User', name: 'Mahmoud Attia' };
 const MSR_USER = { company: 'MSR', role: 'User', name: 'Yasmine Nabil' };
 const AGENT = { company: 'HLD', name: 'Sherif Awad' };
+const LEAD = { company: 'HLD', name: 'Omar Fahmy' };
 
 /** Pastes a screenshot into `selector`, as Ctrl+V would. */
 async function pasteScreenshot(page, selector) {
@@ -133,7 +135,25 @@ for (const lang of LANGUAGES) {
         expect(api.status()).toBe(404);
       }
 
-      /* -------------------------------------------- IT takes it and answers */
+      /* ------------------------------------- the Lead assigns it to an agent */
+      await signOut(page);
+      await signIn(page, { ...LEAD, lang });
+      await open(page, '#tickets/queue');
+      await page.locator('#tkQ').fill(subject);
+      const leadRow = page.locator('#tkQueueBody tbody tr', { hasText: subject });
+      await expect(leadRow).toHaveCount(1);
+      await expect(leadRow.locator('[data-pick]')).toHaveCount(1);
+      await leadRow.locator('a.tk-table__subject').click();
+      await expect(page.locator('#tkHandle')).toBeVisible();
+      const options = await (await page.request.get('/api/tickets/queue/options')).json();
+      const agentId = options.agents.find((a) => a.displayNameEn === AGENT.name).id;
+      await page.locator('#tkAssignee').selectOption(agentId);
+      await expect(page.locator('#tkAssignee')).toHaveValue(agentId);
+      await expect(page.locator('.tk-event', { hasText: /./ }).last()).toBeVisible();
+      // Let the page finish its own requests before the session ends.
+      await page.waitForLoadState('networkidle');
+
+      /* ----------------- the agent sees the queue, cannot assign, and answers */
       await signOut(page);
       await signIn(page, { ...AGENT, lang });
       await open(page, '#tickets/queue');
@@ -142,15 +162,19 @@ for (const lang of LANGUAGES) {
       const row = page.locator('#tkQueueBody tbody tr', { hasText: subject });
       await expect(row).toHaveCount(1);
       await expect(row).toContainText(number);
-      // IT's words are here: the code and the clock.
+      // IT's words are here: the code and the clock. Assignment is not.
       await expect(row).toContainText('P2');
+      await expect(page.locator('[data-pick], #tkPickAll, #tkBulk')).toHaveCount(0);
       await expectNoSidewaysScroll(page);
       await shot(page, `tickets-queue-${lang}`);
       await row.locator('a.tk-table__subject').click();
 
       await expect(page.locator('#tkHandle')).toBeVisible();
-      await page.locator('[data-take]').click();
-      await expect(page.locator('#tkAssignee')).not.toHaveValue('');
+      await expect(page.locator('#tkAssignee')).toHaveCount(0);
+      await expect(page.locator('[data-take]')).toHaveCount(0);
+      // It shows who has it, read-only.
+      await expect(page.locator('#tkHandle')).toContainText(t(lang, 'ticket.assignee'));
+      await expect(page.locator('#tkHandle')).not.toContainText(t(lang, 'ticket.unassigned'));
       await expect(page.locator('#tkContact')).toContainText('Salma');
 
       // An internal note: drawn apart, and flagged before it is sent.
@@ -242,7 +266,9 @@ for (const lang of LANGUAGES) {
       await open(page, '');
       const card = page.locator('[data-card="queue"]');
       await expect(card).toBeVisible();
-      await expect(card).toContainText(t(lang, 'tk.queue.quick.unassigned'));
+      // An agent's number is the tickets given to them; the unassigned are the Lead's.
+      await expect(card).toContainText(t(lang, 'tk.queue.quick.mine'));
+      await expect(card).not.toContainText(t(lang, 'tk.queue.quick.unassigned'));
       await card.getByRole('link', { name: t(lang, 'home.queue.open') }).click();
       await expect(page.locator('#tkQueueTitle')).toBeVisible();
       await expect(page.locator('#tkQuick')).toBeVisible();
@@ -251,7 +277,10 @@ for (const lang of LANGUAGES) {
       // A Lead and a HoldingAdmin open the helpdesk settings; an agent does not.
       await expect(page.getByRole('link', { name: t(lang, 'tk.nav.settings') })).toHaveCount(0);
       await signOut(page);
-      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      await signIn(page, { ...LEAD, lang });
+      await expect(page.locator('[data-card="queue"]')).toContainText(
+        t(lang, 'tk.queue.quick.unassigned')
+      );
       await open(page, '#tickets/settings');
       await expect(page.locator('#cfgNav')).toBeVisible();
       await page.locator('[data-section="replies"]').click();

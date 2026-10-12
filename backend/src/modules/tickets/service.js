@@ -654,7 +654,10 @@ export function createTicketService({
       store.countTickets({ scopes, statuses: ACTIVE_STATUSES, riskBy: now() }),
       store.countTickets({ scopes, statuses: ACTIVE_STATUSES, assigneeId: viewer.user.id }),
     ]);
-    return { mine, queue: { unassigned, breachingSoon, assignedToMe } };
+    // `canAssign` tells the navigation which number matters: a Lead's is the
+    // unassigned tickets, an agent's the ones given to them (D118).
+    const canAssign = viewer.holdingAdmin || viewer.memberships.some((m) => m.role === 'Lead');
+    return { mine, queue: { unassigned, breachingSoon, assignedToMe, canAssign } };
   }
 
   async function get(req, id) {
@@ -944,11 +947,10 @@ export function createTicketService({
     const events = [];
 
     if (body.assigneeId !== undefined && body.assigneeId !== (ticket.assigneeId ?? null)) {
-      // An agent takes an unassigned ticket, hands on or gives back their
-      // own; taking one from a colleague is the lead's call.
-      const theirs = ticket.assigneeId == null || ticket.assigneeId === viewer.user.id;
-      if (!theirs && !isLead(staffRole)) {
-        throw refuse(403, 'lead_only', 'Only a team lead can reassign someone else’s ticket.');
+      // Assigning, reassigning and unassigning are the Lead's (or a
+      // HoldingAdmin's) alone; an agent works the tickets given to them (D118).
+      if (!isLead(staffRole)) {
+        throw refuse(403, 'lead_only', 'Only a team lead can assign or reassign a ticket.');
       }
       if (body.assigneeId) {
         const [membership] = await store.find('member', {

@@ -129,7 +129,11 @@ export async function signIn(page, { company, role = 'User', name = null, lang =
 export async function signOut(page) {
   await page.locator('#userMenuBtn').click();
   await page.locator('#signOutBtn').click();
-  await page.waitForURL('**/login.html');
+  // Under load the redirect can supersede a request the page still had in
+  // flight, which Playwright reports as an aborted navigation: the page is
+  // then on the login screen all the same.
+  await page.waitForURL('**/login.html', { waitUntil: 'commit' });
+  await page.waitForLoadState('load');
 }
 
 /**

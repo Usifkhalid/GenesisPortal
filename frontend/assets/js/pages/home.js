@@ -518,8 +518,11 @@ async function addQueueCard(home) {
     openLabel: t('home.queue.open'),
   })}
     <dl class="labelstrip labelstrip--compact">
-      ${link('unassigned', t('tk.queue.quick.unassigned'), counts.queue.unassigned)}
-      ${link('mine', t('tk.queue.quick.mine'), counts.queue.assignedToMe)}
+      ${
+        counts.queue.canAssign
+          ? link('unassigned', t('tk.queue.quick.unassigned'), counts.queue.unassigned)
+          : link('mine', t('tk.queue.quick.mine'), counts.queue.assignedToMe)
+      }
       ${link('atRisk', t('tk.queue.quick.atRisk'), atRisk)}
       ${link('breached', t('tk.queue.quick.breached'), breached)}
     </dl>`;

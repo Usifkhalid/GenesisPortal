@@ -381,3 +381,20 @@ Files: backend/{prisma/*,src/{app,server}.js,config/env.js,lib/{notify,messages,
 Verified: `npm test` 332 pass (21 new, incl. SQL Server store); `npm run test:e2e` 100 pass (new notifications.spec, EN/AR, 1440/360); lint clean; screenshots of bell, centre, preferences reviewed.
 Open issues: real Graph `sendMail`/`Mail.Send` unproven (session 19). Teams channel not offered. Mail goes out one by one (fine to hundreds; a company-wide post at thousands needs a queue). Notification ids in email links are tickets/rooms only; email has no per-message unsubscribe beyond the settings link. Arabic copy not reviewed by a native speaker. Ticket numbers may wrap at the hyphen in a narrow bell. Dev DB migrated; run `npm run db:seed` is not needed.
 Next: Entra/real Graph proving (session 19), or the remaining admin gaps (team creation screen, set a person's department).
+
+## Session 23 — Helpdesk assignment rules (2026-10-12)
+
+Done: only a Lead or a HoldingAdmin assigns, reassigns or unassigns a ticket; an agent's attempt,
+their own ticket included, is 403 `lead_only`. Agents see the whole queue read-only for assignment
+and keep replies, notes, status, priority, category. "Assign to me", the agent's checkboxes and bulk
+bar and the assign select are gone (agents see the assignee as text). `counts.queue.canAssign`:
+Leads/HA see "unassigned" in the nav and on Home, agents "assigned to me". New tickets already told
+all Leads; assignments are `assigned` events and tell the new assignee. D118 replaces D101.
+Files: backend/src/modules/tickets/service.js, backend/tests/{tickets,tickets-store}.test.js,
+frontend/assets/{js/{app.js,pages/home.js,pages/tickets/{detail,queue}.js},css/pages/tickets.css,
+i18n/*}, tests/e2e/{tickets,tickets-home,helpers}.js, docs/{DECISIONS,API,PROGRESS}.md.
+Verified: `npm test` 332 pass; `npm run test:e2e` 100 pass; lint clean.
+Open issues: agents may still change status/priority/category on tickets not assigned to them
+(kept as before; one check in `update` if that should narrow). `signOut` e2e helper made
+tolerant of an aborted redirect under load. Arabic copy for the new strings not native-reviewed.
+Next: Entra/real Graph proving, or the remaining admin gaps (team creation screen).

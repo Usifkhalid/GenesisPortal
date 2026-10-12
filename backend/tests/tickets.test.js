@@ -412,8 +412,10 @@ describe('who can see a ticket', () => {
     assert.equal((await w.agent.get('/api/tickets/queue?q=VPN')).body.total, 1);
     assert.deepEqual((await w.agent.get('/api/tickets/counts')).body, {
       mine: 0,
-      queue: { unassigned: 3, breachingSoon: 0, assignedToMe: 0 },
+      queue: { unassigned: 3, breachingSoon: 0, assignedToMe: 0, canAssign: false },
     });
+    assert.equal((await w.lead.get('/api/tickets/counts')).body.queue.canAssign, true);
+    assert.equal((await w.ha.get('/api/tickets/counts')).body.queue.canAssign, true);
     const byCompany = await w.agent.get(`/api/tickets/queue?companyId=${w.company('MSR').id}`);
     assert.deepEqual(
       byCompany.body.items.map((t) => t.id),
@@ -623,42 +625,58 @@ describe('the life of a ticket', () => {
     assert.equal(refused.status, 403);
   });
 
-  test('assigning: an agent takes or hands on their own, a lead moves anyone’s', async () => {
+  test('assigning: only a lead or a HoldingAdmin assigns, reassigns or unassigns (D118)', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
 
-    const taken = await w.change(w.agent, t.id, { assigneeId: w.agent.user.id });
-    assert.equal(taken.assignee.id, w.agent.user.id);
-    assert.equal(taken.status, 'Open', 'someone has it: no longer new');
+    // An agent can neither take a ticket nor hand one to someone else.
+    const own = await w.agent.patch(`/api/tickets/${t.id}`, { assigneeId: w.agent.user.id });
+    assert.equal(own.status, 403);
+    assert.equal(own.body.error.code, 'lead_only');
+    const other = await w.agent.patch(`/api/tickets/${t.id}`, { assigneeId: w.agent2.user.id });
+    assert.equal(other.status, 403);
+    assert.equal((await w.ticket(w.agent, t.id)).ticket.assignee, null);
+
+    // The lead assigns; the ticket is no longer new, and the agent sees no control.
+    const assigned = await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
+    assert.equal(assigned.assignee.id, w.agent.user.id);
+    assert.equal(assigned.status, 'Open', 'someone has it: no longer new');
     assert.equal((await w.agent.get('/api/tickets/counts')).body.queue.assignedToMe, 1);
+    assert.equal((await w.ticket(w.agent, t.id)).ticket.can.reassign, false);
+    assert.equal((await w.ticket(w.lead, t.id)).ticket.can.reassign, true);
 
-    // A colleague cannot take it from them.
-    const grab = await w.agent2.patch(`/api/tickets/${t.id}`, { assigneeId: w.agent2.user.id });
-    assert.equal(grab.status, 403);
-    assert.equal(grab.body.error.code, 'lead_only');
+    // The assignee cannot hand it on or give it back; a colleague cannot take it.
+    for (const [who, assigneeId] of [
+      [w.agent, w.agent2.user.id],
+      [w.agent, null],
+      [w.agent2, w.agent2.user.id],
+    ]) {
+      const res = await who.patch(`/api/tickets/${t.id}`, { assigneeId });
+      assert.equal(res.status, 403);
+      assert.equal(res.body.error.code, 'lead_only');
+    }
 
-    // The lead can; so can a HoldingAdmin.
+    // The lead moves it; so does a HoldingAdmin; either can put it back.
     const moved = await w.change(w.lead, t.id, { assigneeId: w.agent2.user.id });
     assert.equal(moved.assignee.id, w.agent2.user.id);
     await w.change(w.ha, t.id, { assigneeId: w.agent.user.id });
-
-    // Their own: hand it on, or give it back to the queue.
-    await w.change(w.agent, t.id, { assigneeId: w.agent2.user.id });
-    const released = await w.change(w.agent2, t.id, { assigneeId: null });
+    const released = await w.change(w.ha, t.id, { assigneeId: null });
     assert.equal(released.assignee, null);
+    await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
 
-    // Only to someone on the team.
+    // Only to an active member of the team: not a requester, not an admin who is not on it.
     for (const outsider of [w.gen.user.id, w.ha.user.id, w.team.id]) {
-      const res = await w.agent.patch(`/api/tickets/${t.id}`, { assigneeId: outsider });
+      const res = await w.lead.patch(`/api/tickets/${t.id}`, { assigneeId: outsider });
       assert.equal(res.body.error?.code, 'unknown_assignee');
     }
 
-    const detail = await w.ticket(w.gen, t.id);
-    const assigned = detail.timeline.filter((e) => e.type === 'assigned');
-    assert.equal(assigned.length, 5);
-    assert.equal(assigned[0].from, null);
-    assert.equal(assigned[0].to.displayNameEn, 'Sherif Awad');
-    assert.equal(assigned[1].actor.displayNameEn, 'Omar Fahmy');
+    // Every change is in the history, with who made it.
+    const events = (await w.ticket(w.gen, t.id)).timeline.filter((e) => e.type === 'assigned');
+    assert.equal(events.length, 5);
+    assert.equal(events[0].from, null);
+    assert.equal(events[0].to.displayNameEn, 'Sherif Awad');
+    assert.equal(events[0].actor.id, w.lead.user.id);
+    assert.equal(events[3].to, null);
   });
 
   test('an agent changes the category within the team', async () => {
@@ -983,7 +1001,7 @@ describe('the agent queue', () => {
     assert.deepEqual(await w.queue('?q=monitor'), ['Second monitor']);
     assert.deepEqual(await w.queue(`?q=${w.p1.number}`), ['Site network down']);
 
-    await w.change(w.agent, w.p1.id, { assigneeId: w.agent.user.id });
+    await w.change(w.lead, w.p1.id, { assigneeId: w.agent.user.id });
     await w.change(w.lead, w.p3.id, { assigneeId: w.agent2.user.id });
     assert.deepEqual(await w.queue('?assignee=me'), ['Site network down']);
     assert.deepEqual(await w.queue(`?assignee=${w.agent2.user.id}`), ['Slow laptop']);
@@ -1016,6 +1034,7 @@ describe('the agent queue', () => {
       unassigned: 4,
       breachingSoon: 1,
       assignedToMe: 0,
+      canAssign: false,
     });
 
     // 14:00: P1 is an hour late; P2 (answer by 15:00) is at risk.

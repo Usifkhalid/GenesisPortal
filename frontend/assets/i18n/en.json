@@ -1650,7 +1650,8 @@
   },
   "tickets": {
     "navCount": "{count} open tickets",
-    "navCountQueue": "{count} unassigned tickets, {soon} close to or past their deadline"
+    "navCountQueue": "{count} unassigned tickets, {soon} close to or past their deadline",
+    "navCountAgent": "{count} open tickets assigned to you, {soon} close to or past their deadline"
   },
   "tk": {
     "lead": "Ask IT for help and follow what you have asked for.",
@@ -1843,7 +1844,7 @@
     "side": {
       "label": "Handling this ticket",
       "handle": "Handle",
-      "leadOnly": "Only a Lead can take this from a colleague.",
+      "leadOnly": "Only a Lead assigns tickets.",
       "requester": "Requester",
       "teams": "Chat on Teams",
       "details": "Details",
@@ -1861,7 +1862,7 @@
       "tooLarge": "The file is too large.",
       "tooLargeSize": "The file is too large (up to {size}).",
       "empty": "The file is empty.",
-      "leadOnly": "Only a team Lead can take a ticket from a colleague.",
+      "leadOnly": "Only a team Lead or a holding administrator can assign or reassign a ticket.",
       "unknownCategory": "Choose a category.",
       "unknownLocation": "Choose a location from the list.",
       "unknownRequester": "That person is not in the directory, or this team does not serve their company.",
@@ -1896,7 +1897,6 @@
       "pickAll": "Select every ticket on this page",
       "selected": "{count} selected",
       "bulkTo": "Assign to",
-      "bulkMe": "Me",
       "bulkAssign": "Assign",
       "bulkClear": "Clear selection",
       "bulkDone": "Assignment finished",

@@ -500,11 +500,6 @@
   gap: var(--space-4);
 }
 
-.tk-side__take {
-  align-self: flex-start;
-  margin-block-start: var(--space-2);
-}
-
 .tk-facts {
   display: grid;
   gap: var(--space-3);

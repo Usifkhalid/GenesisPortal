@@ -538,10 +538,8 @@ export async function render(root, ctx) {
     const categories = (support.queueOptions?.categories ?? []).filter(
       (c) => c.teamId === tk.team?.id
     );
-    const mine = tk.assignee?.id === ctx.user.id;
-    // An agent may take an unassigned ticket or hand on their own; only a Lead
-    // takes one from a colleague (D101).
-    const mayAssign = tk.can.reassign || !tk.assignee || mine;
+    // Only a Lead or a HoldingAdmin assigns (D118); an agent just sees who has it.
+    const mayAssign = tk.can.reassign;
     const option = (value, text, chosen, disabled = false) =>
       `<option value="${esc(value)}" ${value === chosen ? 'selected' : ''} ${
         disabled ? 'disabled' : ''
@@ -549,22 +547,23 @@ export async function render(root, ctx) {
     const statusOptions = SETTABLE.includes(tk.status) ? SETTABLE : [tk.status, ...SETTABLE];
     $('#tkHandle').innerHTML = `
       <h2 class="card__title" id="tkHandleTitle">${esc(t('tk.side.handle'))}</h2>
-      <div class="field">
+      ${
+        mayAssign
+          ? `<div class="field">
         <label class="field__label" for="tkAssignee">${esc(t('ticket.assignee'))}</label>
-        <select class="select" id="tkAssignee" data-patch="assigneeId" ${mayAssign ? '' : 'disabled'}>
+        <select class="select" id="tkAssignee" data-patch="assigneeId">
           ${option('', t('ticket.unassigned'), tk.assignee?.id ?? '')}
           ${agents.map((a) => option(a.id, displayName(a), tk.assignee?.id ?? '')).join('')}
         </select>
-        ${
-          !mayAssign
-            ? `<p class="field__help">${esc(t('tk.side.leadOnly'))}</p>`
-            : !mine
-              ? `<button type="button" class="btn btn--secondary btn--sm tk-side__take" data-take>
-                  ${icon('user', 'btn__icon')}<span class="btn__label">${esc(t('action.assign'))}</span>
-                </button>`
-              : ''
-        }
-      </div>
+      </div>`
+          : `<div class="field">
+        <p class="field__label" id="tkAssigneeLabel">${esc(t('ticket.assignee'))}</p>
+        <p aria-labelledby="tkAssigneeLabel">${esc(
+          tk.assignee ? displayName(tk.assignee) : t('ticket.unassigned')
+        )}</p>
+        <p class="field__help">${esc(t('tk.side.leadOnly'))}</p>
+      </div>`
+      }
       <div class="field">
         <label class="field__label" for="tkStatus">${esc(t('status.label'))}</label>
         <select class="select" id="tkStatus" data-patch="status">
@@ -711,13 +710,7 @@ export async function render(root, ctx) {
 
   root.addEventListener('click', (event) => {
     const reopenButton = event.target.closest('[data-reopen]');
-    if (reopenButton) {
-      reopen(reopenButton);
-      return;
-    }
-    if (event.target.closest('[data-take]')) {
-      patch({ assigneeId: ctx.user.id });
-    }
+    if (reopenButton) reopen(reopenButton);
   });
   root.addEventListener('change', (event) => {
     const control = event.target.closest('[data-patch]');

@@ -4,7 +4,7 @@
  * A Masar user raises a ticket (through the API: the Tickets page itself
  * comes next) and finds it on Home's "open" card with its IT number, and a
  * count beside Tickets. An IT agent, who works for another company, sees the
- * count of unassigned tickets instead, asks the user a question, and the
+ * count of tickets assigned to them (a Lead: the unassigned), asks the user a question, and the
  * ticket moves to the user's "waiting on you" card.
  *
  * Run four times in parallel on one database, so every check is on this
@@ -69,12 +69,21 @@ for (const lang of LANGUAGES) {
       await shot(page, `tickets-home-${lang}`);
       await expectNoSidewaysScroll(page);
 
-      // An IT agent (an MG Holding employee) sees it, and the queue's count.
+      // The IT Lead sees it among the unassigned, and that is the nav's number.
+      await signOut(page);
+      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      const leadCounts = await (await page.request.get('/api/tickets/counts')).json();
+      expect(leadCounts.queue.canAssign).toBe(true);
+      expect(leadCounts.queue.unassigned).toBeGreaterThanOrEqual(1);
+      await expect(page.locator('[data-ticket-count]').first()).toHaveText(/^([1-9]\d?|99\+)$/);
+
+      // An IT agent reads the queue, but their own number is the tickets
+      // assigned to them (D118): this one is not.
       await signOut(page);
       await signIn(page, { company: 'HLD', name: 'Sherif Awad', lang });
       const counts = await (await page.request.get('/api/tickets/counts')).json();
+      expect(counts.queue.canAssign).toBe(false);
       expect(counts.queue.unassigned).toBeGreaterThanOrEqual(1);
-      await expect(page.locator('[data-ticket-count]').first()).toHaveText(/^([1-9]\d?|99\+)$/);
       // None of it is the agent's own, so Home's cards stay empty for this run.
       await expect(
         page.locator('[data-card="tickets"] .record', { hasText: subject })

@@ -1019,24 +1019,10 @@ them (`entraObjectId` in seed-data.js) and sit last in `USERS` to leave the firs
 ids as they were. The seeded holidays are examples: the fixed dates are right, the Islamic
 ones are estimates and are named so.
 
-### D101. Who may do what on a ticket
+### D101. Who may do what on a ticket — replaced by D118
 
-The brief said both "assign (self or other agent)" and "Leads can also reassign", and
-"Leads … edit categories" beside agents changing a ticket's category. Read as:
-
-- An agent may assign a ticket that is unassigned or their own (take it, hand it on, give
-  it back). Taking one from a colleague is the Lead's (or a HoldingAdmin's): `lead_only`.
-- Any agent may change a ticket's status, priority and category. A Lead may also manage
-  the team's category list and its canned replies, both audited.
-- A requester's ticket starts at the urgency they choose (D106), or its category's default.
-  Only the team sets a source or another requester (logging a call or a walk-in), and only
-  the team changes the priority afterwards.
-- A HoldingAdmin acts as a Lead on every team but can be assigned a ticket only as a member.
-- Assigning a New ticket makes it Open, as an agent's first public reply does.
-- A requester's reply to a Resolved ticket reopens it. That is what "closes after three
-  working days without a requester reply" needs, and it is inside the seven-day window.
-- The seven days are calendar days from `resolvedAt`; the three working days are
-  three full days of the team's business hours.
+Replaced by D118 (assignment moved to Leads and HoldingAdmins). The rest of what this
+record said is carried over there.
 
 ### D102. Ticket numbers come from a counter row, not from counting tickets
 
@@ -1096,7 +1082,7 @@ Before, `priority` on `POST /api/tickets` was for the team and a requester alway
 category's default. A requester knows best how much it hurts, and the helpdesk can still
 correct it, so: any requester may send `priority` (P1..P4); left out, the category's default
 applies, and the form preselects that default. The due dates follow the chosen priority. A
-later change is the team's (D101), recorded as a `priority` event with from/to like any other.
+later change is the team's (D118), recorded as a `priority` event with from/to like any other.
 Cost accepted: people may pick Urgent for everything; the queue's history shows the change
 when IT corrects it, and Leads can see the pattern. Requesters see the four levels in plain
 language ("Urgent", "High", "Normal", "Low" with an example); P1..P4 stay in IT views.
@@ -1136,8 +1122,8 @@ in the agent's own language. Nothing is sent without a click.
   not contain them at all.
 - **"Closed" in My tickets** reads Resolved and Closed as two requests and merges them by
   update time; the API filters one status at a time and a person has few of these.
-- **Bulk assign** is one PATCH per ticket, so the server's own rule (an agent may not take a
-  colleague's ticket, D101) answers for each; the toast says how many went.
+- **Bulk assign** is one PATCH per ticket, so the server's own rule (Leads and HoldingAdmins
+  only, D118) answers for each; the toast says how many went. Agents do not see it.
 - **Configuration** is one module (`tickets/config.js`) mounted at `#admin/helpdesk`
   (HoldingAdmin: team, categories, locations, targets and hours, holidays, canned replies) and
   at `#tickets/settings` (a Lead: categories and canned replies of their team).
@@ -1214,3 +1200,30 @@ Following a notification marks it read. In development the mocked Graph writes e
 JSON file under `backend/mock/outbox/` (gitignored, the latest 200 kept) and `#dev` lists them
 in sandboxed frames; under test it keeps them in an array (`app.locals.mailOutbox`), so a run
 leaves nothing on disk. `/api/dev/*` is not mounted in production.
+
+### D118. Who may do what on a ticket: Leads assign, agents work (replaces D101)
+
+D101 let an agent take an unassigned ticket or hand on their own. Work is now given out,
+not picked up:
+
+- **Assigning, reassigning and unassigning are a Lead's or a HoldingAdmin's alone**, to any
+  active member of the ticket's team or back to nobody. An agent's attempt, on any ticket,
+  their own included, is `403 lead_only`. `can.reassign` is true only for them; the detail
+  shows an agent who has the ticket as plain text, and the "Assign to me" button and the
+  queue's checkboxes and bulk bar are not drawn for an agent.
+- **A HoldingAdmin is an assignee only as a member of the team** (`unknown_assignee`
+  otherwise), as before.
+- **Agents see the whole queue** (read-only for assignment) and keep what they had on a
+  ticket: replies, internal notes, status, priority and category. Not narrowed to tickets
+  assigned to them: a colleague covering a shared ticket still can. If that should change it
+  is one check in `update`.
+- Every assignment is an `assigned` event with actor, from and to, and tells the new
+  assignee (`ticket.assigned`). A new ticket tells all the team's Leads (D112).
+- **Numbers:** `GET /api/tickets/counts` adds `queue.canAssign`. A Lead (or HoldingAdmin)
+  sees "unassigned" in the nav and on Home; an agent sees "assigned to me" (active, not
+  Resolved or Closed).
+- Unchanged from D101: any agent changes status, priority and category; a Lead also manages
+  the team's categories and canned replies (audited); a requester's ticket starts at the
+  urgency they choose (D106) and only the team changes it after; assigning a New ticket
+  makes it Open; a requester's reply to a Resolved ticket reopens it, within seven calendar
+  days of `resolvedAt`; auto-close is three full working days of the team's hours.

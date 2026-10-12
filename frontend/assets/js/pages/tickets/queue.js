@@ -71,6 +71,8 @@ export async function render(root, ctx) {
   };
   let result = { items: [], total: 0 };
   let counts = ctx.who.counts ?? null;
+  // Only a Lead or a HoldingAdmin assigns (D118); an agent reads the queue.
+  const canAssign = Boolean(counts?.canAssign);
   let turn = 0;
   let timer = null;
   const selected = new Set();
@@ -170,14 +172,14 @@ export async function render(root, ctx) {
       </form>
     </div>
 
-    <div class="tk-bulk card" id="tkBulk" hidden>
+    ${
+      canAssign
+        ? `<div class="tk-bulk card" id="tkBulk" hidden>
       <p class="tk-bulk__count" id="tkBulkCount" role="status" aria-live="polite"></p>
       <div class="field tk-bulk__who">
         <label class="field__label" for="tkBulkAgent">${esc(t('tk.queue.bulkTo'))}</label>
         <select class="select" id="tkBulkAgent">
-          <option value="${esc(ctx.user.id)}">${esc(t('tk.queue.bulkMe'))}</option>
           ${options.agents
-            .filter((a) => a.id !== ctx.user.id)
             .map((a) => `<option value="${esc(a.id)}">${esc(displayName(a))}</option>`)
             .join('')}
         </select>
@@ -190,7 +192,9 @@ export async function render(root, ctx) {
           <span class="btn__label">${esc(t('tk.queue.bulkClear'))}</span>
         </button>
       </div>
-    </div>
+    </div>`
+        : ''
+    }
 
     <p class="tk-queue__count" id="tkCount" role="status" aria-live="polite"></p>
     <div id="tkQueueBody" aria-busy="true"></div>
@@ -233,13 +237,17 @@ export async function render(root, ctx) {
     const assignee = ticket.assignee ? displayName(ticket.assignee) : t('ticket.unassigned');
     const done = ['Resolved', 'Closed'].includes(ticket.status);
     return `<tr role="row" data-id="${esc(ticket.id)}" ${done ? 'class="table__muted"' : ''}>
-      <td role="cell" class="tk-table__pick">
+      ${
+        canAssign
+          ? `<td role="cell" class="tk-table__pick">
         <label class="choice choice--inline">
           <input class="choice__control" type="checkbox" data-pick="${esc(ticket.id)}"
             ${checked ? 'checked' : ''}
             aria-label="${esc(t('tk.queue.pick', { number: ticket.number }))}" />
         </label>
-      </td>
+      </td>`
+          : ''
+      }
       <td role="cell" data-label="${esc(t('ticket.one'))}">
         <a class="tk-table__subject" href="#tickets/${esc(ticket.id)}?from=queue"><bdi>${esc(
           ticket.subject
@@ -290,12 +298,16 @@ export async function render(root, ctx) {
         <table class="table" role="table">
           <caption class="u-visually-hidden">${esc(t('tk.queue.caption'))}</caption>
           <thead role="rowgroup"><tr role="row">
-            <th role="columnheader" scope="col" class="tk-table__pick">
+            ${
+              canAssign
+                ? `<th role="columnheader" scope="col" class="tk-table__pick">
               <label class="choice choice--inline">
                 <input class="choice__control" type="checkbox" id="tkPickAll" ${allOnPage ? 'checked' : ''}
                   aria-label="${esc(t('tk.queue.pickAll'))}" />
               </label>
-            </th>
+            </th>`
+                : ''
+            }
             <th role="columnheader" scope="col">${esc(t('ticket.one'))}</th>
             <th role="columnheader" scope="col">${esc(t('field.priority'))}</th>
             <th role="columnheader" scope="col">${esc(t('status.label'))}</th>
@@ -325,6 +337,7 @@ export async function render(root, ctx) {
   }
 
   function drawBulk() {
+    if (!bulk) return;
     bulk.hidden = selected.size === 0;
     root.querySelector('#tkBulkCount').textContent = t('tk.queue.selected', {
       count: formatNumber(selected.size),
@@ -462,13 +475,13 @@ export async function render(root, ctx) {
     root.querySelector('.tk-table')?.focus();
   });
 
-  root.querySelector('#tkBulkClear').addEventListener('click', () => {
+  root.querySelector('#tkBulkClear')?.addEventListener('click', () => {
     selected.clear();
     for (const box of body.querySelectorAll('[data-pick], #tkPickAll')) box.checked = false;
     drawBulk();
   });
 
-  root.querySelector('#tkBulkGo').addEventListener('click', async (event) => {
+  root.querySelector('#tkBulkGo')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
     const agentId = root.querySelector('#tkBulkAgent').value;
     const ids = [...selected];
@@ -476,8 +489,8 @@ export async function render(root, ctx) {
     button.setAttribute('aria-busy', 'true');
     let done = 0;
     const refused = [];
-    // One request each: the server decides, per ticket, whether this person
-    // may take it (an agent may not take a colleague's, D101).
+    // One request each: the server decides, per ticket (a Lead or a
+    // HoldingAdmin only, D118).
     for (const id of ids) {
       try {
         await api(`/api/tickets/${encodeURIComponent(id)}`, {

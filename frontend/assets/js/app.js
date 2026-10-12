@@ -272,9 +272,13 @@ let ticketCounts = { mine: 0, queue: null };
  */
 function drawTicketCount() {
   const { mine, queue } = ticketCounts;
-  const count = queue ? queue.unassigned : mine;
+  // A Lead's number is the unassigned tickets; an agent's, their own open ones (D118).
+  const count = queue ? (queue.canAssign ? queue.unassigned : queue.assignedToMe) : mine;
   const label = queue
-    ? t('tickets.navCountQueue', { count, soon: queue.breachingSoon })
+    ? t(queue.canAssign ? 'tickets.navCountQueue' : 'tickets.navCountAgent', {
+        count,
+        soon: queue.breachingSoon,
+      })
     : t('tickets.navCount', { count });
   for (const el of document.querySelectorAll('[data-ticket-count]')) {
     el.hidden = count === 0;

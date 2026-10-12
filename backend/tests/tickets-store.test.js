@@ -218,7 +218,7 @@ describe('tickets against SQL Server', async () => {
       );
       assert.deepEqual(await w.tickets.counts(w.agentReq), {
         mine: 0,
-        queue: { unassigned: 41, breachingSoon: 0, assignedToMe: 0 },
+        queue: { unassigned: 41, breachingSoon: 0, assignedToMe: 0, canAssign: false },
       });
 
       // An attachment row and its bytes; then resolve and let the job close it.
