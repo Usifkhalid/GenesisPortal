@@ -507,21 +507,12 @@ function updateNotifA11y() {
 
 function initSignOut() {
   const button = document.getElementById('signOutBtn');
-  const label = button.querySelector('[data-i18n]');
 
   button.addEventListener('click', async () => {
     if (button.getAttribute('aria-busy') === 'true') return;
     button.setAttribute('aria-busy', 'true');
-    try {
-      // On success the page leaves for the login screen.
-      await signOut();
-    } catch {
-      // Still signed in, and the person must know it: the row says so and
-      // stays where it is, ready to be pressed again.
-      button.removeAttribute('aria-busy');
-      label.dataset.i18n = 'nav.signOutFailed';
-      label.textContent = t('nav.signOutFailed');
-    }
+    // Never fails: the page always leaves for the login screen.
+    await signOut();
   });
 }
 

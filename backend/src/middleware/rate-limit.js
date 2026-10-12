@@ -38,14 +38,37 @@ export function apiLimiter(options = {}) {
 }
 
 /**
- * @param {{ windowMs?: number, limit?: number }} [options] overrides, for tests
+ * Mock sign-in is development only, and testers switch between users all day,
+ * so its limit is far higher. Production never runs mock sign-in, and its limit
+ * is exactly AUTH_RATE_LIMIT_MAX.
  */
-export function authLimiter(options = {}) {
+export const DEV_AUTH_RATE_LIMIT_MAX = 1000;
+
+export function authLimitFor(config = env) {
+  const mockDev = config.AUTH_MODE === 'mock' && config.NODE_ENV === 'development';
+  return mockDev
+    ? Math.max(config.AUTH_RATE_LIMIT_MAX, DEV_AUTH_RATE_LIMIT_MAX)
+    : config.AUTH_RATE_LIMIT_MAX;
+}
+
+/** The requests that start a sign-in. Nothing else counts toward the cap. */
+const SIGN_IN_ATTEMPTS = new Set([
+  'POST /api/auth/mock-login',
+  'GET /auth/login',
+  'GET /auth/callback',
+]);
+
+/**
+ * Only sign-in attempts are counted: signing out, drawing the login page and
+ * reading the config never are, so nobody is locked out of ending a session.
+ *
+ * @param {{ windowMs?: number, limit?: number }} [options] overrides, for tests
+ * @param {object} [config] the environment, or a test's version of it
+ */
+export function authLimiter(options = {}, config = env) {
   return limiter({
-    windowMs: options.windowMs ?? env.AUTH_RATE_LIMIT_WINDOW_MS,
-    limit: options.limit ?? env.AUTH_RATE_LIMIT_MAX,
-    // Drawing the login page is not an attempt to sign in. The paths are
-    // relative to the mount point; /auth has no GET by these names.
-    skip: (req) => req.method === 'GET' && ['/config', '/mock-users'].includes(req.path),
+    windowMs: options.windowMs ?? config.AUTH_RATE_LIMIT_WINDOW_MS,
+    limit: options.limit ?? authLimitFor(config),
+    skip: (req) => !SIGN_IN_ATTEMPTS.has(`${req.method} ${req.originalUrl.split('?')[0]}`),
   });
 }

@@ -98,7 +98,9 @@ Body `{ "userId": "<uuid>" }`. Starts a session under a new session id.
 #### `POST /api/auth/logout` (and `POST /auth/logout` in Entra mode)
 
 Ends the session. `200 { "redirectTo": "/login.html" }`; in Entra mode `redirectTo` is
-Entra's own sign-out URL, which returns the browser to `/login.html`.
+Entra's own sign-out URL, which returns the browser to `/login.html`. It never answers
+403 or 429: it needs no CSRF token (forcing a sign-out is harmless, and a stale token must
+not keep anyone signed in), is not rate-limited, and destroys the session when there is one.
 
 #### `GET /auth/login`, `GET /auth/callback` (`AUTH_MODE=entra` only)
 

@@ -70,7 +70,12 @@ export function publicAuthRoutes({ config, repo, msalClient }) {
 
   /** Ends the session here and says where the browser should go next. */
   const logout = async (req, res) => {
-    await destroySession(req);
+    // Whatever goes wrong with the stored session, the browser still leaves.
+    try {
+      await destroySession(req);
+    } catch (err) {
+      req.log?.warn({ err }, 'sign-out: session could not be destroyed');
+    }
     res.clearCookie(cookie.name, cookie.options);
     // In Entra mode the browser also leaves its Entra session, or the next
     // visit to the login page would sign straight back in.

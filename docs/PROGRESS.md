@@ -362,3 +362,14 @@ Files: frontend/assets/{js/pages/tickets.js,js/pages/tickets/*,js/pages/admin/he
 Verified: `npm test` 305 pass; `npm run lint` clean; `npm run test:e2e` 96 pass (new `tickets.spec`: 16, EN/AR, 1440/360). `/impeccable critique` (29/40, detector clean, single-context): form width, queue toolbar, SLA "0 min" and tile height fixed; polish fixed oversized icons and a stuck "Saving" button.
 Open issues: no notifications on ticket events (replies reach nobody until they open the portal). Not walked by a person on a real phone or with a screen reader. Priority/SLA words for IT are not yet translated by a native reviewer. A team's Lead who is not an admin has no "Admin" nav, only Tickets > Settings. Creating or retiring a team has no screen (API only). Attachment previews are download links, not thumbnails.
 Next: notifications (ticket events, then room cancellations).
+
+## Session 21 — Sign-out fix (2026-10-12)
+
+Done: sign-out showed "try again later" because the auth rate limit counted logout (and logout
+403'd on a stale CSRF token). Now only sign-in attempts count; mock development allows 1000;
+logout needs no CSRF token, never errors, always destroys the session and clears the cookie; the
+frontend lands on the login page whatever happens. D111.
+Files: backend/src/{app.js,middleware/rate-limit.js,modules/auth/routes.js}, backend/tests/{auth,foundation}.test.js, frontend/assets/{js/auth.js,js/app.js,i18n/*}, docs/*.
+Verified: `npm test` 311 pass; `npm run test:e2e` 96 pass; lint clean.
+Open issues: production limit is still 20 per 15 min per IP (D45 NAT concern stands). Counters in memory.
+Next: notifications (ticket events, then room cancellations).

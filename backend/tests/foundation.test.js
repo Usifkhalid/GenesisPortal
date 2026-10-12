@@ -8,6 +8,7 @@ import { loadEnv } from '../src/config/env.js';
 import { snapshot, writeAudit } from '../src/lib/audit.js';
 import { guardAuditLog } from '../src/lib/prisma.js';
 import { HttpError } from '../src/middleware/errors.js';
+import { authLimitFor } from '../src/middleware/rate-limit.js';
 import { createFakePrisma } from './helpers/fake-prisma.js';
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
@@ -164,6 +165,26 @@ describe('rate limiter', () => {
     for (let i = 0; i < 3; i += 1) {
       assert.equal((await request(limited).get('/api/auth/config')).status, 200);
     }
+  });
+});
+
+describe('auth rate limit by environment', () => {
+  test('production keeps AUTH_RATE_LIMIT_MAX; only mock development is raised', () => {
+    const base = { AUTH_RATE_LIMIT_MAX: 20 };
+    assert.equal(authLimitFor({ ...base, NODE_ENV: 'production', AUTH_MODE: 'entra' }), 20);
+    assert.equal(authLimitFor({ ...base, NODE_ENV: 'development', AUTH_MODE: 'entra' }), 20);
+    assert.equal(authLimitFor({ ...base, NODE_ENV: 'test', AUTH_MODE: 'mock' }), 20);
+    assert.ok(authLimitFor({ ...base, NODE_ENV: 'development', AUTH_MODE: 'mock' }) >= 1000);
+  });
+
+  test('production blocks the 21st sign-in attempt in a window', async () => {
+    const app = createApp({ config: { NODE_ENV: 'production', AUTH_RATE_LIMIT_MAX: 20 } });
+    const statuses = [];
+    for (let i = 0; i < 21; i += 1) {
+      statuses.push((await request(app).get('/auth/login')).status);
+    }
+    assert.notEqual(statuses[19], 429);
+    assert.equal(statuses[20], 429);
   });
 });
 

@@ -1145,3 +1145,14 @@ in the agent's own language. Nothing is sent without a click.
 - **Home** shows IT an extra card (unassigned, mine, at risk, breached, each a link into the
   queue). At risk and breached are two requests for `pageSize=1`, because the counts route's
   "breaching soon" includes the breached ones and would not match the list it links to.
+
+### D111. Sign-out can never fail; only sign-in attempts are rate-limited
+
+Cause of "try again later": the auth limiter counted every request under `/api/auth`, logout
+included (20 per 15 min, so about 10 sign-in/out cycles), and logout also answered 403 on a
+stale CSRF token. Now (supersedes D45's list): only `POST /api/auth/mock-login`,
+`GET /auth/login` and `GET /auth/callback` count. In development with AUTH_MODE=mock the
+limit is at least 1000 (`authLimitFor`); every other environment uses AUTH_RATE_LIMIT_MAX.
+Logout skips the CSRF check, swallows a failing session store and always clears the cookie;
+the frontend `signOut()` goes to the login page whatever the request returned, so the
+`nav.signOutFailed` string is gone.

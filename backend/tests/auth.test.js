@@ -414,12 +414,9 @@ describe('CSRF', () => {
 });
 
 describe('sign-out', () => {
-  test('ends the session and needs the CSRF token', async () => {
+  test('ends the session', async () => {
     const { app } = build();
     const { agent, csrf } = await signIn(app, 'GEN', ROLES.USER);
-
-    assert.equal((await agent.post('/api/auth/logout')).status, 403);
-    assert.equal((await agent.get('/api/me')).status, 200);
 
     const out = await agent.post('/api/auth/logout').set('X-CSRF-Token', csrf);
     assert.equal(out.status, 200);
@@ -427,6 +424,64 @@ describe('sign-out', () => {
     assert.match(out.headers['set-cookie'][0], /^mgp\.sid=;/);
 
     assert.equal((await agent.get('/api/me')).status, 401);
+  });
+});
+
+describe('sign-out never fails', () => {
+  test('a stale or missing CSRF token still signs the user out', async () => {
+    for (const token of ['stale-token-from-before-a-restart', null]) {
+      const { app } = build();
+      const { agent } = await signIn(app, 'GEN', ROLES.USER);
+      assert.equal((await agent.get('/api/me')).status, 200);
+
+      const req = agent.post('/api/auth/logout');
+      const out = await (token ? req.set('X-CSRF-Token', token) : req);
+      assert.equal(out.status, 200);
+      assert.deepEqual(out.body, { redirectTo: '/login.html' });
+      assert.equal((await agent.get('/api/me')).status, 401);
+    }
+  });
+
+  test('without a session it still answers with the login page', async () => {
+    const { app } = build();
+    const out = await request(app).post('/api/auth/logout');
+    assert.equal(out.status, 200);
+    assert.deepEqual(out.body, { redirectTo: '/login.html' });
+  });
+
+  test('30 sign-in and sign-out cycles in a row succeed in development', async () => {
+    // The real limits: no authRateLimit override.
+    const repo = createMemoryUserRepo();
+    const app = createApp({ config: DEV, userRepo: repo });
+    const agent = request.agent(app);
+
+    for (let i = 0; i < 30; i += 1) {
+      const { body: cfg } = await agent.get('/api/auth/config');
+      const list = await agent.get('/api/auth/mock-users');
+      const person = list.body.companies[0].users[0];
+
+      const login = await agent
+        .post('/api/auth/mock-login')
+        .set('X-CSRF-Token', cfg.csrfToken)
+        .send({ userId: person.id });
+      assert.equal(login.status, 200, `sign-in ${i}`);
+
+      const out = await agent
+        .post('/api/auth/logout')
+        .set('X-CSRF-Token', login.body.csrfToken);
+      assert.equal(out.status, 200, `sign-out ${i}`);
+    }
+  });
+
+  test('sign-out is never counted against the sign-in limit', async () => {
+    const app = createApp({
+      config: DEV,
+      userRepo: createMemoryUserRepo(),
+      authRateLimit: { limit: 1, windowMs: 60_000 },
+    });
+    for (let i = 0; i < 5; i += 1) {
+      assert.equal((await request(app).post('/api/auth/logout')).status, 200);
+    }
   });
 });
 
@@ -610,9 +665,6 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
     await agent.get('/auth/callback').query({ code: 'good', state: msal.url.state });
     const { csrfToken } = (await agent.get('/api/me')).body;
 
-    for (const path of ['/auth/logout', '/api/auth/logout']) {
-      assert.equal((await agent.post(path)).status, 403, path);
-    }
     const out = await agent.post('/auth/logout').set('X-CSRF-Token', csrfToken);
     assert.equal(
       out.body.redirectTo,

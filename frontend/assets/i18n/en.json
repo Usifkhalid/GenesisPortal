@@ -26,7 +26,6 @@
     "collapse": "Collapse",
     "switchCompany": "Switch company",
     "companyCurrent": "Company: {company}. Switch company",
-    "signOutFailed": "Could not sign out. Try again",
     "roomsShort": "Rooms"
   },
   "lang": {

@@ -34,14 +34,20 @@ export async function loadSession() {
 
 /**
  * Ends the session, then goes where the server says: the login page, or
- * Entra's own sign-out when that is how the person signed in. A failure is
- * the caller's to show, on the control that was pressed.
+ * Entra's own sign-out when that is how the person signed in. It never fails
+ * from the person's side: if the request does not work (expired session, no
+ * signal, a server that restarted) they still land on the login page.
  */
 export async function signOut() {
-  const { redirectTo } = await api('/api/auth/logout', {
-    method: 'POST',
-    redirectOn401: false,
-    quiet: true,
-  });
+  let redirectTo = '/login.html';
+  try {
+    ({ redirectTo } = await api('/api/auth/logout', {
+      method: 'POST',
+      redirectOn401: false,
+      quiet: true,
+    }));
+  } catch {
+    // Falls through to the login page.
+  }
   location.assign(redirectTo);
 }

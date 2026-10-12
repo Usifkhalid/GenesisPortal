@@ -199,7 +199,7 @@ export function createApp(options = {}) {
 
   app.use('/api', apiLimiter(options.rateLimit));
   // Entra's routes are /auth/*; the mock ones and sign-out are /api/auth/*.
-  app.use(['/api/auth', '/auth'], authLimiter(options.authRateLimit));
+  app.use(['/api/auth', '/auth'], authLimiter(options.authRateLimit, config));
 
   app.use(express.json({ limit: '100kb' }));
 
@@ -218,7 +218,14 @@ export function createApp(options = {}) {
     next();
   });
   app.use(stateful, sessionMiddleware(config, store));
-  app.use(stateful, csrfProtection);
+  // Signing out is never refused: a stale token (a restarted server, a second
+  // tab) must not keep anyone signed in. Forcing a sign-out is harmless.
+  const logoutPaths = new Set(['/api/auth/logout', '/auth/logout']);
+  app.use(stateful, (req, res, next) =>
+    req.method === 'POST' && logoutPaths.has(req.originalUrl.split('?')[0])
+      ? next()
+      : csrfProtection(req, res, next)
+  );
 
   app.use(publicAuthRoutes({ config, repo, msalClient: options.msalClient }));
 
