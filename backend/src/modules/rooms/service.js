@@ -141,7 +141,7 @@ export function createRoomService({
    * already changed: a failure here is logged and never fails the request.
    * @param {object} first  the booking row (the first of a series)
    * @param {{ nameEn: string, nameAr: string } | null} room
-   * @param {'booking.confirmed' | 'booking.cancelled'} key
+   * @param {'booking.confirmed' | 'booking.cancelled' | 'booking.moved'} key
    * @param {number} count  how many occurrences the change covers
    * @param {object} [extra]
    */
@@ -587,25 +587,45 @@ export function createRoomService({
   /** Marks rows cancelled because Exchange no longer has their event. */
   const dropGone = (row) => store.cancelBookings([row.id], { at: now(), byId: null });
 
-  /** One occurrence's subject or time. */
+  /**
+   * One occurrence's subject, time or room. An administrator moving someone
+   * else's meeting says why; the organiser is told what changed and why.
+   */
   async function updateBooking(req, id, body) {
     const user = requireUser(req);
     const row = await managedBooking(req, id);
     const at = now();
+    const byAdmin = row.organiserId !== user.id;
 
-    const moved =
+    const rescheduled =
       body.start !== undefined &&
       (body.start.getTime() !== row.startAt.getTime() ||
         body.end.getTime() !== row.endAt.getTime());
+    const roomChanged = body.roomId !== undefined && body.roomId !== row.roomId;
     const renamed = body.subject !== undefined && body.subject !== row.subject;
-    if (!moved && !renamed) return bookingView(req, row);
+    if (!rescheduled && !roomChanged && !renamed) return bookingView(req, row);
+
+    const moved = rescheduled || roomChanged;
+    if (moved && byAdmin && !body.reason) {
+      throw new HttpError(400, 'reason_required', 'Say why this booking is being moved.');
+    }
 
     const graph = await getGraph();
+    const oldRoom = await store.getRoom(row.roomId);
+    let room = oldRoom;
+    if (roomChanged) {
+      room = await usableRoom(req, body.roomId);
+      // The room must be one the booking's own company may use.
+      if (room.companyIds.length > 0 && !room.companyIds.includes(row.companyId)) {
+        throw notFound();
+      }
+    }
     if (moved) {
-      const slot = { start: body.start, end: body.end };
+      const slot = rescheduled
+        ? { start: body.start, end: body.end }
+        : { start: row.startAt, end: row.endAt };
       checkSlot(slot, await hoursFor(row.companyId), at);
-      const room = await store.getRoom(row.roomId);
-      const conflicts = await findConflicts(graph, room, [slot], row);
+      const conflicts = await findConflicts(graph, room, [slot], roomChanged ? null : row);
       if (conflicts.length > 0) throw conflictError(conflicts);
     }
 
@@ -614,7 +634,8 @@ export function createRoomService({
         organiser: await organiserFor(req, row.organiserId),
         eventId: row.graphEventId,
         ...(renamed ? { subject: body.subject } : {}),
-        ...(moved ? { start: body.start, end: body.end } : {}),
+        ...(rescheduled ? { start: body.start, end: body.end } : {}),
+        ...(roomChanged ? { room: { email: room.mailboxEmail, name: room.nameEn } } : {}),
       });
     } catch (err) {
       if (err instanceof GraphError && err.code === 'event_not_found') await dropGone(row);
@@ -623,22 +644,37 @@ export function createRoomService({
 
     const patch = {
       ...(renamed ? { subject: body.subject } : {}),
-      ...(moved ? { startAt: body.start, endAt: body.end } : {}),
+      ...(rescheduled ? { startAt: body.start, endAt: body.end } : {}),
+      ...(roomChanged ? { roomId: room.id } : {}),
     };
     const after = await store.transaction(async (tx) => {
       const updated = await tx.updateBooking(row.id, patch);
-      if (row.organiserId !== user.id) {
+      if (byAdmin) {
         await writeAudit(
           req,
           'booking.admin.update',
           'Booking',
           bookingSnapshot(row),
-          bookingSnapshot(updated),
+          { ...bookingSnapshot(updated), ...(body.reason ? { reason: body.reason } : {}) },
           { tx, entityId: row.id, companyId: row.companyId }
         );
       }
       return updated;
     });
+
+    if (byAdmin && moved) {
+      const [person] = await store.getUsers([user.id]).catch(() => []);
+      const was = describeRange(row.startAt, row.endAt);
+      const wasEn = oldRoom?.nameEn ?? '';
+      const wasAr = oldRoom?.nameAr || wasEn;
+      await tellOrganiser(after, room, 'booking.moved', 1, {
+        actor: person
+          ? { en: person.displayNameEn, ar: person.displayNameAr || person.displayNameEn }
+          : '',
+        reason: body.reason,
+        was: { en: `${wasEn}, ${was.en}`, ar: `${wasAr}، ${was.ar}` },
+      });
+    }
     return bookingView(req, after);
   }
 

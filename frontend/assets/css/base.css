@@ -433,3 +433,8 @@ th {
 html:not([lang='ar']) [data-lang='ar'] {
   font-family: var(--font-system);
 }
+
+/* A ticket number (IT-2026-00042) never breaks at its hyphens. */
+.ticket-no {
+  white-space: nowrap;
+}

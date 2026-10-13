@@ -7,7 +7,7 @@
 
 import { api } from '../api.js';
 import { formatDateTime } from '../format.js';
-import { esc } from '../html.js';
+import { esc, keepTicketNumbers } from '../html.js';
 import { getLocale, t } from '../i18n.js';
 import { describe } from '../notification-text.js';
 
@@ -32,8 +32,8 @@ export function notificationHtml(item, { block = 'notice-item' } = {}) {
       data-notification="${esc(item.id)}" data-notice-unread="${unread}">
     <span class="${block}__title">${
       unread ? `<span class="u-visually-hidden">${esc(t('notification.unread'))}: </span>` : ''
-    }<bdi>${esc(title)}</bdi></span>
-    ${detail ? `<span class="${block}__detail"><bdi>${esc(detail)}</bdi></span>` : ''}
+    }<bdi>${keepTicketNumbers(esc(title))}</bdi></span>
+    ${detail ? `<span class="${block}__detail"><bdi>${keepTicketNumbers(esc(detail))}</bdi></span>` : ''}
     <span class="${block}__time">${esc(formatDateTime(item.createdAt))}</span>
   </a>`;
 }

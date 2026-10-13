@@ -287,14 +287,32 @@ export function createClient(deps = {}) {
       };
     },
 
-    async updateEvent({ organiser, eventId, subject, start, end }) {
+    async updateEvent({ organiser, eventId, subject, start, end, room }) {
       const { base, token } = await calendarOf(organiser);
+      let roomChange = {};
+      if (room) {
+        // Swap the room resource among the attendees, keep the people.
+        const current = await call(
+          'GET',
+          `${base}/events/${encodeURIComponent(eventId)}?$select=attendees`,
+          { token }
+        );
+        if (!current) throw new GraphError('event_not_found');
+        roomChange = {
+          location: { displayName: room.name, locationEmailAddress: room.email },
+          attendees: [
+            ...(current.attendees ?? []).filter((a) => a.type !== 'resource'),
+            { emailAddress: { address: room.email, name: room.name }, type: 'resource' },
+          ],
+        };
+      }
       const updated = await call('PATCH', `${base}/events/${encodeURIComponent(eventId)}`, {
         token,
         body: {
           ...(subject === undefined ? {} : { subject }),
           ...(start ? { start: cairoTime(start) } : {}),
           ...(end ? { end: cairoTime(end) } : {}),
+          ...roomChange,
         },
       });
       if (!updated) throw new GraphError('event_not_found');

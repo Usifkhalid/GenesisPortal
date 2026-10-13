@@ -129,7 +129,7 @@ export async function render(root) {
         }
       </section>
 
-      <section class="stack" aria-labelledby="syncHistoryHead">
+      <div class="stack">
         <h2 class="card__title" id="syncHistoryHead">${esc(t('admin.sync.history'))}</h2>
         ${
           items.length === 0
@@ -153,7 +153,7 @@ export async function render(root) {
                 </table>
               </div>`
         }
-      </section>
+      </div>
     </div>`;
 
     root.querySelector('#syncRun').addEventListener('click', () => start(false));

@@ -131,7 +131,7 @@ export function pair(key, value, extra = '') {
 }
 
 /** The ticket number, set left to right in either language. */
-export const numberHtml = (number) => `<bdi dir="ltr">${esc(number)}</bdi>`;
+export const numberHtml = (number) => `<bdi dir="ltr" class="ticket-no">${esc(number)}</bdi>`;
 
 /** Text with its line breaks, safely. */
 export const paragraphs = (text) =>

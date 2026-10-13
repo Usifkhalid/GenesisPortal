@@ -46,7 +46,8 @@
     "switchCompany": "Switch company",
     "companyCurrent": "Company: {company}. Switch company",
     "roomsShort": "Rooms",
-    "devOutbox": "Mail outbox"
+    "devOutbox": "Mail outbox",
+    "help": "Help"
   },
   "lang": {
     "label": "Language",
@@ -254,6 +255,10 @@
         "cancelled": {
           "title": "Booking cancelled: {room}, {when}{more}",
           "detail": "Cancelled by {actor}. Reason: {reason}"
+        },
+        "moved": {
+          "title": "Booking moved: {room}, {when}",
+          "detail": "Moved by {actor}, was {was}. Reason: {reason}"
         }
       },
       "announcement": {
@@ -979,7 +984,22 @@
       "organiser": "Booked by",
       "reason": "Reason",
       "reasonHelp": "Kept on the booking and in the audit log, for the person who booked it.",
-      "reasonRequired": "Say why this booking is being cancelled."
+      "reasonRequired": "Say why this booking is being cancelled.",
+      "move": "Move",
+      "moveNamed": "Move {subject}",
+      "moveTitle": "Move this booking",
+      "moveRoom": "Room",
+      "moveStart": "Starts",
+      "moveEnd": "Ends",
+      "moveReasonHelp": "Sent to the person who booked it and kept in the audit log.",
+      "moveReasonRequired": "Say why this booking is being moved.",
+      "moveDateRequired": "Choose a date.",
+      "moveEndBefore": "The end must be after the start.",
+      "moveNothing": "Choose another room or another time.",
+      "moveKeep": "Leave as it is",
+      "moveConfirm": "Move booking",
+      "movedTitle": "Booking moved",
+      "movedText": "The person who booked it has been told."
     }
   },
   "audit": {
@@ -2052,6 +2072,16 @@
       "reload": "Refresh",
       "preview": "Preview of the email",
       "unavailableTitle": "Not available here"
+    }
+  },
+  "help": {
+    "title": "Help",
+    "lead": "Short answers for the things people ask most. If yours is not here, ask IT.",
+    "sections": "Topics",
+    "contact": {
+      "title": "Still stuck?",
+      "text": "Ask IT. A ticket reaches the whole IT team, whichever company you work for.",
+      "action": "Contact IT: new ticket"
     }
   }
 }

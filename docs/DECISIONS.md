@@ -1336,3 +1336,20 @@ work is given out by a Lead, and the ticket says whose it is.
 - **Cost:** a Lead who is away leaves unassigned tickets unworked; the Lead's queue count
   ("unassigned") already puts them first. If cover is needed later, the answer is assigning,
   not a wider rule.
+
+### D123. An administrator moves a booking: a reason, the new room, the organiser told
+
+- **Decision:** `PATCH /api/bookings/:id` also takes `roomId` and `reason`. An administrator who changes the time or room of someone else's booking must give a reason (400 `reason_required`); conflicts are re-checked in the target room (the booking's own old slot is ignored only in the same room); the audit entry carries the reason; the organiser gets a `booking.moved` notification (in-app and email, both languages) saying who, what it was, and why. Renaming needs no reason. Graph `updateEvent` takes an optional `room` (real: swaps the resource attendee and location).
+- **Why:** the screen asked for "move to another time or room" with a reason; the existing PATCH moved time only and told nobody.
+- **Cost:** the real Graph room swap is unproven against the tenant (same as session 19).
+
+### D124. Dates and times: day first, 24-hour, written out beside native fields
+
+- **Decision:** English dates already render "13 Oct 2026". Chrome draws native date and time fields in the device's regional order and ignores the page's language, so `date-inputs.js` sets `lang="en-GB"` and writes the chosen date ("Tue, 13 Oct 2026") or time (24-hour) beside each field in English. Arabic is unchanged.
+- **Why:** a custom date field would replace a control that is accessible and picker-ready everywhere, and break every flow that fills it.
+- **Cost:** on a device set to US order the field itself still shows month first; the words below it do not.
+
+### D125. Help page, quieter arrow buttons, ticket numbers on one line
+
+- **Decision:** `#help` (user menu and More sheet) holds seven topics of three answers each and a button to a new ticket. The lime round arrow is a 32px washed disc (tap target still 44px). A ticket number is wrapped in `.ticket-no` (nowrap, left to right) wherever it appears, including notification text via `keepTicketNumbers`. List pages whose whole result is empty use the framed `.empty`.
+- **Why:** session 26 review items 1, 2, 4 and the consistency sweep.

@@ -29,6 +29,7 @@ import {
   notificationHtml,
 } from './components/notification-item.js';
 import { esc } from './html.js';
+import { initDateInputs } from './date-inputs.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
 const STORED_RAIL_KEY = 'mgp.railCollapsed';
@@ -740,6 +741,7 @@ async function init() {
   initSignOut();
   initOfflineState(me.serviceWorker === true);
   initSkipLink();
+  initDateInputs();
   document.addEventListener('announcements:changed', refreshAnnouncementCount);
   refreshAnnouncementCount();
   document.addEventListener('tickets:changed', refreshTicketCount);

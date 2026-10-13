@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="assets/css/layout.css" />
     <link rel="stylesheet" href="assets/css/components.css" />
     <link rel="stylesheet" href="assets/css/pages/home.css" />
+    <link rel="stylesheet" href="assets/css/pages/help.css" />
     <link rel="stylesheet" href="assets/css/pages/notifications.css" />
     <link rel="stylesheet" href="assets/css/pages/admin.css" />
     <link rel="stylesheet" href="assets/css/pages/announcements.css" />
@@ -264,6 +265,10 @@
                   <span data-i18n="lang.ar">العربية</span>
                 </button>
                 <hr class="menu__divider" />
+                <a class="menu__item" href="#help" id="helpLink">
+                  <svg aria-hidden="true" focusable="false"><use href="#i-help" /></svg>
+                  <span data-i18n="nav.help">Help</span>
+                </a>
                 <button type="button" class="menu__item" id="signOutBtn">
                   <svg aria-hidden="true" focusable="false"><use href="#i-signOut" /></svg>
                   <span data-i18n="nav.signOut">Sign out</span>
@@ -335,6 +340,10 @@
           <svg aria-hidden="true" focusable="false"><use href="#i-announcements" /></svg>
           <span data-i18n="nav.announcements">Announcements</span>
           <span class="nav-link__count" data-announcement-count hidden></span>
+        </a>
+        <a class="menu__item" href="#help" data-nav="help" data-dialog-close>
+          <svg aria-hidden="true" focusable="false"><use href="#i-help" /></svg>
+          <span data-i18n="nav.help">Help</span>
         </a>
         <div
           class="stack stack--tight"

@@ -96,8 +96,15 @@ export const bookingUpdateBody = z
     subject: subject.optional(),
     start: instant.optional(),
     end: instant.optional(),
+    /** Another room. */
+    roomId: z.guid().optional(),
+    /** Why. Required of an administrator moving someone else's meeting. */
+    reason: z.string().trim().min(1).max(500).optional(),
   })
-  .refine((body) => Object.keys(body).length > 0, 'nothing to change')
+  .refine(
+    (body) => ['subject', 'start', 'roomId'].some((key) => body[key] !== undefined),
+    'nothing to change'
+  )
   .refine((body) => (body.start === undefined) === (body.end === undefined), {
     message: 'send start and end together',
   });

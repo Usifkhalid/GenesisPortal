@@ -50,6 +50,7 @@ const ROUTES = [
   '#audit-log',
   '#notifications',
   '#notifications/preferences',
+  '#help',
 ];
 
 const STANDARDS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];

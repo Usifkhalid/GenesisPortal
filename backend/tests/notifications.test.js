@@ -421,6 +421,19 @@ describe('bookings and announcements', () => {
     assert.match(w.say(w.rows(w.gen)[0], 'ar').title, /^تم الحجز:/);
 
     const id = booked.body.items[0].id;
+    const moved = await w.caGen.patch(`/api/bookings/${id}`, {
+      start: at(MONDAY, '14:00'),
+      end: at(MONDAY, '15:00'),
+      reason: 'The room is needed for an audit',
+    });
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    const movedNote = w.say(w.rows(w.gen).at(-1));
+    assert.match(movedNote.title, /^Booking moved: .*, .*14:00–15:00/);
+    assert.match(
+      movedNote.detail,
+      /Moved by .*, was .*10:00–11:00\. Reason: The room is needed/
+    );
+
     const cancelled = await w.caGen.post(`/api/bookings/${id}/cancel`, {
       scope: 'one',
       reason: 'The room is needed for an audit',
@@ -429,7 +442,7 @@ describe('bookings and announcements', () => {
     const last = w.say(w.rows(w.gen).at(-1));
     assert.match(last.title, /^Booking cancelled:/);
     assert.match(last.detail, /Cancelled by .*\. Reason: The room is needed for an audit/);
-    assert.equal((await w.mailTo(w.gen)).length, 2);
+    assert.equal((await w.mailTo(w.gen)).length, 3);
   });
 
   test('a pinned announcement tells its company once; other companies hear nothing', async () => {

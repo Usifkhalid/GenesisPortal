@@ -26,6 +26,7 @@ export const TEMPLATES = Object.freeze({
   'ticket.slaBreached': 'tickets',
   'booking.confirmed': 'bookings',
   'booking.cancelled': 'bookings',
+  'booking.moved': 'bookings',
   'announcement.pinned': 'announcements',
 });
 

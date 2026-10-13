@@ -1,0 +1,65 @@
+{
+  "signin": {
+    "title": "Signing in",
+    "q1": "How do I sign in?",
+    "a1": "Use your company work account. If you work for more than one company, the company switcher at the top of the menu changes which company you are working in.",
+    "q2": "How do I change the language?",
+    "a2": "Open the account menu (your name, top right) and choose English or العربية. The portal remembers your choice on this device.",
+    "q3": "I cannot sign in. What now?",
+    "a3": "Check that you are using your work account and the right password. If it still fails, open a ticket with IT and say which device and network you are on."
+  },
+  "rooms": {
+    "title": "Rooms",
+    "q1": "How do I book a room?",
+    "a1": "Open Rooms, pick a day and a time, choose a free room and confirm. You can also use \"Find a room\" to search by time, number of people and equipment.",
+    "q2": "Can I change or cancel a booking?",
+    "a2": "Yes. Open the booking from Rooms and choose Cancel. Cancel rooms you no longer need so others can use them.",
+    "q3": "Why can I not book on a Friday or Saturday?",
+    "a3": "The working week runs Sunday to Thursday. Rooms are booked within working hours only."
+  },
+  "tickets": {
+    "title": "Support tickets",
+    "q1": "How do I ask IT for help?",
+    "a1": "Open Tickets, choose New ticket, pick what is wrong, say how urgent it is and describe it. You can paste a screenshot with Ctrl+V.",
+    "q2": "How do I follow my ticket?",
+    "a2": "Open Tickets to see your tickets and their status. You are notified when IT replies or the status changes.",
+    "q3": "My problem came back. Can I reopen it?",
+    "a3": "Yes, within 7 days of a ticket being resolved. After that, open a new ticket and mention the old number."
+  },
+  "announcements": {
+    "title": "Announcements",
+    "q1": "Where do I see company news?",
+    "a1": "Open Announcements. Pinned posts stay at the top and the number beside the menu item counts what you have not read.",
+    "q2": "Who can see an announcement?",
+    "a2": "Each post is written for one company, a few, or everyone. You see the ones meant for you.",
+    "q3": "Can I get a message when something important is posted?",
+    "a3": "Yes. Pinned announcements notify you in the bell and by email, unless you switch that off in your notification settings."
+  },
+  "directory": {
+    "title": "Directory",
+    "q1": "How do I find a colleague?",
+    "a1": "Open Directory or use the search box at the top. Type a name, a job title or a department.",
+    "q2": "What can I see about a person?",
+    "a2": "Their job title, department, company, office and how to reach them. Select a person to open their card.",
+    "q3": "Something about me is wrong. Who fixes it?",
+    "a3": "Your details come from the company directory. Open a ticket with IT and say what should change."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "q1": "Where are my notifications?",
+    "a1": "Click the bell at the top. \"See all\" opens the full list, where you can mark everything as read.",
+    "q2": "How do I stop emails?",
+    "a2": "Open the bell, then Settings. For tickets, bookings and announcements you can switch the portal and the email on or off separately.",
+    "q3": "I did not get an email I expected.",
+    "a3": "Check your notification settings and your junk folder. The portal always shows the notification in the bell."
+  },
+  "install": {
+    "title": "Install on a phone",
+    "q1": "Can I put the portal on my home screen?",
+    "a1": "Yes. In Chrome on Android open the menu (three dots) and choose \"Install app\" or \"Add to Home screen\". On iPhone use Share, then \"Add to Home Screen\".",
+    "q2": "Does it work with a weak signal?",
+    "a2": "The portal loads quickly and keeps what you last opened. With no signal it says so and shows your last saved view; changes need a connection.",
+    "q3": "How do I update it?",
+    "a3": "It updates itself. When a new version is ready a banner offers \"Update now\"."
+  }
+}

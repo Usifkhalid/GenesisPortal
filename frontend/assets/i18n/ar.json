@@ -46,7 +46,8 @@
     "switchCompany": "تبديل الشركة",
     "companyCurrent": "الشركة: {company}. تبديل الشركة",
     "roomsShort": "القاعات",
-    "devOutbox": "البريد الصادر"
+    "devOutbox": "البريد الصادر",
+    "help": "المساعدة"
   },
   "lang": {
     "label": "اللغة",
@@ -254,6 +255,10 @@
         "cancelled": {
           "title": "أُلغي الحجز: {room}، {when}{more}",
           "detail": "ألغاه {actor}. السبب: {reason}"
+        },
+        "moved": {
+          "title": "نُقل الحجز: {room}، {when}",
+          "detail": "نقله {actor}، وكان {was}. السبب: {reason}"
         }
       },
       "announcement": {
@@ -979,7 +984,22 @@
       "organiser": "صاحب الحجز",
       "reason": "السبب",
       "reasonHelp": "يُحفظ مع الحجز وفي سجل التدقيق، ليعرفه صاحب الحجز.",
-      "reasonRequired": "اذكر سبب إلغاء هذا الحجز."
+      "reasonRequired": "اذكر سبب إلغاء هذا الحجز.",
+      "move": "نقل",
+      "moveNamed": "نقل {subject}",
+      "moveTitle": "نقل هذا الحجز",
+      "moveRoom": "القاعة",
+      "moveStart": "يبدأ",
+      "moveEnd": "ينتهي",
+      "moveReasonHelp": "يُرسل إلى من حجز القاعة ويُحفظ في سجل التدقيق.",
+      "moveReasonRequired": "اذكر سبب نقل هذا الحجز.",
+      "moveDateRequired": "اختر التاريخ.",
+      "moveEndBefore": "يجب أن يكون وقت الانتهاء بعد وقت البدء.",
+      "moveNothing": "اختر قاعة أخرى أو وقتًا آخر.",
+      "moveKeep": "اتركه كما هو",
+      "moveConfirm": "نقل الحجز",
+      "movedTitle": "نُقل الحجز",
+      "movedText": "تم إبلاغ من حجز القاعة."
     }
   },
   "audit": {
@@ -2052,6 +2072,16 @@
       "reload": "تحديث",
       "preview": "معاينة الرسالة",
       "unavailableTitle": "غير متاحة هنا"
+    }
+  },
+  "help": {
+    "title": "المساعدة",
+    "lead": "إجابات قصيرة عن أكثر الأسئلة شيوعًا. إن لم تجد سؤالك هنا فاسأل قسم تقنية المعلومات.",
+    "sections": "المواضيع",
+    "contact": {
+      "title": "ما زلت بحاجة إلى مساعدة؟",
+      "text": "اسأل قسم تقنية المعلومات. تصل التذكرة إلى فريق تقنية المعلومات كله مهما كانت شركتك.",
+      "action": "تواصل مع تقنية المعلومات: تذكرة جديدة"
     }
   }
 }

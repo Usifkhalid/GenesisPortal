@@ -154,14 +154,15 @@ export function createClient(
       return { id: seriesMasterId ?? rows[0].id, seriesMasterId, events: rows.map(eventView) };
     },
 
-    async updateEvent({ eventId, subject, start, end }) {
+    async updateEvent({ eventId, subject, start, end, room }) {
       const row = await existing(eventId);
       const next = {
         subject: subject ?? row.subject,
         startAt: start ?? row.startAt,
         endAt: end ?? row.endAt,
+        ...(room ? { roomEmail: room.email } : {}),
       };
-      await assertFree(row.roomEmail, [next], row.id);
+      await assertFree(next.roomEmail ?? row.roomEmail, [next], row.id);
       await calendar.patch([row.id], next);
       return eventView({ ...row, ...next });
     },

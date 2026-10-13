@@ -89,7 +89,8 @@ import { env } from '../../config/env.js';
  *   attendee. `occurrences` is every occurrence the portal worked out; the
  *   answer lists one event per occurrence. Throws GraphError room_conflict.
  * @property {(input: { organiser: GraphOrganiser, eventId: string, subject?: string,
- *   start?: Date, end?: Date }) => Promise<GraphEvent>} updateEvent  one occurrence
+ *   start?: Date, end?: Date, room?: { email: string, name: string } }) =>
+ *   Promise<GraphEvent>} updateEvent  one occurrence; `room` moves it to another room
  * @property {(input: { organiser: GraphOrganiser, eventId: string, scope?: 'one' | 'series',
  *   from?: Date }) => Promise<{ cancelled: string[] }>} cancelEvent
  *   one occurrence, or the rest of its series from `from`

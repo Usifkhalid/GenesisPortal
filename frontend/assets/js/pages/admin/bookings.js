@@ -18,14 +18,18 @@ import { loadFailedNotice } from '../../components/notice.js';
 import { showToast } from '../../components/toast.js';
 import {
   addDays,
+  cairoMinutes,
   cairoToday,
   cairoYmd,
+  clockOf,
   formatDay,
   formatNumber,
   formatTimeRange,
+  fromCairoInput,
 } from '../../format.js';
 import { esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
+import { errorText as roomErrorText } from '../rooms/shared.js';
 import { personName, toastKeys } from './shared.js';
 
 const PAGE_SIZE = 25;
@@ -99,6 +103,147 @@ async function askCancel(booking) {
   form.elements.reason.addEventListener('input', () => setFieldError(form, 'abkReason', ''));
   form.elements.reason.focus();
   return (await closed) ?? null;
+}
+
+/**
+ * Moves one booking to another time or room. Resolves when it is saved or the
+ * dialog is dismissed: true if the booking changed.
+ * @param {object} booking
+ * @param {{ id: string, nameEn: string, nameAr?: string }[]} rooms
+ */
+async function askMove(booking, rooms) {
+  const date = cairoYmd(booking.start);
+  const bodyHtml = `<form id="mvForm" class="stack" novalidate>
+    <p>${esc(`${booking.subject ?? ''} · ${localized(booking.room)} · ${when(booking)}`)}</p>
+    ${field({
+      id: 'mvRoom',
+      label: t('admin.bookings.moveRoom'),
+      control: `<select class="select" id="mvRoom" name="roomId" aria-describedby="${describedBy(
+        'mvRoom',
+        false
+      )}">${rooms
+        .map(
+          (r) =>
+            `<option value="${esc(r.id)}" ${r.id === booking.room.id ? 'selected' : ''}>${esc(
+              localized(r)
+            )}</option>`
+        )
+        .join('')}</select>`,
+    })}
+    <div class="field-row">
+      ${field({
+        id: 'mvDate',
+        label: t('field.date'),
+        required: true,
+        control: `<input class="input" id="mvDate" name="date" type="date" required
+          value="${esc(date)}" aria-describedby="${describedBy('mvDate', false)}" />`,
+      })}
+      ${field({
+        id: 'mvStart',
+        label: t('admin.bookings.moveStart'),
+        required: true,
+        control: `<input class="input" id="mvStart" name="start" type="time" step="900" required
+          value="${clockOf(cairoMinutes(booking.start))}"
+          aria-describedby="${describedBy('mvStart', false)}" />`,
+      })}
+      ${field({
+        id: 'mvEnd',
+        label: t('admin.bookings.moveEnd'),
+        required: true,
+        control: `<input class="input" id="mvEnd" name="end" type="time" step="900" required
+          value="${clockOf(cairoMinutes(booking.end))}"
+          aria-describedby="${describedBy('mvEnd', false)}" />`,
+      })}
+    </div>
+    <p class="field__help">${esc(t('field.timezoneNote'))}</p>
+    ${field({
+      id: 'mvReason',
+      label: t('admin.bookings.reason'),
+      required: !booking.mine,
+      help: t('admin.bookings.moveReasonHelp'),
+      control: `<textarea class="textarea" id="mvReason" name="reason" rows="3"
+        maxlength="${REASON_MAX}" aria-describedby="${describedBy('mvReason')}"></textarea>`,
+    })}
+    <p class="field__error" id="mvForm-error" role="alert" hidden></p>
+  </form>`;
+
+  const { dialog, close, closed } = openModal({
+    title: t('admin.bookings.moveTitle'),
+    bodyHtml,
+    footerHtml: `<button type="button" class="btn btn--ghost" data-modal-close>
+        <span class="btn__label">${esc(t('admin.bookings.moveKeep'))}</span>
+      </button>
+      <button type="submit" class="btn btn--primary" form="mvForm">
+        <span class="btn__label">${esc(t('admin.bookings.moveConfirm'))}</span>
+      </button>`,
+  });
+  const form = dialog.querySelector('#mvForm');
+  const summary = form.querySelector('#mvForm-error');
+  const submit = dialog.querySelector('button[form="mvForm"]');
+  const say = (message) => {
+    summary.textContent = message;
+    summary.hidden = !message;
+  };
+
+  form.addEventListener('input', () => {
+    say('');
+    for (const id of ['mvDate', 'mvStart', 'mvEnd', 'mvReason']) setFieldError(form, id, '');
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    say('');
+    const reason = form.elements.reason.value.trim();
+    const start = fromCairoInput(`${form.elements.date.value}T${form.elements.start.value}`);
+    const end = fromCairoInput(`${form.elements.date.value}T${form.elements.end.value}`);
+    if (!form.elements.date.value) {
+      setFieldError(form, 'mvDate', t('admin.bookings.moveDateRequired'));
+      form.elements.date.focus();
+      return;
+    }
+    if (!start || !end || end <= start) {
+      setFieldError(form, 'mvEnd', t('admin.bookings.moveEndBefore'));
+      form.elements.end.focus();
+      return;
+    }
+    const roomId = form.elements.roomId.value;
+    const sameTime =
+      new Date(start).getTime() === new Date(booking.start).getTime() &&
+      new Date(end).getTime() === new Date(booking.end).getTime();
+    if (sameTime && roomId === booking.room.id) {
+      say(t('admin.bookings.moveNothing'));
+      return;
+    }
+    if (!reason && !booking.mine) {
+      setFieldError(form, 'mvReason', t('admin.bookings.moveReasonRequired'));
+      form.elements.reason.focus();
+      return;
+    }
+
+    setBusy(submit, true);
+    try {
+      await api(`/api/bookings/${encodeURIComponent(booking.id)}`, {
+        method: 'PATCH',
+        quiet: true,
+        body: {
+          start,
+          end,
+          ...(roomId !== booking.room.id ? { roomId } : {}),
+          ...(reason ? { reason } : {}),
+        },
+      });
+      close(true);
+    } catch (err) {
+      setBusy(submit, false);
+      say(
+        err instanceof ApiError && err.code === 'reason_required'
+          ? t('admin.bookings.moveReasonRequired')
+          : roomErrorText(err)
+      );
+      summary.focus?.();
+    }
+  });
+  form.elements.date.focus();
+  return (await closed) === true;
 }
 
 /**
@@ -219,7 +364,15 @@ export async function render(root, { scope, ctx }) {
       <td role="cell" class="admin-actions">
         ${
           b.canManage
-            ? `<button type="button" class="btn btn--secondary btn--sm" data-cancel="${esc(b.id)}"
+            ? `${
+                cancelled
+                  ? ''
+                  : `<button type="button" class="btn btn--secondary btn--sm" data-move="${esc(b.id)}"
+                 aria-label="${esc(t('admin.bookings.moveNamed', { subject: b.subject ?? '' }))}">
+                 <span class="btn__label">${esc(t('admin.bookings.move'))}</span>
+               </button>`
+              }
+               <button type="button" class="btn btn--secondary btn--sm" data-cancel="${esc(b.id)}"
                  aria-label="${esc(t('rooms.mine.cancelNamed', { subject: b.subject ?? '' }))}">
                  <span class="btn__label">${esc(t('rooms.mine.cancel'))}</span>
                </button>`
@@ -234,7 +387,7 @@ export async function render(root, { scope, ctx }) {
     const { items, total } = result;
     count.textContent = t('admin.bookings.count', { count: formatNumber(total) });
     if (items.length === 0) {
-      body.innerHTML = `<div class="empty empty--inline">
+      body.innerHTML = `<div class="empty">
         ${icon('calendar', 'empty__mark')}
         <div class="empty__copy">
           <p class="empty__title">${esc(t('admin.bookings.emptyTitle'))}</p>
@@ -326,6 +479,24 @@ export async function render(root, { scope, ctx }) {
       state.page = Number(pager.dataset.page);
       await load();
       root.querySelector('.table-wrap')?.focus();
+      return;
+    }
+
+    const mover = event.target.closest('[data-move]');
+    if (mover) {
+      const booking = result.items.find((b) => b.id === mover.dataset.move);
+      if (!booking) return;
+      if (await askMove(booking, rooms)) {
+        showToast({
+          tone: 'success',
+          titleKey: 'admin.bookings.movedTitle',
+          textKey: 'admin.bookings.movedText',
+        });
+        await load();
+        (body.querySelector('[data-move]') ?? root.querySelector('#abStatus')).focus();
+      } else {
+        mover.focus();
+      }
       return;
     }
 

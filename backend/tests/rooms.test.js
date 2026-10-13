@@ -716,6 +716,37 @@ describe('changing and cancelling', () => {
     assertConsistent(w);
   });
 
+  test('an admin moves a booking to another room: conflicts are checked there, and a reason is needed', async () => {
+    const w = await world();
+    const [booking] = await w.mustBook(w.gen);
+    const spare = w.rooms.find((r) => r.id !== w.r1.id && r.id !== w.r2.id);
+    await w.mustBook(w.msr, { room: w.r2, from: '10:00', to: '11:00' });
+
+    const clash = await w.caGen.patch(`/api/bookings/${booking.id}`, {
+      roomId: w.r2.id,
+      reason: 'Closed for repairs',
+    });
+    assert.equal(clash.status, 409);
+    assert.equal(clash.body.error.code, 'room_conflict');
+    assert.equal(w.repo.bookings[0].roomId, w.r1.id);
+
+    const silent = await w.caGen.patch(`/api/bookings/${booking.id}`, { roomId: spare.id });
+    assert.equal(silent.status, 400);
+    assert.equal(silent.body.error.code, 'reason_required');
+
+    const moved = await w.caGen.patch(`/api/bookings/${booking.id}`, {
+      roomId: spare.id,
+      reason: 'Closed for repairs',
+    });
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    assert.equal(moved.body.room.id, spare.id);
+    assert.equal(w.repo.bookings[0].roomId, spare.id);
+    // The old room is free again.
+    assert.deepEqual(await w.busy(w.gen, MONDAY, w.r1), []);
+    assert.equal(w.repo.auditLogs.at(-1).action, 'booking.admin.update');
+    assertConsistent(w);
+  });
+
   test('nobody else can change or cancel it: another company, a colleague, an attendee', async () => {
     const w = await world();
     const [booking] = await w.mustBook(w.gen, { attendeeIds: [w.gen2.user.id] });
@@ -749,12 +780,23 @@ describe('changing and cancelling', () => {
     const w = await world();
     const [booking] = await w.mustBook(w.gen);
 
-    const moved = await w.caGen.patch(`/api/bookings/${booking.id}`, {
+    // Moving someone else's meeting needs a reason, then it is audited with it.
+    const unexplained = await w.caGen.patch(`/api/bookings/${booking.id}`, {
       start: at(MONDAY, '15:00'),
       end: at(MONDAY, '16:00'),
     });
+    assert.equal(unexplained.status, 400);
+    assert.equal(unexplained.body.error.code, 'reason_required');
+    assert.equal(w.repo.bookings[0].startAt.toISOString(), at(MONDAY, '10:00'));
+
+    const moved = await w.caGen.patch(`/api/bookings/${booking.id}`, {
+      start: at(MONDAY, '15:00'),
+      end: at(MONDAY, '16:00'),
+      reason: 'The room is needed for an audit',
+    });
     assert.equal(moved.status, 200, JSON.stringify(moved.body));
     const [edit] = w.repo.auditLogs;
+    assert.equal(JSON.parse(edit.after).reason, 'The room is needed for an audit');
     assert.deepEqual(
       [edit.action, edit.entity, edit.entityId, edit.actorId, edit.companyId],
       ['booking.admin.update', 'Booking', booking.id, w.caGen.user.id, w.genId]

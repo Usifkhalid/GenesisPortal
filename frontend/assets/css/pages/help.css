@@ -1,0 +1,73 @@
+/* ============================================================================
+ * pages/help.css — short answers per module. Native <details>, so it works
+ * with the keyboard and with no script. Tokens and logical properties only.
+ * ========================================================================= */
+
+.help__jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.help__grid {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .help__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.help__topic {
+  gap: var(--space-1);
+  scroll-margin-block-start: var(--space-16);
+}
+
+.help__topic-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.help__topic-title svg {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  flex: none;
+  color: var(--text-muted);
+}
+
+.help__item {
+  border-block-start: var(--border-1) solid var(--rule);
+}
+
+.help__item summary {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  padding-block: var(--space-2);
+  color: var(--text-strong);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.help__item p {
+  padding-block-end: var(--space-3);
+  color: var(--text-body);
+  max-inline-size: var(--measure);
+}
+
+.help__contact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.help__contact p {
+  color: var(--text-muted);
+}

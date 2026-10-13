@@ -1164,34 +1164,38 @@
  * ========================================================================= */
 
 .arrow-btn {
+  position: relative;
   display: inline-grid;
   place-items: center;
-  inline-size: var(--tap-min);
-  block-size: var(--tap-min);
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
   flex: none;
-  background: var(--highlight);
+  /* Quieter than a primary action: a pale wash of the highlight with its
+   * keyline, so it is still the lime disc people know, but "Book a room" and
+   * "New ticket" win the page. */
+  background: color-mix(in srgb, var(--highlight) 38%, var(--surface-raised));
   border: var(--border-1) solid var(--highlight-edge);
   border-radius: var(--radius-pill);
-  color: var(--highlight-on);
+  color: var(--text-strong);
   text-decoration: none;
   transition: background-color var(--dur-1) var(--ease-out);
 }
 
-@media (min-width: 48rem) {
-  .arrow-btn {
-    inline-size: var(--control-height);
-    block-size: var(--control-height);
-  }
+/* The disc is small; the tap target is not. */
+.arrow-btn::after {
+  content: '';
+  position: absolute;
+  inset: calc((var(--space-8) - var(--tap-min)) / 2);
 }
 
 .arrow-btn svg {
-  inline-size: var(--space-5);
-  block-size: var(--space-5);
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
   transition: transform var(--dur-2) var(--ease-out);
 }
 
 .arrow-btn:hover {
-  background: var(--highlight-hover);
+  background: var(--highlight);
   color: var(--highlight-on);
 }
 
@@ -2746,4 +2750,12 @@ a.person {
 /* One choice among several set in a row: a checkbox beside its word. */
 .choice--inline {
   align-items: center;
+}
+
+/* The date a native date field holds, written out in words beside it. */
+.date-echo {
+  display: block;
+  margin-block-start: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }

@@ -117,6 +117,23 @@ for (const lang of LANGUAGES) {
       await shot(page, `admin-bookings-${lang}`);
       await expectNoSidewaysScroll(page);
 
+      // Moving it needs a reason too, and it lands in the new hour.
+      await row.locator('[data-move]').click();
+      const mover = page.locator('dialog[open]');
+      await mover.locator('#mvStart').fill('13:00');
+      await mover.locator('#mvEnd').fill('14:00');
+      await mover.locator('button[type="submit"]').click();
+      await expect(mover.locator('#mvReason-error')).toHaveText(
+        t(lang, 'admin.bookings.moveReasonRequired')
+      );
+      await mover.locator('#mvReason').fill(reason);
+      await mover.locator('button[type="submit"]').click();
+      await expect(mover).toHaveCount(0);
+      await expect(
+        page.locator('.toast', { hasText: t(lang, 'admin.bookings.movedText') })
+      ).toBeVisible();
+      await expect(page.locator('#abBody tr', { hasText: subject })).toContainText('13:00');
+
       // No reason, no cancelling.
       await row.locator('[data-cancel]').click();
       const dialog = page.locator('dialog[open]');

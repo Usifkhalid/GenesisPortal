@@ -182,7 +182,7 @@ function ticketRow(_ctx, ticket) {
     : STATUS[ticket.status];
   return `<li class="record">
     <dl class="labelstrip labelstrip--compact">
-      ${pair(t('ticket.one'), `<bdi dir="ltr">${esc(ticket.number)}</bdi>`)}
+      ${pair(t('ticket.one'), `<bdi dir="ltr" class="ticket-no">${esc(ticket.number)}</bdi>`)}
       ${pair(t('field.priority'), esc(t(`ticket.priority.${ticket.priority}`)))}
       ${pair(t('ticket.due'), esc(dueLabel(ticket)))}
     </dl>

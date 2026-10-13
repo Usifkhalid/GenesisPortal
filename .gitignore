@@ -27,3 +27,6 @@ test-results/
 
 # Local project briefing, not for the repository.
 portal-project-context.md
+
+# Tool-made copy of CLAUDE.md for other coding agents; CLAUDE.md is the one source.
+AGENTS.md
