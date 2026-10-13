@@ -32,7 +32,7 @@ const IGNORED_ERRORS = [
   /status of 404 .*\/api\/tickets\/[\w-]+\)$/,
   // By design: the development outbox draws an email in a sandboxed frame with
   // no scripts; what is "blocked" is Playwright's own injected script.
-  /Blocked script execution in 'about:srcdoc'/,
+  /Blocked script execution in '[^']*\/api\/dev\/outbox\/[\w-]+\/html'/,
 ];
 
 export const test = base.extend({

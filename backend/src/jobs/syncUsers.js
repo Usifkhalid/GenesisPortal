@@ -19,6 +19,7 @@
  */
 
 import { writeAudit } from '../lib/audit.js';
+import { runLeased } from '../lib/job-lease.js';
 import { logger } from '../lib/logger.js';
 import { normalizeText, searchKeyOf } from '../lib/text-search.js';
 import { HttpError } from '../middleware/errors.js';
@@ -287,7 +288,9 @@ async function fetchManagers(client, graphUsers, warnings, concurrency = 8) {
         warnings.push({
           code: 'manager_lookup_failed',
           id: g.id,
-          message: String(err.message),
+          // The error's code, not its text: this is stored and shown to an
+          // admin, and a provider's message can carry internals.
+          message: String(err.code ?? err.name ?? 'error'),
         });
       }
     }
@@ -434,14 +437,14 @@ export function cairoParts(date, timeZone = 'Africa/Cairo') {
 
 /**
  * Runs the sync once a night, in the first minute of the 02:00 Cairo hour
- * that the process is up for. A second instance that loses the race gets a 409
- * from the runner and carries on.
+ * that the process is up for. With two app instances the job lease
+ * (lib/job-lease.js), held for that hour, lets only one of them start it.
  * @returns {{ stop: () => void }}
  */
 export function startNightlySync(
   runner,
   log = logger,
-  { hour = 2, checkMs = 60_000, now = () => new Date() } = {}
+  { hour = 2, checkMs = 60_000, now = () => new Date(), lease, telemetry } = {}
 ) {
   let lastDay = null;
   const tick = async () => {
@@ -449,7 +452,9 @@ export function startNightlySync(
     if (at.hour !== hour || at.day === lastDay) return;
     lastDay = at.day;
     try {
-      await runner.start({ source: 'schedule' });
+      await runLeased({ name: 'user-sync', periodMs: 60 * 60_000, lease, telemetry, log }, () =>
+        runner.start({ source: 'schedule' })
+      );
     } catch (err) {
       if (err?.code === 'sync_in_progress')
         log.info('nightly user sync skipped: already running');

@@ -3,13 +3,22 @@
  * can drive the app with supertest without binding a port.
  *
  * Shape: request ID and log line, security headers, compression, rate limits,
- * the session and its CSRF check, the sign-in routes, then a guard that turns
- * away anyone not signed in, then every other API route, then the static
- * frontend and the 404 and error handlers. The frontend is plain files with no
+ * the health probes, the session (with its two lifetimes) and its CSRF check,
+ * the sign-in routes, then a guard that turns away anyone not signed in, then
+ * every other API route, then the static frontend and the 404 and error
+ * handlers. The frontend is plain files with no
  * build step, so this server is the only thing that has to run.
  *
  * /api is closed by default: a route is public only if it is mounted above the
  * guard. A new module cannot forget to ask for a session.
+ *
+ * CORS is closed: no Access-Control-* header is ever sent, so no other origin
+ * can read an answer or send a request that needs a preflight. The portal's
+ * pages and its API share one origin and need none.
+ *
+ * Every route mounted here is listed in app.locals.routes, which is what
+ * tests/authz-matrix.test.js checks its table against: a route added without
+ * an entry there fails that test.
  */
 
 import compression from 'compression';
@@ -18,14 +27,22 @@ import session from 'express-session';
 import helmet from 'helmet';
 
 import { FRONTEND_DIR, env, isProduction, isTest } from './config/env.js';
-import { PrismaSessionStore, sessionMiddleware } from './lib/session.js';
+import { PrismaSessionStore, sessionLifetime, sessionMiddleware } from './lib/session.js';
 import { loadUser, requireAuth } from './middleware/auth.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { apiNotFound, errorHandler, pageNotFound } from './middleware/errors.js';
-import { apiLimiter, authLimiter } from './middleware/rate-limit.js';
+import { accountLimiter, apiLimiter, authLimiter } from './middleware/rate-limit.js';
 import { requestLog } from './middleware/request-log.js';
 import { createMemoryOutbox } from './integrations/graph/mock-mail.js';
+import {
+  createMemoryScanStore,
+  createPrismaScanStore,
+  createScannedStorage,
+  createScanner,
+} from './lib/file-scan.js';
 import { createNotifier } from './lib/notify.js';
+import { getPrisma } from './lib/prisma.js';
+import { noTelemetry } from './lib/telemetry.js';
 import { precompressedStatic } from './lib/precompressed-static.js';
 import { serviceWorkerRoute, workerEnabledFor } from './lib/service-worker.js';
 import { defaultStorage } from './lib/storage.js';
@@ -71,7 +88,8 @@ import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
 /**
  * @param {object} [options]
  * @param {{ windowMs?: number, limit?: number }} [options.rateLimit]  /api cap, for tests
- * @param {{ windowMs?: number, limit?: number }} [options.authRateLimit]  /api/auth cap, for tests
+ * @param {{ windowMs?: number, limit?: number, accountLimit?: number }} [options.authRateLimit]
+ *   sign-in caps (per address, per account), for tests
  * @param {(app: import('express').Express) => void} [options.routes]  extra routes
  *   outside the session, CSRF check and sign-in guard, for tests
  * @param {(app: import('express').Express) => void} [options.protectedRoutes]  extra
@@ -80,7 +98,11 @@ import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
  * @param {object} [options.userRepo]  see modules/auth/repo.js
  * @param {object} [options.adminStore]  see modules/admin/store-prisma.js
  * @param {object} [options.announcementStore]  see modules/announcements/store-prisma.js
- * @param {object} [options.storage]  see lib/storage.js; the upload folder by default
+ * @param {object} [options.storage]  see lib/storage.js; the configured adapter by default
+ * @param {object} [options.scanner]  see lib/file-scan.js; the configured scanner by default
+ * @param {object} [options.scanStore]  see lib/file-scan.js
+ * @param {object} [options.telemetry]  see lib/telemetry.js; none by default
+ * @param {() => Promise<void>} [options.checkDatabase]  /api/ready's database check, for tests
  * @param {object} [options.directoryStore]  see modules/directory/store-prisma.js
  * @param {object} [options.roomStore]  see modules/rooms/store-prisma.js
  * @param {object} [options.ticketStore]  see modules/tickets/store-prisma.js
@@ -113,10 +135,7 @@ export function createApp(options = {}) {
   const adminStore =
     options.adminStore ??
     (repo.companies ? createMemoryAdminStore(repo) : createPrismaAdminStore());
-  const admin = createAdminService({
-    store: adminStore,
-    storage: options.storage ?? defaultStorage(),
-  });
+  const telemetry = options.telemetry ?? noTelemetry;
   const directoryStore =
     options.directoryStore ??
     (repo.companies ? createMemoryDirectoryStore(repo) : createPrismaDirectoryStore());
@@ -147,11 +166,24 @@ export function createApp(options = {}) {
     store: notificationStore,
     now: options.now,
   });
+  // Uploaded files: the configured adapter, behind the malware-scan gate.
+  // Every module is handed this one object, so none can read a file that has
+  // not been found clean (lib/file-scan.js).
+  const files = createScannedStorage({
+    storage: options.storage ?? defaultStorage(config),
+    scans:
+      options.scanStore ??
+      (repo.companies ? createMemoryScanStore(repo) : createPrismaScanStore()),
+    scanner: options.scanner ?? createScanner(config),
+    notify,
+    now: options.now,
+  });
+  const admin = createAdminService({ store: adminStore, storage: files });
   const announcements = createAnnouncementService({
     store:
       options.announcementStore ??
       (repo.companies ? createMemoryAnnouncementStore(repo) : createPrismaAnnouncementStore()),
-    storage: options.storage ?? defaultStorage(),
+    storage: files,
     now: options.now,
     notify,
   });
@@ -165,7 +197,7 @@ export function createApp(options = {}) {
     store:
       options.roomStore ??
       (repo.companies ? createMemoryRoomStore(repo) : createPrismaRoomStore()),
-    storage: options.storage ?? defaultStorage(),
+    storage: files,
     getGraph,
     now: options.now,
     notify,
@@ -175,7 +207,7 @@ export function createApp(options = {}) {
     (repo.companies ? createMemoryTicketStore(repo) : createPrismaTicketStore());
   const tickets = createTicketService({
     store: ticketStore,
-    storage: options.storage ?? defaultStorage(),
+    storage: files,
     now: options.now,
     notify,
   });
@@ -187,43 +219,107 @@ export function createApp(options = {}) {
   app.locals.mailOutbox = mailOutbox;
   app.locals.syncRunner = syncRunner;
   app.locals.inMemory = !useDatabase;
+  app.locals.files = files;
+  app.locals.telemetry = telemetry;
+  /** Set by server.js when the process is stopping: /api/ready then says no. */
+  app.locals.stopping = false;
+  app.locals.production = config.NODE_ENV === 'production';
 
-  // Behind Azure App Service's proxy: needed for correct protocol detection on
-  // Secure cookies and for rate limiting by real client IP.
-  app.set('trust proxy', 1);
+  /** Every "METHOD /path" the app answers, for the authorisation matrix test. */
+  const routes = ['GET /api/health', 'GET /api/ready'];
+  app.locals.routes = routes;
+  const mount = (prefix, router) => {
+    for (const layer of router.stack) {
+      if (!layer.route) continue;
+      const path = `${prefix}${layer.route.path === '/' ? '' : layer.route.path}`;
+      for (const method of Object.keys(layer.route.methods)) {
+        routes.push(`${method.toUpperCase()} ${path}`);
+      }
+    }
+    if (prefix) app.use(prefix, router);
+    else app.use(router);
+  };
+
+  // Behind Azure App Service's front end, which is exactly one proxy: the
+  // client is the last address it appended to X-Forwarded-For, and anything
+  // before that is the client's own claim. Needed for req.secure (Secure
+  // cookies) and for rate limiting by the real client (lib/client-ip.js).
+  app.set('trust proxy', config.TRUST_PROXY_HOPS > 0 ? config.TRUST_PROXY_HOPS : false);
   app.disable('x-powered-by');
 
   // First, so that every later failure has an ID and a log line.
   app.use(requestLog);
+  if (telemetry.enabled) app.use(telemetry.middleware);
 
-  app.use(
-    helmet({
-      // The frontend sets a handful of custom properties through style
-      // attributes, which helmet's default style-src already permits; scripts
-      // are all external modules, so script-src stays 'self' with no inline
-      // allowance.
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          scriptSrc: ["'self'"],
-          // Nothing is loaded from outside: helmet's default allowance of any
-          // https: origin for stylesheets is dropped.
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          // blob: only for the preview of a file the person just chose (a
-          // logo, an announcement cover), made by the page itself.
-          imgSrc: ["'self'", 'data:', 'blob:'],
-          fontSrc: ["'self'"],
-          connectSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          upgradeInsecureRequests: isProduction ? [] : null,
-        },
+  const production = config.NODE_ENV === 'production';
+  // The headers common to every response, whatever it is.
+  const transport = {
+    // Set only over HTTPS in production; a dev value would pin localhost.
+    strictTransportSecurity: production
+      ? { maxAge: 31_536_000, includeSubDomains: true }
+      : false,
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'no-referrer' },
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    crossOriginEmbedderPolicy: false,
+  };
+  // Stylesheets, scripts, fonts, images and translation files under /assets
+  // are parts of a page, and a browser applies the page's policy to them, not
+  // their own. They get one short line (which still stops a file opened on
+  // its own from running or being framed) instead of the full policy: forty
+  // of them make a first load, and site staff pay for every header byte.
+  const assetHeaders = helmet({
+    ...transport,
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    },
+  });
+  const pageHeaders = helmet({
+    // The whole policy is written out here; helmet's defaults are not mixed
+    // in. Nothing inline and nothing from another origin: scripts and
+    // styles are files of this site only. No 'unsafe-inline', no
+    // 'unsafe-eval', no nonces to get wrong. Per-element values the pages
+    // need (a booking's position, a colour swatch) are set through the CSS
+    // object model, which the policy allows (frontend/assets/js/html.js).
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'"],
+        styleSrcAttr: ["'none'"],
+        // blob: only for the preview of a file the person just chose (a
+        // logo, an announcement cover), made by the page itself; data: for
+        // the small images the stylesheets carry.
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        fontSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        manifestSrc: ["'self'"],
+        workerSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        // Development only: the mocked-mail page frames a mail's HTML from
+        // /api/dev (never mounted in production, where no frame is allowed).
+        ...(production ? { upgradeInsecureRequests: [] } : { frameSrc: ["'self'"] }),
       },
-      // Set only over HTTPS in production; a dev value would pin localhost.
-      strictTransportSecurity: isProduction,
-      crossOriginEmbedderPolicy: false,
-    })
-  );
+    },
+    ...transport,
+  });
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/assets/')) return assetHeaders(req, res, next);
+    // helmet does not set this one. The portal uses none of these features,
+    // so no page (and nothing injected into one) may ask for them.
+    res.set(
+      'Permissions-Policy',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), browsing-topics=()'
+    );
+    pageHeaders(req, res, next);
+  });
 
   // Site staff are on weak mobile connections: text assets and JSON go out
   // compressed. Fonts and images are already compressed and are skipped by
@@ -236,8 +332,44 @@ export function createApp(options = {}) {
 
   app.use(express.json({ limit: '100kb' }));
 
+  // Liveness: the process is up. Nothing is checked, so it never flaps.
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  // Readiness: can this instance serve a request right now? App Service's
+  // health check points here and takes an instance that answers 503 out of
+  // rotation. Says which part failed and nothing more.
+  const checkDatabase =
+    options.checkDatabase ??
+    (useDatabase
+      ? async () => {
+          await (await getPrisma()).company.findFirst({ select: { id: true } });
+        }
+      : null);
+  app.get('/api/ready', async (req, res) => {
+    const probe = async (check) => {
+      if (!check) return 'skipped';
+      try {
+        await check();
+        return 'ok';
+      } catch (err) {
+        req.log?.warn({ err }, 'readiness check failed');
+        return 'failed';
+      }
+    };
+    const [database, storage] = await Promise.all([
+      probe(checkDatabase),
+      probe(() => files.check()),
+    ]);
+    const ready = !app.locals.stopping && database !== 'failed' && storage !== 'failed';
+    res
+      .status(ready ? 200 : 503)
+      .set('Cache-Control', 'no-store')
+      .json({
+        status: ready ? 'ready' : app.locals.stopping ? 'stopping' : 'unavailable',
+        checks: { database, storage },
+      });
   });
 
   options.routes?.(app);
@@ -251,6 +383,8 @@ export function createApp(options = {}) {
     next();
   });
   app.use(stateful, sessionMiddleware(config, store));
+  // Twelve hours after sign-in the session ends, however active (lib/session.js).
+  app.use(stateful, sessionLifetime(config));
   // Signing out is never refused: a stale token (a restarted server, a second
   // tab) must not keep anyone signed in. Forcing a sign-out is harmless.
   const logoutPaths = new Set(['/api/auth/logout', '/auth/logout']);
@@ -260,33 +394,41 @@ export function createApp(options = {}) {
       : csrfProtection(req, res, next)
   );
 
-  app.use(publicAuthRoutes({ config, repo, msalClient: options.msalClient }));
+  mount(
+    '',
+    publicAuthRoutes({
+      config,
+      repo,
+      msalClient: options.msalClient,
+      accounts: accountLimiter(options.authRateLimit, config),
+    })
+  );
 
   // The guard. Below this line every /api route has a req.user.
-  app.use('/api', loadUser(repo), requireAuth);
+  app.use('/api', loadUser(repo, config), requireAuth);
 
-  app.use(meRoutes({ config, repo }));
+  mount('', meRoutes({ config, repo }));
 
-  app.use('/api/admin', adminRoutes(admin));
-  app.use(logoRoutes(admin));
+  mount('/api/admin', adminRoutes(admin));
+  mount('', logoRoutes(admin));
 
-  app.use('/api/admin/announcements', adminAnnouncementRoutes(announcements));
-  app.use('/api/announcements', readerRoutes(announcements));
+  mount('/api/admin/announcements', adminAnnouncementRoutes(announcements));
+  mount('/api/announcements', readerRoutes(announcements));
 
-  app.use('/api/admin/directory', adminDirectoryRoutes(directory));
-  app.use('/api/directory', directoryRoutes(directory));
+  mount('/api/admin/directory', adminDirectoryRoutes(directory));
+  mount('/api/directory', directoryRoutes(directory));
 
-  app.use('/api/admin/rooms', adminRoomRoutes(rooms));
-  app.use('/api/admin/bookings', adminBookingRoutes(rooms));
-  app.use('/api/rooms', roomRoutes(rooms));
-  app.use('/api/bookings', bookingRoutes(rooms));
+  mount('/api/admin/rooms', adminRoomRoutes(rooms));
+  mount('/api/admin/bookings', adminBookingRoutes(rooms));
+  mount('/api/rooms', roomRoutes(rooms));
+  mount('/api/bookings', bookingRoutes(rooms));
 
-  app.use('/api/admin/helpdesk', helpdeskAdminRoutes(helpdeskAdmin));
-  app.use('/api/tickets', ticketRoutes(tickets));
+  mount('/api/admin/helpdesk', helpdeskAdminRoutes(helpdeskAdmin));
+  mount('/api/tickets', ticketRoutes(tickets));
 
-  app.use('/api/notifications', notificationRoutes(notifications));
+  mount('/api/notifications', notificationRoutes(notifications));
   // What the mocked Graph "sent": for developers, never in production.
-  if (!isProduction) app.use('/api/dev', devOutboxRoutes(getGraph));
+  if (!isProduction && !production) mount('/api/dev', devOutboxRoutes(getGraph));
 
   // Module routers mount here as they are built.
   options.protectedRoutes?.(app);

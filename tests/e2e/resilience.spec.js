@@ -237,7 +237,10 @@ for (const lang of LANGUAGES) {
         await expectLanguage(page, lang);
 
         if (scenario.largeText) {
-          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          // Through the CSS object model: the policy allows no inline <style>.
+          await page.evaluate(() =>
+            document.documentElement.style.setProperty('font-size', '200%', 'important')
+          );
         }
         await scenario.install(page);
 

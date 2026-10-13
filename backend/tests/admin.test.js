@@ -775,7 +775,11 @@ describe('admins', () => {
     assert.equal(removed.result.status, 200);
     assert.equal(removed.written, 1);
     assert.equal(audits(w).at(-1).action, 'role.remove');
-    assert.equal((await asNew.get('/api/admin/scope')).status, 403, 'access ended at once');
+    // A change of role ends the session it was held in (OWASP: renew on
+    // privilege change); signed in again, the person is a plain user.
+    assert.equal((await asNew.get('/api/admin/scope')).status, 401, 'session ended at once');
+    const again = await signIn(w.app, person);
+    assert.equal((await again.get('/api/admin/scope')).status, 403, 'and the role is gone');
   });
 
   test('a holding admin cannot remove their own role', async () => {

@@ -109,7 +109,7 @@ const PATHS = {
 export const ICON_NAMES = Object.freeze(Object.keys(PATHS));
 
 /** The sprite, as one hidden <svg> holding a <symbol> per icon. */
-export const ICON_SPRITE = `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">${Object.entries(
+export const ICON_SPRITE = `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" class="icon-sprite">${Object.entries(
   PATHS
 )
   .map(([name, body]) => `<symbol id="i-${name}" viewBox="0 0 24 24">${body}</symbol>`)

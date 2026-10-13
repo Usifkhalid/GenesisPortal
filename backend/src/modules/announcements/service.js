@@ -544,13 +544,18 @@ export function createAnnouncementService({
     let coverUrl = null;
     const newId = randomUUID();
     if (source.coverKey) {
-      const bytes = await storage.get(source.coverKey);
+      // A cover that is not (or not yet) clean is not copied: the copy starts without one.
+      const bytes = await storage.get(source.coverKey).catch(() => null);
       const kind = bytes && detectImage(bytes);
       if (kind) {
         const token = randomUUID();
         coverKey = `cover-${newId}-${token}.${kind.ext}`;
         coverUrl = `/api/announcements/${newId}/cover?v=${token}`;
-        await storage.put(coverKey, bytes);
+        await storage.put(coverKey, bytes, {
+          uploadedById: user.id,
+          fileName: `cover.${kind.ext}`,
+          link: '#announcements/manage',
+        });
       }
     }
 
@@ -649,7 +654,11 @@ export function createAnnouncementService({
     validate({ ...existing, coverKey }, now(), { checkExpiry: false });
 
     const at = now();
-    await storage.put(coverKey, buffer);
+    await storage.put(coverKey, buffer, {
+      uploadedById: req.user?.id,
+      fileName: `cover.${kind.ext}`,
+      link: '#announcements/manage',
+    });
     let after;
     try {
       after = await store.transaction(async (tx) => {

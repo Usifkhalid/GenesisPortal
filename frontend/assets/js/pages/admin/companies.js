@@ -21,7 +21,7 @@ import {
 import { icon } from '../../components/icons.js';
 import { showToast } from '../../components/toast.js';
 import { formatNumber } from '../../format.js';
-import { esc } from '../../html.js';
+import { applyCss, esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
 import { errorText, isStale, namePair, statusBadge, toastKeys } from './shared.js';
 
@@ -91,6 +91,7 @@ async function renderList(root) {
               </table>
             </div>`
       }`;
+    applyCss(root);
 
     for (const button of root.querySelectorAll('[data-filter]')) {
       button.addEventListener('click', () => {
@@ -118,7 +119,7 @@ function rowHtml(company) {
     </td>
     <td role="cell" data-label="${esc(t('admin.field.accent'))}">
       <span class="swatch-label">
-        <span class="swatch" style="--swatch: ${esc(company.accentColor)}" aria-hidden="true"></span>
+        <span class="swatch" data-css="--swatch: ${esc(company.accentColor)}" aria-hidden="true"></span>
         <span dir="ltr">${esc(company.accentColor)}</span>
       </span>
     </td>

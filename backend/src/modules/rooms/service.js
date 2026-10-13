@@ -867,7 +867,11 @@ export function createRoomService({
     const token = randomUUID();
     const photoKey = `room-${id}-${token}.${kind.ext}`;
     const photoUrl = `/api/rooms/${id}/photo?v=${token}`;
-    await storage.put(photoKey, buffer);
+    await storage.put(photoKey, buffer, {
+      uploadedById: req.user?.id,
+      fileName: `room-photo.${kind.ext}`,
+      link: '#admin/rooms',
+    });
     let after;
     try {
       after = await store.transaction(async (tx) => {

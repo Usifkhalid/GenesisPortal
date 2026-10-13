@@ -10,7 +10,8 @@
  *   PUT  /api/notifications/preferences   { items }    save the ones that changed
  *
  * Development only, with the mocked Graph:
- *   GET  /api/dev/outbox      the mail the portal "sent" (backend/mock/outbox/)
+ *   GET  /api/dev/outbox            the mail the portal "sent" (backend/mock/outbox/)
+ *   GET  /api/dev/outbox/:id/html   one mail's HTML, for the preview frame
  */
 
 import { Router } from 'express';
@@ -61,6 +62,25 @@ export function devOutboxRoutes(getGraph) {
     const graph = await getGraph();
     if (typeof graph.listOutbox !== 'function') throw new HttpError(404, 'not_found');
     res.json({ items: await graph.listOutbox() });
+  });
+
+  // One mail's HTML, for the preview frame. Email markup is all inline styles,
+  // which the portal's own policy forbids, so this answer carries a policy of
+  // its own: styles and embedded images only, no script, sandboxed, and
+  // framed by this site alone.
+  router.get('/outbox/:id/html', async (req, res) => {
+    const graph = await getGraph();
+    if (typeof graph.listOutbox !== 'function') throw new HttpError(404, 'not_found');
+    const mail = (await graph.listOutbox()).find((m) => m.id === req.params.id);
+    if (!mail) throw new HttpError(404, 'not_found');
+    res
+      .set(
+        'Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; sandbox"
+      )
+      .set('X-Frame-Options', 'SAMEORIGIN')
+      .type('html')
+      .send(String(mail.html ?? ''));
   });
 
   return router;

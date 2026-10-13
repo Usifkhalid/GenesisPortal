@@ -27,8 +27,8 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 /backend/prisma: schema.prisma, migrations/, seed.js
 /backend/tests
 /tests/e2e: Playwright specs (*.spec.js) and helpers.js; playwright.config.js at the root
-/storage: uploaded files (company logos) from the local storage adapter (backend/src/lib/storage.js, STORAGE_DIR); gitignored, outside frontend/ so never served statically. Azure Blob later.
-/docs: PROGRESS.md, DECISIONS.md, API.md, ADD-A-COMPANY.md
+/storage: uploaded files from the local storage adapter (backend/src/lib/storage.js, STORAGE_DIR); gitignored, outside frontend/ so never served statically. Production uses Azure Blob (STORAGE_DRIVER=azure). Every module gets storage wrapped by lib/file-scan.js: a file is served only once its malware scan is clean.
+/docs: PROGRESS.md, DECISIONS.md, API.md, ADD-A-COMPANY.md, SECURITY-CHECKLIST.md, DEPLOY.md
 PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 
 ## Rules (always)
@@ -38,7 +38,7 @@ PRODUCT.md and DESIGN.md (written by Impeccable) at the root.
 4. Design: follow PRODUCT.md and DESIGN.md. Page CSS uses tokens from tokens.css only, no raw colours or sizes. Use /impeccable commands for design work. Company branding (logo, accent colour) comes from the Company record at runtime as CSS variables, so every screen must work with any accent.
 5. Accessibility: semantic HTML, a visible label on every input, full keyboard use, visible focus, WCAG AA contrast.
 6. Performance for site staff: no frontend library over 30 kB without asking; lazy-load page modules; small images.
-7. Security: validate every input with zod; Prisma only, no raw SQL string building; helmet; CSRF protection for cookie sessions; rate-limit auth routes; secrets only in .env (commit .env.example with placeholders). Write every admin action to AuditLog.
+7. Security: no inline scripts or styles (strict CSP: per-element values go in data-css and applyCss() from html.js, never a style attribute); every new route needs a row in backend/tests/authz-matrix.test.js; validate every input with zod; Prisma only, no raw SQL string building; helmet; CSRF protection for cookie sessions; rate-limit auth routes; secrets only in .env (commit .env.example with placeholders). Write every admin action to AuditLog.
 8. Dates stored in UTC, shown in Africa/Cairo time. Working week Sunday to Thursday.
 
 ## Commands

@@ -95,8 +95,10 @@ export function errorHandler(err, req, res, _next) {
   const { status, code, message, details } = toResponse(err);
   const log = req.log ?? logger;
 
-  if (status >= 500) log.error({ err }, 'request failed');
-  else log.debug({ code, status }, 'request rejected');
+  if (status >= 500) {
+    log.error({ err }, 'request failed');
+    req.app?.locals.telemetry?.error(err, { requestId: req.id });
+  } else log.debug({ code, status }, 'request rejected');
 
   // Headers already on the wire: nothing coherent can be added.
   if (res.headersSent) return res.destroy();
@@ -104,7 +106,8 @@ export function errorHandler(err, req, res, _next) {
   const error = { code, message, requestId: req.id };
   if (details !== undefined) error.details = details;
   // The real cause, for the developer at the keyboard only.
-  if (status >= 500 && !isProduction && err?.message) error.debug = err.message;
+  const production = isProduction || req.app?.locals.production === true;
+  if (status >= 500 && !production && err?.message) error.debug = err.message;
 
   res.status(status).json({ error });
 }

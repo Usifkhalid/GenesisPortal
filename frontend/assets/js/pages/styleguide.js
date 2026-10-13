@@ -9,6 +9,7 @@
 
 import { setLocale, apply, t, getLocale, LOCALES } from '../i18n.js';
 import { injectSprite } from '../components/icons.js';
+import { applyCss } from '../html.js';
 import { showToast } from '../components/toast.js';
 
 const STORE = 'mgp.styleguide';
@@ -226,6 +227,8 @@ function initSort() {
 
 async function init() {
   injectSprite();
+  // The specimens' one-off values (html.js: no inline styles under the policy).
+  applyCss(document);
 
   const prefs = readPrefs();
   const lang = prefs.lang in LOCALES ? prefs.lang : 'en';

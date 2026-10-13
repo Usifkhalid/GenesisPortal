@@ -266,6 +266,12 @@
           "title": "Pinned announcement: {title}",
           "detail": "{summary}"
         }
+      },
+      "file": {
+        "infected": {
+          "title": "A file was blocked: {fileName}",
+          "detail": "It failed the malware scan and was deleted. Do not open your own copy; IT has been told."
+        }
       }
     },
     "prefs": {
@@ -595,6 +601,10 @@
       "not_provisioned": {
         "title": "You are not set up on the portal yet",
         "text": "Your Microsoft account worked, but it has no portal profile. Ask your company admin to add you."
+      },
+      "too_many_attempts": {
+        "title": "Too many sign-ins",
+        "text": "This account has signed in too many times in a short while. Wait 15 minutes, then try again."
       }
     }
   },
@@ -2053,6 +2063,10 @@
         "bodyEn": "Text in English",
         "bodyAr": "Text in Arabic"
       }
+    },
+    "scan": {
+      "pending": "Being checked",
+      "infected": "Blocked"
     }
   },
   "email": {

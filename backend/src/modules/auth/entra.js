@@ -57,8 +57,9 @@ async function createMsalClient(config) {
  * @param {object} deps.config
  * @param {object} deps.repo  see repo.js
  * @param {object} [deps.msalClient]  a stand-in, for tests
+ * @param {{ hit: (account: string) => void }} [deps.accounts]  per-account sign-in cap
  */
-export function createEntraHandlers({ config, repo, msalClient }) {
+export function createEntraHandlers({ config, repo, msalClient, accounts }) {
   const redirectUri = `${config.APP_BASE_URL}/auth/callback`;
 
   let client = msalClient;
@@ -133,6 +134,14 @@ export function createEntraHandlers({ config, repo, msalClient }) {
     const oid = typeof claims.oid === 'string' ? claims.oid.toLowerCase() : null;
     const email = String(claims.preferred_username ?? claims.email ?? '').toLowerCase();
 
+    // Entra has vouched for the account; this caps how often one account may
+    // open a session here, wherever the attempts come from.
+    try {
+      accounts?.hit(oid ?? email);
+    } catch {
+      return fail(req, res, 'too_many_attempts', { oid });
+    }
+
     let person = oid ? await repo.findByEntraObjectId(oid) : null;
     if (!person && email) {
       person = await repo.findByEmail(email);
@@ -142,7 +151,9 @@ export function createEntraHandlers({ config, repo, msalClient }) {
       }
     }
 
-    if (!person?.isActive) return fail(req, res, 'not_provisioned', { oid });
+    if (!person?.isActive || person.company?.isActive === false) {
+      return fail(req, res, 'not_provisioned', { oid });
+    }
 
     await startSession(req, person.id);
     res.redirect('/');

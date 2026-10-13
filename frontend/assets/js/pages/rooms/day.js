@@ -36,7 +36,7 @@ import {
   rangeHtml,
   rangeOf,
 } from '../../format.js';
-import { esc } from '../../html.js';
+import { applyCss, esc } from '../../html.js';
 import { t } from '../../i18n.js';
 import { openBookingDialog } from './booking.js';
 import {
@@ -390,15 +390,15 @@ export function render(root, ctx) {
       nowMin !== null && nowMin > hours.workdayStartMin && nowMin < hours.workdayEndMin;
     const past =
       nowMin !== null && nowMin > hours.workdayStartMin
-        ? `<span class="day-past" style="--size:${Math.min(100, pct(nowMin, hours))}%"></span>`
+        ? `<span class="day-past" data-css="--size:${Math.min(100, pct(nowMin, hours))}%"></span>`
         : '';
     const now = showNow
-      ? `<span class="day-now" style="--at:${pct(nowMin, hours)}%" aria-hidden="true"></span>`
+      ? `<span class="day-now" data-css="--at:${pct(nowMin, hours)}%" aria-hidden="true"></span>`
       : '';
     const gridLines = grid.lines
       .map(
         ({ at, hour }) =>
-          `<span class="day-tick${hour ? '' : ' day-tick--quarter'}" style="--at:${pct(
+          `<span class="day-tick${hour ? '' : ' day-tick--quarter'}" data-css="--at:${pct(
             at,
             hours
           )}%" aria-hidden="true"></span>`
@@ -412,7 +412,7 @@ export function render(root, ctx) {
           ${grid.labels
             .map(
               (at) =>
-                `<span class="day-axis__label" aria-hidden="true" style="--at:${pct(
+                `<span class="day-axis__label" aria-hidden="true" data-css="--at:${pct(
                   at,
                   hours
                 )}%">${clockOf(at)}</span>`
@@ -420,7 +420,7 @@ export function render(root, ctx) {
             .join('')}
           ${
             showNow
-              ? `<span class="day-axis__now" style="--at:${pct(nowMin, hours)}%">${esc(
+              ? `<span class="day-axis__now" data-css="--at:${pct(nowMin, hours)}%">${esc(
                   t('rooms.day.now', { time: clockOf(nowMin) })
                 )}</span>`
               : ''
@@ -437,7 +437,7 @@ export function render(root, ctx) {
               if (hi <= lo) return '';
               return `<button type="button" class="day-busy${item.mine ? ' day-busy--mine' : ''}"
                 data-pop="${key}" aria-label="${esc(busyName(room, block))}"
-                style="--at:${pct(lo, hours)}%;--size:${pct(hi, hours) - pct(lo, hours)}%">
+                data-css="--at:${pct(lo, hours)}%;--size:${pct(hi, hours) - pct(lo, hours)}%">
                 <span class="day-busy__body" aria-hidden="true">
                   <span class="day-busy__time">${rangeHtml(from, to)}</span>
                   <span class="day-busy__what">${esc(busyWhat(item))}</span>
@@ -449,7 +449,7 @@ export function render(root, ctx) {
             .map(
               (part) => `<button type="button" class="day-free" data-free
                 data-room="${esc(room.id)}" data-from="${part.from}" data-to="${part.to}"
-                data-pointer style="--at:${pct(part.from, hours)}%;--size:${
+                data-pointer data-css="--at:${pct(part.from, hours)}%;--size:${
                   pct(part.to, hours) - pct(part.from, hours)
                 }%" aria-label="${esc(freeLabel(room, part))}">
                 <span class="day-free__body" aria-hidden="true">
@@ -543,6 +543,7 @@ export function render(root, ctx) {
     const withFree = rows.filter((r) => r.free.length > 0).length;
     summary.textContent = t('rooms.day.summary', { count: withFree, total: rows.length });
     body.innerHTML = `${timelineHtml(rows, data.hours)}${listHtml(rows)}`;
+    applyCss(body);
   }
 
   function showFailed() {

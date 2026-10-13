@@ -317,9 +317,20 @@ export function fileItemHtml(item) {
 /** Files already on a ticket, as links (they download). */
 export function attachmentLinks(list) {
   if (!list?.length) return '';
+  // A file is a link only once its malware scan has passed; until then, and
+  // for good if it failed, it is shown with its state and cannot be opened.
+  const held = (a) => `<li class="tk-attachments__item">
+        <span class="tk-chip tk-chip--held">
+          ${icon('paperclip', 'tk-chip__icon')}
+          <span class="tk-chip__name"><bdi dir="auto">${esc(a.fileName)}</bdi></span>
+          <span class="tk-chip__size">${esc(t(`tk.scan.${a.scan}`))}</span>
+        </span>
+      </li>`;
   return `<ul class="tk-attachments" aria-label="${esc(t('tk.detail.files'))}">${list
-    .map(
-      (a) => `<li class="tk-attachments__item">
+    .map((a) =>
+      a.scan === 'pending' || a.scan === 'infected'
+        ? held(a)
+        : `<li class="tk-attachments__item">
         <a class="tk-chip" href="${esc(a.url)}" download>
           ${icon(a.contentType?.startsWith('image/') ? 'image' : 'paperclip', 'tk-chip__icon')}
           <span class="tk-chip__name"><bdi dir="auto">${esc(a.fileName)}</bdi></span>

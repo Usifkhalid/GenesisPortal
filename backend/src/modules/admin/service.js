@@ -277,7 +277,11 @@ export function createAdminService({ store, storage }) {
     const logoKey = `logo-${id}-${token}.${kind.ext}`;
     const logoUrl = `/api/companies/${id}/logo?v=${token}`;
 
-    await storage.put(logoKey, buffer);
+    await storage.put(logoKey, buffer, {
+      uploadedById: req.user?.id,
+      fileName: `logo.${kind.ext}`,
+      link: `#admin/companies/${id}`,
+    });
     let after;
     try {
       after = await store.transaction(async (tx) => {

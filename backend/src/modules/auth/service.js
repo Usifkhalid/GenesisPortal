@@ -59,11 +59,14 @@ export async function listMockUsers(repo) {
 /**
  * Signs `userId` in. The session id is replaced first, so an id that existed
  * before sign-in (and could have been planted) never becomes an authenticated
- * one. Returns the new session's CSRF token.
+ * one. Nothing of the old session is carried over, its CSRF token included.
+ * `startedAt` starts the absolute lifetime (lib/session.js). Returns the new
+ * session's CSRF token.
  */
 export async function startSession(req, userId) {
   await regenerateSession(req);
   req.session.userId = userId;
+  req.session.startedAt = Date.now();
   return csrfToken(req);
 }
 

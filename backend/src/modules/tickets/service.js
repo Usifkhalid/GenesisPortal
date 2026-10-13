@@ -397,6 +397,12 @@ export function createTicketService({
     };
   }
 
+  /** Each file's scan state; a storage without scanning (a test's) says nothing. */
+  const scanStates = async (rows) =>
+    typeof storage.states === 'function'
+      ? storage.states(rows.map((a) => a.storageKey))
+      : undefined;
+
   const attachmentView = (a, refs) => ({
     id: a.id,
     fileName: a.fileName,
@@ -404,6 +410,8 @@ export function createTicketService({
     size: a.size,
     isInternal: a.isInternal,
     uploadedBy: person(refs.people.get(a.uploadedById)),
+    // pending | clean | infected (lib/file-scan.js): only a clean file downloads.
+    scan: refs.scans?.get(a.storageKey) ?? 'clean',
     createdAt: a.createdAt,
     url: `/api/tickets/${a.ticketId}/attachments/${a.id}`,
   });
@@ -424,6 +432,7 @@ export function createTicketService({
     const shownAttachments = seen(attachments);
     const commentById = new Map(seen(comments).map((c) => [c.id, c]));
 
+    const scans = await scanStates(shownAttachments);
     const refs = await refsFor([ticket], {
       userIds: [
         ...shownEvents.map((e) => e.actorId),
@@ -433,6 +442,7 @@ export function createTicketService({
         ...shownAttachments.map((a) => a.uploadedById),
       ],
     });
+    refs.scans = scans;
     const valueOf = (type, value) => {
       if (value == null) return null;
       if (type === 'assigned') return person(refs.people.get(value));
@@ -841,7 +851,11 @@ export function createTicketService({
     }
 
     const storageKey = `ticket-${randomUUID()}.${kind.ext}`;
-    await storage.put(storageKey, buffer);
+    await storage.put(storageKey, buffer, {
+      uploadedById: viewer.user.id,
+      fileName,
+      link: `#tickets/${ticket.id}`,
+    });
     try {
       const row = await store.transaction(async (tx) => {
         const made = await tx.insert('attachment', {
@@ -868,6 +882,7 @@ export function createTicketService({
         return made;
       });
       const refs = await refsFor([], { userIds: [viewer.user.id] });
+      refs.scans = await scanStates([row]);
       return attachmentView(row, refs);
     } catch (err) {
       // No row points at the bytes: do not leave them behind.

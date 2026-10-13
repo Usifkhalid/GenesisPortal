@@ -282,6 +282,42 @@ model Session {
   @@index([userId])
 }
 
+/// The malware-scan verdict on one uploaded file (lib/file-scan.js), keyed by
+/// its storage key. A file is served only while its row says "clean". Like
+/// Session it is not a business table: it has no companyId and is reached
+/// only through the record that owns the file, which is scoped.
+model FileScan {
+  storageKey   String    @id @db.NVarChar(200)
+  /// pending | clean | infected.
+  state        String    @db.VarChar(20)
+  uploadedById String?   @db.NVarChar(36)
+  /// What the uploader called it, for the notice they get if it is blocked.
+  fileName     String?   @db.NVarChar(200)
+  /// Where the file was attached ("#tickets/<id>"), for the same notice.
+  link         String?   @db.NVarChar(200)
+  scannedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([state, createdAt])
+}
+
+/// One row per background job (lib/job-lease.js). Whichever app instance
+/// moves lockedUntil forward first runs the job; the others skip that round.
+model JobLease {
+  name           String    @id @db.NVarChar(60)
+  /// Nobody else may start the job before this moment.
+  lockedUntil    DateTime
+  /// The instance that last took it, for the log.
+  holder         String    @db.NVarChar(100)
+  lastStartedAt  DateTime?
+  lastFinishedAt DateTime?
+  /// ok | failed.
+  lastResult     String?   @db.VarChar(20)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
 /// A news item. companyId NULL is a holding-wide post, visible to every
 /// company; otherwise it is that company's. Either language may be empty, but
 /// not both (service.js). Status is not stored: it is derived from

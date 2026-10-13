@@ -28,6 +28,7 @@ export const TEMPLATES = Object.freeze({
   'booking.cancelled': 'bookings',
   'booking.moved': 'bookings',
   'announcement.pinned': 'announcements',
+  'file.infected': 'tickets',
 });
 
 export const CATEGORIES = Object.freeze(['tickets', 'bookings', 'announcements']);

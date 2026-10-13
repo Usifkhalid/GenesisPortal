@@ -1353,3 +1353,57 @@ work is given out by a Lead, and the ticket says whose it is.
 
 - **Decision:** `#help` (user menu and More sheet) holds seven topics of three answers each and a button to a new ticket. The lime round arrow is a 32px washed disc (tap target still 44px). A ticket number is wrapped in `.ticket-no` (nowrap, left to right) wherever it appears, including notification text via `keepTicketNumbers`. List pages whose whole result is empty use the framed `.empty`.
 - **Why:** session 26 review items 1, 2, 4 and the consistency sweep.
+
+### D126. A change of role ends the session
+
+- **Decision:** the session stores a privilege key (company + roles). When the roles read on a request differ from it, the session is destroyed and the person signs in again. Helpdesk team membership is not part of the key (it is read per ticket request and grants nothing outside the ticket service).
+- **Why:** OWASP asks for a new session id on any change of privilege. Swapping the id in the middle of a page's parallel requests would 401 the ones still carrying the old cookie anyway, so ending the session is the same experience with less machinery; with Entra the way back is one redirect.
+- **Cost:** an admin who is granted or loses a role is sent to sign-in on their next click.
+
+### D127. Two session clocks: 8 hours idle, 12 hours absolute
+
+- **Decision:** `startedAt` is written at sign-in and checked by `sessionLifetime` on every request; past `SESSION_ABSOLUTE_HOURS` (12) the session is destroyed. Until then the cookie and the row are capped to whatever is left. `SESSION_IDLE_MINUTES` (480) replaces the fixed constant. A signed-in session without `startedAt` is ended.
+- **Why:** with only an idle timeout, a stolen cookie that is used every few hours never dies.
+- **Cost:** someone at their desk for a 12-hour shift signs in twice.
+
+### D128. Sign-in limits per account, with a high ceiling per address; one trusted proxy hop
+
+- **Decision:** `trust proxy` is `TRUST_PROXY_HOPS` (1 for App Service), the port App Service appends is stripped and IPv6 is counted by /56 (`lib/client-ip.js`). Sign-in attempts: 10 per account and 600 per address per 15 minutes. The account is the mock user id, or the Entra object id after the code exchange. Replaces D45's single cap of 20 per address.
+- **Why:** all of HQ leaves through one public address, so a low per-address cap locks out the office, while "ip:port" as the key meant the cap never counted twice. Passwords are checked by Entra, so these caps protect capacity.
+- **Cost:** counters are per process; two instances double the effective caps.
+
+### D129. A Content-Security-Policy with nothing inline
+
+- **Decision:** the policy is written out whole (`default-src 'none'`; script, style, font, connect, manifest, worker `'self'`; img `'self' data: blob:`), with no `unsafe-inline`, no `unsafe-eval` and no nonce. Templates that need a per-element value write `data-css="--at:25%"` and call `applyCss()` (`html.js`), which sets it through the CSS object model. `Permissions-Policy` switches off every device feature.
+- **Why:** `style-src 'unsafe-inline'` let injected markup restyle or exfiltrate through CSS; nonces need per-request HTML, and the pages are static files.
+- **Also:** files under `/assets` get a one-line policy (`default-src 'none'; frame-ancestors 'none'`) and no `Permissions-Policy`: a browser applies the page's policy to a page's parts, and the full headers on forty assets put the Arabic first load 1.5 kB over its 300 kB budget. The development mail preview is a frame on `/api/dev/outbox/:id/html`, which carries its own sandboxed policy (emails are made of inline styles); `frame-src 'self'` exists outside production only.
+- **Cost:** a `style="…"` attribute in new markup is silently ignored by the browser; the e2e console check is what catches it. The styleguide applies its specimen values after load.
+
+### D130. Uploads are served only after a malware scan
+
+- **Decision:** `lib/file-scan.js` wraps the storage adapter for every module. A `FileScan` row per storage key holds pending, clean or infected; `get` answers 409 or 410 unless clean; a missing row counts as pending. Locally a mock scanner settles at once (EICAR is infected). In Azure, Defender for Storage scans on upload and the app reads the blob's index tag on demand and from a one-minute sweep. An infected file is deleted and the uploader and IT leads are told once (dedupe key). The table has no `companyId`: like `Session` it is reached only through the record that owns the file. Rows for files that existed before the migration are created as clean.
+- **Why:** signature checks say what a file is, not whether it is safe. Reading the tag needs no public webhook, unlike Event Grid.
+- **Cost:** in Azure a new logo or attachment is unavailable for seconds to minutes; an image shows as broken until then. Unproven against a real account (tag name and values from Microsoft's documentation).
+
+### D131. One lease row per background job
+
+- **Decision:** before a job works it moves `JobLease.lockedUntil` forward in one conditional UPDATE (`lib/job-lease.js`); the loser of the race skips the round. The lease is kept for 90% of the job's period, not released at the end, so the other instance's timer a moment later does not repeat the work. Covers user sync, SLA watch, auto-close, pinned announcements, session pruning and the new scan sweep. If the lease cannot be read, the round is skipped.
+- **Why:** two instances means two sets of timers. The jobs were already idempotent (dedupe keys), but ran twice and could send close to simultaneously.
+- **Cost:** after a restart a job's startup run is skipped if its lease is still held (at most one period). A holder that dies mid-run delays that job by one period.
+
+### D132. Azure Blob storage, Application Insights, and what production refuses
+
+- **Decision:** `STORAGE_DRIVER=azure` selects `lib/storage-azure.js` (one private container, managed identity, no SAS); local stays the default. `lib/telemetry.js` sends requests (route pattern only), 5xx exceptions and job runs when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, through a manual client with auto-collection off. Production refuses to start with mock sign-in, mock Graph, the mock scanner, local storage, a placeholder, a session secret under 32 characters or a non-HTTPS `APP_BASE_URL`; on App Service a `NODE_ENV` other than production is refused too. `/api/ready` checks database and storage; shutdown drains for `SHUTDOWN_GRACE_MS`.
+- **Why:** the official SDKs over hand-written REST and token handling; a forgotten `NODE_ENV` on Azure would otherwise have opened mock sign-in.
+- **Cost:** about 150 more packages in the lock file (OpenTelemetry under `applicationinsights`), loaded only when configured. None of the three Azure pieces has run against Azure.
+
+### D133. The Prisma CLI advisory, rechecked (D17 stands)
+
+- **Decision:** no upgrade. Every published release from 6.19.3 to 7.10.0 pins `deepmerge-ts 7.1.5`; `npm audit fix` changes nothing. An `overrides` entry forcing 8.x into Prisma's config loader was not tried: an untested major inside the tool that runs production migrations is a worse risk than a stack-exhaustion bug reachable only through our own config file.
+- **Why:** asked for in session 27. express and zod were updated; runtime dependencies have no advisory.
+
+### D134. "Find a room" late in the day: the default length fits what is left
+
+- **Decision:** with no duration in the address, the default is an hour or, after 17:00, as much of one as still ends inside working hours (`fitDuration`). An explicit `duration=` is still honoured and still refused if it does not fit.
+- **Why:** from 17:01 to 17:45 Cairo time the page's first, automatic search was `start=17:15&duration=60`, which the API rightly refuses (400). People saw an error before typing, and every e2e spec that opens Rooms failed on the console error. It had gone unseen because earlier sessions ran in the morning; the previous commit fails the same way at that hour.
+

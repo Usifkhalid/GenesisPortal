@@ -9,17 +9,24 @@
  * costs one indexed query (Ticket's team/status/slaActive/nextDueAt index).
  */
 
+import { runLeased } from '../lib/job-lease.js';
+
 export const SLA_WATCH_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * @param {{ watchSla: () => Promise<{ atRisk: number, breached: number }> }} tickets
  *   the ticket service
  * @param {{ info: Function, warn: Function }} log
- * @param {{ intervalMs?: number }} [options]
+ * @param {{ intervalMs?: number, lease?: object, telemetry?: object }} [options]  `lease`
+ *   (lib/job-lease.js) makes the job run on one app instance per round
  * @returns {{ ready: Promise<void>, stop: () => void }} `ready` settles when the
  *   startup run has finished; it never rejects
  */
-export function startSlaWatch(tickets, log, { intervalMs = SLA_WATCH_INTERVAL_MS } = {}) {
+export function startSlaWatch(
+  tickets,
+  log,
+  { intervalMs = SLA_WATCH_INTERVAL_MS, lease, telemetry } = {}
+) {
   if (typeof tickets?.watchSla !== 'function') {
     return { ready: Promise.resolve(), stop() {} };
   }
@@ -30,8 +37,13 @@ export function startSlaWatch(tickets, log, { intervalMs = SLA_WATCH_INTERVAL_MS
     if (running) return;
     running = true;
     try {
-      const { atRisk, breached } = await tickets.watchSla();
-      if (atRisk + breached > 0) log.info({ atRisk, breached }, 'SLA alerts sent');
+      const sent = await runLeased(
+        { name: 'sla-watch', periodMs: intervalMs, lease, telemetry, log },
+        () => tickets.watchSla()
+      );
+      if (sent && sent.atRisk + sent.breached > 0) {
+        log.info({ atRisk: sent.atRisk, breached: sent.breached }, 'SLA alerts sent');
+      }
     } catch (err) {
       log.warn({ err }, 'SLA watch failed');
     } finally {

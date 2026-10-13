@@ -86,7 +86,10 @@ export function render(root, ctx) {
   const start =
     minutesOf(asked.get('start')) ??
     (date === first.date ? first.start : hours.workdayStartMin);
-  const wantedLength = Number(asked.get('duration')) || 60;
+  // An hour, unless the address asks otherwise; late in the day, as much of an
+  // hour as still fits before the working day ends (at 17:15 an hour would run
+  // past 18:00, and the search would be refused before anyone had typed).
+  const wantedLength = Number(asked.get('duration')) || fitDuration(60, start, hours);
   const people = Math.min(
     MAX_PEOPLE,
     Math.max(1, Math.trunc(Number(asked.get('people'))) || 1)

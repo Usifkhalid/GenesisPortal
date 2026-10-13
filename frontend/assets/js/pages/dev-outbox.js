@@ -80,7 +80,9 @@ export async function render(root) {
       frame.className = 'outbox-frame';
       frame.setAttribute('sandbox', '');
       frame.title = `${t('dev.outbox.preview')}: ${mail.subject}`;
-      frame.srcdoc = mail.html;
+      // By address, not srcdoc: a srcdoc frame inherits this page's policy, which
+      // (rightly) refuses the inline styles every email is made of.
+      frame.src = `/api/dev/outbox/${encodeURIComponent(mail.id)}/html`;
       details.append(frame);
     });
   }

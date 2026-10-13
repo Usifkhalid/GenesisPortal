@@ -34,6 +34,7 @@ function serverEnv(port, extra = {}) {
     STATIC_PRECOMPRESS: process.env.E2E_PRECOMPRESS ?? 'on',
     // Every test signs in and out from one address; the real cap would trip.
     AUTH_RATE_LIMIT_MAX: '10000',
+    AUTH_ACCOUNT_RATE_LIMIT_MAX: '10000',
     RATE_LIMIT_MAX: '100000',
     ...extra,
   };

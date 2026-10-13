@@ -1,0 +1,133 @@
+# Build, test and deploy the portal to Azure App Service.
+#
+# NOT ENABLED. GitHub only runs files ending in .yml or .yaml in this folder, so this one is
+# inert until it is renamed to deploy.yml. It has never run: there is no Azure subscription
+# behind it yet. Read docs/DEPLOY.md first; steps 1 to 8 there must exist before this can work.
+#
+# To enable:
+#   1. In Entra, create an app registration for GitHub with a federated credential for this
+#      repository's "production" environment (no client secret is stored anywhere), and give
+#      it "Website Contributor" on the web app and "Key Vault Secrets User" on the vault.
+#   2. In GitHub → Settings → Environments, create "production" with required reviewers, and
+#      set these environment variables (not secrets; none of them is one):
+#        AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+#        AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP, AZURE_KEYVAULT_NAME
+#   3. Allow the runner to reach the SQL server for the migration step (a firewall rule for
+#      GitHub's address ranges is too wide: prefer a self-hosted runner inside the network,
+#      or run `npm run db:deploy` by hand as in DEPLOY.md step 9 and delete the migrate job).
+#   4. Rename this file to deploy.yml.
+
+name: Deploy
+
+on:
+  # Manual only. A release is a decision, not a side effect of a merge.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          # A throwaway password for a throwaway container; not a secret.
+          MSSQL_SA_PASSWORD: Ci-only-Passw0rd!
+        ports:
+          - 1433:1433
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=mgportal;user=sa;password=Ci-only-Passw0rd!;encrypt=true;trustServerCertificate=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate --schema backend/prisma/schema.prisma
+      - run: npm run lint
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+      # What ships: production dependencies only, no tests, built on Linux so the Prisma
+      # engine inside node_modules matches App Service.
+      - run: npm prune --omit=dev
+      - run: |
+          zip -qr release.zip backend frontend package.json package-lock.json node_modules \
+            -x "backend/tests/*" "backend/mock/outbox/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.zip
+          retention-days: 14
+
+  migrate:
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # The migration login's connection string is read from Key Vault for this one step and
+      # masked in the log. The app's own login cannot change the schema.
+      - name: Apply migrations
+        run: |
+          url=$(az keyvault secret show --vault-name "${{ vars.AZURE_KEYVAULT_NAME }}" \
+            --name MIGRATE-DATABASE-URL --query value -o tsv)
+          echo "::add-mask::$url"
+          MIGRATE_DATABASE_URL="$url" npm run db:deploy
+
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy the package
+        run: |
+          az webapp deploy --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME }}" --src-path release.zip --type zip
+      - name: Wait until the new version is ready
+        run: |
+          host=$(az webapp show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME }}" --query defaultHostName -o tsv)
+          for i in $(seq 1 30); do
+            if curl -fsS "https://$host/api/ready" | grep -q '"status":"ready"'; then
+              echo "ready"; exit 0
+            fi
+            sleep 10
+          done
+          echo "The app did not report ready within five minutes." >&2
+          exit 1

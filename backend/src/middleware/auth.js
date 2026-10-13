@@ -14,13 +14,21 @@
 
 import { roleSchema } from '../lib/roles.js';
 import { hasRole, requireUser, scopesOf } from '../lib/scope.js';
-import { destroySession } from '../lib/session.js';
+import { destroySession, sessionCookie } from '../lib/session.js';
 import { HttpError } from './errors.js';
+
+/** What a person may do, as one string: it changes when their roles or company do. */
+export function privilegeKey(identity) {
+  const roles = identity.roles.map((r) => `${r.role}@${r.scopeCompanyId ?? '*'}`).sort();
+  return `${identity.companyId}|${roles.join(',')}`;
+}
 
 /**
  * @param {{ getSessionUser: (id: string) => Promise<object | null> }} repo
+ * @param {{ NODE_ENV: string }} [config]  to clear the cookie it was set with
  */
-export function loadUser(repo) {
+export function loadUser(repo, config = { NODE_ENV: 'development' }) {
+  const cookie = sessionCookie(config);
   return async (req, res, next) => {
     const userId = req.session?.userId;
     if (!userId) return next();
@@ -40,6 +48,21 @@ export function loadUser(repo) {
         .filter((r) => roleSchema.safeParse(r.role).success)
         .map((r) => ({ role: r.role, scopeCompanyId: r.scopeCompanyId ?? null })),
     };
+
+    // A change of privilege ends the session (OWASP: renew the session id on
+    // any privilege change). The new roles already apply on this request
+    // because they are read fresh; what must not survive is the old id. The
+    // person signs in again, which with Entra is one redirect.
+    const key = privilegeKey(identity);
+    if (req.session.privilegeKey === undefined) {
+      req.session.privilegeKey = key;
+    } else if (req.session.privilegeKey !== key) {
+      await destroySession(req);
+      res.clearCookie(cookie.name, cookie.options);
+      req.log?.info({ userId: account.id }, 'session ended: roles changed');
+      return next();
+    }
+
     req.user = Object.freeze({ ...identity, scopes: scopesOf(identity) });
     req.account = account;
     next();

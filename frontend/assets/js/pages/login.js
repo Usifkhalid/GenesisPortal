@@ -21,7 +21,7 @@ import { forgetSavedAnswers, startServiceWorker } from '../pwa.js';
 const STORED_LOCALE_KEY = 'mgp.locale';
 
 /** The reasons /auth/callback may send someone back here with. */
-const CALLBACK_ERRORS = ['signin_failed', 'not_provisioned'];
+const CALLBACK_ERRORS = ['signin_failed', 'not_provisioned', 'too_many_attempts'];
 
 const state = {
   /** 'loading' | 'loadFailed' | 'mock' | 'mockOff' | 'entra' */

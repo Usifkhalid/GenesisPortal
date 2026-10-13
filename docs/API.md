@@ -59,7 +59,35 @@ and is safe as an Azure App Service health probe.
 { "status": "ok" }
 ```
 
+### `GET /api/ready`
+
+Readiness: can this instance serve a request now? No authentication, never rate limited. It
+checks the database (one small query) and the file storage (the folder or the Blob container).
+App Service's health check points here.
+
+```
+200 OK                  { "status": "ready",       "checks": { "database": "ok", "storage": "ok" } }
+503 Service Unavailable { "status": "unavailable", "checks": { "database": "failed", "storage": "ok" } }
+503 Service Unavailable { "status": "stopping",    "checks": { … } }   the process is shutting down
+```
+
+A check is `ok`, `failed` or `skipped` (no database configured: development in memory). The
+answer never says why a check failed; the log does.
+
 ### Sign-in and session
+
+**Lifetimes.** A session ends after 8 hours unused, and 12 hours after sign-in however active
+it is (`SESSION_IDLE_MINUTES`, `SESSION_ABSOLUTE_HOURS`). A change to the person's roles ends it
+at once. In each case the next request answers `401 unauthenticated` and the page goes to
+sign-in.
+
+**Sign-in limits.** Per 15 minutes: 10 sign-ins per account and 600 per client address
+(`AUTH_ACCOUNT_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`). Mock sign-in answers `429 rate_limited`;
+the Entra callback returns to `/login.html?error=too_many_attempts`.
+
+**CSRF.** Besides the `X-CSRF-Token` header, a state-changing request that the browser marks
+`Sec-Fetch-Site: cross-site` or `same-site` is refused with `403 csrf_invalid`.
+
 
 `/api` is closed by default: everything below the sign-in routes needs a session, so an
 unauthenticated request to a path that does not exist is `401`, not `404`.
@@ -353,7 +381,7 @@ counter row bumped inside the create transaction, so concurrent creates never sh
 | `GET /api/tickets/:id` | requester, team, HA | `{ ticket, attachments, timeline }`. `attachments` are the files sent with the description. `timeline` is every event, oldest first: `{ id, type, at, actor, from, to, isInternal, comment }` with `type` one of `created`, `assigned`, `status`, `priority`, `category`, `comment`, `attachment`, `reopened`, `autoClosed`; `actor` is `null` for the system; `from`/`to` are people for `assigned`, categories for `category`, plain values otherwise; `comment` is `{ id, body, attachments }`. Internal notes, their files and their events are left out for the requester. |
 | `POST /api/tickets/:id/comments` | requester, team, HA | `{ body, isInternal? }` → 201, the ticket in full. `isInternal` is for the team (403 from the requester). A public comment from the team is the assignee's, a Lead's or a HoldingAdmin's: any other agent gets 403 `not_assignee` and writes an internal note (D122). 409 `ticket_closed` for a public comment on a closed ticket. |
 | `POST /api/tickets/:id/attachments?name=&commentId=` | requester, team, HA | body: the file itself (send it as `application/octet-stream`), 10 MB at most (413). `name` is its file name. With `commentId` (a comment of the caller's own) it belongs to that comment, otherwise to the description; five files each (409 `too_many_attachments`). Allowed: PNG, JPEG, GIF, WebP, PDF, Word, Excel, PowerPoint (old and new formats), `.txt`, `.log`, each checked by its signature against its extension; anything else, archives and executables included, is 415 `unsupported_file`. 400 `empty_upload`, 409 `ticket_closed`. → 201 `{ id, fileName, contentType, size, isInternal, uploadedBy, createdAt, url }`. |
-| `GET /api/tickets/:id/attachments/:attachmentId` | requester, team, HA | the bytes, always as a download (`Content-Disposition: attachment`). A file on an internal note is 404 for the requester. |
+| `GET /api/tickets/:id/attachments/:attachmentId` | requester, team, HA | the bytes, always as a download (`Content-Disposition: attachment`). A file on an internal note is 404 for the requester. `409 file_scan_pending` while the malware scan has not finished; `410 file_blocked` when it failed. |
 | `POST /api/tickets/:id/reopen` | requester, assignee, Lead, HA | a Resolved or Closed ticket back to Open. The requester has seven days from when it was resolved (409 `reopen_window_closed`); the team is not bound by that, but an agent who does not have the ticket gets 403 `not_assignee`. 409 `not_resolved`. |
 | `GET /api/tickets/queue?status=&priority=&assignee=&teamId=&companyId=&locationId=&categoryId=&sla=&q=&page=&pageSize=` | team, HA | the tickets the reader serves, running clocks first and nearest due date first. `assignee`: `unassigned`, `me` or a person's id. `sla`: `on_track`, `at_risk` (75% of the target used), `breached`; paused and finished tickets match none. Anyone else: 403. |
 | `GET /api/tickets/queue/options` | team, HA | `{ teams, agents: [{ id, displayNameEn, displayNameAr, teamId, role }], categories, locations, companies, priorities, statuses }` for the filters and the assign menu |
@@ -407,6 +435,14 @@ Audit, one entry per write, filed under no company: `helpdesk.team.create`,
 happens to a ticket itself (comments, assignment, status, priority, category, files) is
 its own timeline (`TicketEvent`), not the audit log.
 
+**Uploaded files and the malware scan.** Every attachment in a ticket's detail carries
+`scan`: `pending`, `clean` or `infected`. Only a clean file can be fetched. The same gate is
+on every uploaded image (`/api/companies/:id/logo`, `/api/announcements/:id/cover`,
+`/api/rooms/:id/photo`): `409 file_scan_pending` until the scan passes, `410 file_blocked` if it
+fails. An infected file is deleted, and its uploader and the IT leads get the notification
+`file.infected`. With the local mock scanner everything is clean at once, except the EICAR
+test file.
+
 ### The offline worker (not under /api)
 
 | Route | Answer |
@@ -454,6 +490,7 @@ Development only, never mounted in production, and answering 404 unless Graph is
 | Route | Answer |
 | --- | --- |
 | `GET /api/dev/outbox` | `{ items: [{ id, from, to, subject, html, text, sentAt }] }`: what the portal "sent", newest first, from `backend/mock/outbox/`. The page is `#dev`. |
+| `GET /api/dev/outbox/:id/html` | one mail's HTML for the preview frame, with a sandboxed policy of its own (inline styles, no script). Development only, like the list. |
 
 ### The rest
 

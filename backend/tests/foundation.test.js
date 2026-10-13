@@ -8,7 +8,7 @@ import { loadEnv } from '../src/config/env.js';
 import { snapshot, writeAudit } from '../src/lib/audit.js';
 import { guardAuditLog } from '../src/lib/prisma.js';
 import { HttpError } from '../src/middleware/errors.js';
-import { authLimitFor } from '../src/middleware/rate-limit.js';
+import { accountLimitFor, authLimitFor } from '../src/middleware/rate-limit.js';
 import { createFakePrisma } from './helpers/fake-prisma.js';
 
 const UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
@@ -170,7 +170,9 @@ describe('rate limiter', () => {
 
 describe('auth rate limit by environment', () => {
   test('production keeps AUTH_RATE_LIMIT_MAX; only mock development is raised', () => {
-    const base = { AUTH_RATE_LIMIT_MAX: 20 };
+    const base = { AUTH_RATE_LIMIT_MAX: 20, AUTH_ACCOUNT_RATE_LIMIT_MAX: 10 };
+    assert.equal(accountLimitFor({ ...base, NODE_ENV: 'production', AUTH_MODE: 'entra' }), 10);
+    assert.ok(accountLimitFor({ ...base, NODE_ENV: 'development', AUTH_MODE: 'mock' }) >= 1000);
     assert.equal(authLimitFor({ ...base, NODE_ENV: 'production', AUTH_MODE: 'entra' }), 20);
     assert.equal(authLimitFor({ ...base, NODE_ENV: 'development', AUTH_MODE: 'entra' }), 20);
     assert.equal(authLimitFor({ ...base, NODE_ENV: 'test', AUTH_MODE: 'mock' }), 20);
@@ -192,9 +194,14 @@ describe('config loader', () => {
   const production = {
     NODE_ENV: 'production',
     DATABASE_URL: 'sqlserver://db;database=x;user=u;password=p',
-    SESSION_SECRET: 'a-long-enough-secret',
+    SESSION_SECRET: 'a-long-enough-secret-of-32-characters-or-more',
     APP_BASE_URL: 'https://portal.example.com',
     AUTH_MODE: 'entra',
+    GRAPH_MODE: 'real',
+    NOREPLY_MAILBOX: 'no-reply@portal.example.com',
+    STORAGE_DRIVER: 'azure',
+    AZURE_STORAGE_ACCOUNT_URL: 'https://mgportal.blob.core.windows.net',
+    SCAN_MODE: 'defender',
     ENTRA_TENANT_ID: 't',
     ENTRA_CLIENT_ID: 'c',
     ENTRA_CLIENT_SECRET: 's',
@@ -230,6 +237,44 @@ describe('config loader', () => {
       () => loadEnv({ ...production, ENTRA_CLIENT_SECRET: 'CHANGE_ME' }),
       /ENTRA_CLIENT_SECRET/
     );
+  });
+
+  test('production refuses anything mocked, weak or left at its development default', () => {
+    const refuses = (change, name) =>
+      assert.throws(() => loadEnv({ ...production, ...change }), name, JSON.stringify(change));
+    refuses({ GRAPH_MODE: 'mock' }, /GRAPH_MODE/);
+    refuses({ STORAGE_DRIVER: 'local' }, /STORAGE_DRIVER/);
+    refuses({ SCAN_MODE: 'mock' }, /SCAN_MODE/);
+    refuses({ AZURE_STORAGE_ACCOUNT_URL: undefined }, /AZURE_STORAGE_ACCOUNT_URL/);
+    refuses({ APP_BASE_URL: 'http://portal.example.com' }, /APP_BASE_URL/);
+    refuses({ SESSION_SECRET: 'sixteen-chars-ok' }, /SESSION_SECRET/);
+    refuses(
+      { SESSION_SECRET_PREVIOUS: 'CHANGE_ME_LONG_RANDOM_STRING' },
+      /SESSION_SECRET_PREVIOUS/
+    );
+    refuses(
+      { SESSION_IDLE_MINUTES: '900', SESSION_ABSOLUTE_HOURS: '12' },
+      /SESSION_ABSOLUTE_HOURS/
+    );
+  });
+
+  test('on Azure App Service a missing NODE_ENV stops the start', () => {
+    // Without this the default (development) would open mock sign-in to the internet.
+    assert.throws(() => loadEnv({ WEBSITE_SITE_NAME: 'mg-portal' }), /NODE_ENV/);
+    assert.throws(
+      () => loadEnv({ WEBSITE_SITE_NAME: 'mg-portal', NODE_ENV: 'development' }),
+      /NODE_ENV/
+    );
+    assert.equal(loadEnv({ ...production, WEBSITE_SITE_NAME: 'mg-portal' }).AUTH_MODE, 'entra');
+  });
+
+  test('session lifetimes are configurable and default to 8 h idle, 12 h absolute', () => {
+    const defaults = loadEnv({});
+    assert.equal(defaults.sessionIdleMs, 8 * 3_600_000);
+    assert.equal(defaults.sessionAbsoluteMs, 12 * 3_600_000);
+    const custom = loadEnv({ SESSION_IDLE_MINUTES: '30', SESSION_ABSOLUTE_HOURS: '4' });
+    assert.equal(custom.sessionIdleMs, 30 * 60_000);
+    assert.equal(custom.sessionAbsoluteMs, 4 * 3_600_000);
   });
 
   test('an invalid value is named without being echoed', () => {

@@ -278,6 +278,14 @@
   background: var(--surface-hover);
 }
 
+/* A file still being scanned, or blocked by the scan: not a link. */
+.tk-chip--held,
+.tk-chip--held:hover {
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
+}
+
 .tk-chip__icon {
   inline-size: var(--space-4);
   block-size: var(--space-4);

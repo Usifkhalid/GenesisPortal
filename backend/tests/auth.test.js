@@ -361,10 +361,29 @@ describe('company scoping through a session', () => {
 
     const row = repo.users.find((u) => u.id === person.id);
     row.roles = [{ role: ROLES.USER, scopeCompanyId: id('MSR') }];
-    assert.equal((await act()).status, 403);
+    // The old role is refused on the very next request, and the session it
+    // was held in is over: a change of privilege never keeps its session id.
+    assert.equal((await act()).status, 401);
+    assert.equal((await agent.get('/api/me')).status, 401);
+
+    // Signed in again they are a plain user.
+    const agent2 = request.agent(app);
+    const config = await agent2.get('/api/auth/config');
+    const login = await agent2
+      .post('/api/auth/mock-login')
+      .set('X-CSRF-Token', config.body.csrfToken)
+      .send({ userId: person.id });
+    assert.equal(
+      (
+        await agent2
+          .post(`/api/_test/companies/${id('MSR')}/settings`)
+          .set('X-CSRF-Token', login.body.csrfToken)
+      ).status,
+      403
+    );
 
     row.isActive = false;
-    assert.equal((await agent.get('/api/me')).status, 401);
+    assert.equal((await agent2.get('/api/me')).status, 401);
   });
 });
 

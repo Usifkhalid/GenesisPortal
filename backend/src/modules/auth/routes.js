@@ -29,8 +29,10 @@ import { describeMe, listMockUsers, startSession } from './service.js';
  * @param {object} deps.config  the environment (config/env.js), or a test's version of it
  * @param {object} deps.repo  see repo.js
  * @param {object} [deps.msalClient]  a stand-in for the MSAL client, for tests
+ * @param {{ hit: (account: string) => void }} [deps.accounts]  the per-account
+ *   sign-in cap (middleware/rate-limit.js)
  */
-export function publicAuthRoutes({ config, repo, msalClient }) {
+export function publicAuthRoutes({ config, repo, msalClient, accounts }) {
   const router = Router();
   const cookie = sessionCookie(config);
   const entra = config.AUTH_MODE === 'entra';
@@ -60,6 +62,7 @@ export function publicAuthRoutes({ config, repo, msalClient }) {
 
   router.post('/api/auth/mock-login', mockOnly, async (req, res) => {
     const { userId } = mockLoginBody.parse(req.body);
+    accounts?.hit(userId);
 
     const person = await repo.getSessionUser(userId);
     if (!person?.isActive || !person.company?.isActive) {
@@ -88,7 +91,7 @@ export function publicAuthRoutes({ config, repo, msalClient }) {
   router.post('/api/auth/logout', logout);
 
   if (entra) {
-    const handlers = createEntraHandlers({ config, repo, msalClient });
+    const handlers = createEntraHandlers({ config, repo, msalClient, accounts });
     router.get('/auth/login', handlers.login);
     router.get('/auth/callback', handlers.callback);
     router.post('/auth/logout', logout);
