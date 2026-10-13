@@ -91,6 +91,20 @@ const schema = z
     /** mock: seeded fake users, no tenant needed. entra: real Entra ID. */
     AUTH_MODE: z.enum(['mock', 'entra']).default('mock'),
 
+    /**
+     * on: the browser installs the offline service worker (frontend/sw.js).
+     * Default: on in production, off in development, where a worker that
+     * serves files from its cache would hide every edit.
+     */
+    SERVICE_WORKER: z.enum(['on', 'off']).optional(),
+
+    /**
+     * on: text files of the frontend are compressed once at Brotli's best
+     * level and served from memory (lib/precompressed-static.js). Default: on
+     * in production, off in development, where files change under the server.
+     */
+    STATIC_PRECOMPRESS: z.enum(['on', 'off']).optional(),
+
     /** mock: canned Graph responses. real: the live tenant. */
     GRAPH_MODE: z.enum(['mock', 'real']).default('mock'),
 
@@ -170,6 +184,12 @@ export function loadEnv(source) {
     APP_BASE_URL: (data.APP_BASE_URL ?? `http://localhost:${data.PORT}`).replace(/\/+$/, ''),
     /** False while DATABASE_URL is missing or still the .env.example placeholder. */
     hasDatabase: !isPlaceholder(data.DATABASE_URL),
+    /** Whether static text is served precompressed; see STATIC_PRECOMPRESS above. */
+    staticPrecompress:
+      (data.STATIC_PRECOMPRESS ?? (data.NODE_ENV === 'production' ? 'on' : 'off')) === 'on',
+    /** Whether /sw.js serves the offline worker; see SERVICE_WORKER above. */
+    serviceWorkerEnabled:
+      (data.SERVICE_WORKER ?? (data.NODE_ENV === 'production' ? 'on' : 'off')) === 'on',
   });
 }
 

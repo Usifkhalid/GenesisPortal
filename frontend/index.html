@@ -2,10 +2,15 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <title data-i18n="app.name">MG Holding Portal</title>
 
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#f8f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d1611" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="assets/img/icons/apple-touch-icon.png" />
     <link
       rel="preload"
       href="assets/fonts/plex-sans-latin.woff2"
@@ -173,7 +178,11 @@
 
           <p class="topbar__title" id="topbarTitle" data-i18n="nav.home">Home</p>
 
-          <div class="input-group topbar__search" role="search">
+          <div
+            class="input-group topbar__search"
+            role="search"
+            data-i18n-attr="aria-label:search.landmark.top"
+          >
             <svg class="input-group__icon" aria-hidden="true" focusable="false">
               <use href="#i-search" />
             </svg>
@@ -268,6 +277,8 @@
       <!-- ====================================================== main area === -->
       <main class="main" id="main" tabindex="-1">
         <!-- router.js renders the page the address names here. See assets/js/pages/. -->
+        <!-- The portal's own state (offline, update ready). Filled by components/status-banner.js. -->
+        <div class="status-banner" id="statusBanner" hidden></div>
         <div class="page" id="page"></div>
       </main>
 

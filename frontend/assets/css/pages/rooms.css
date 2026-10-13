@@ -10,6 +10,7 @@
 
 /* --- View switch --------------------------------------------------------- */
 .rooms-nav {
+  position: relative; /* contains visually hidden labels; see .tabs */
   display: flex;
   gap: var(--space-1);
   border-block-end: var(--border-1) solid var(--rule);

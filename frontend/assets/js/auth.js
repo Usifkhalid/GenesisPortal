@@ -8,6 +8,7 @@
  */
 
 import { api, setCsrfToken } from './api.js';
+import { forgetSavedAnswers } from './pwa.js';
 
 /**
  * Loads the session. Without one, api() sends the browser to the login page
@@ -40,6 +41,8 @@ export async function loadSession() {
  */
 export async function signOut() {
   let redirectTo = '/login.html';
+  // What the worker saved is this person's: it does not stay on a shared phone.
+  await forgetSavedAnswers();
   try {
     ({ redirectTo } = await api('/api/auth/logout', {
       method: 'POST',

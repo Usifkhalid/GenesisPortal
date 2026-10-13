@@ -26,6 +26,8 @@ import { apiLimiter, authLimiter } from './middleware/rate-limit.js';
 import { requestLog } from './middleware/request-log.js';
 import { createMemoryOutbox } from './integrations/graph/mock-mail.js';
 import { createNotifier } from './lib/notify.js';
+import { precompressedStatic } from './lib/precompressed-static.js';
+import { serviceWorkerRoute, workerEnabledFor } from './lib/service-worker.js';
 import { defaultStorage } from './lib/storage.js';
 import { adminRoutes, logoRoutes } from './modules/admin/routes.js';
 import { createAdminService } from './modules/admin/service.js';
@@ -290,6 +292,27 @@ export function createApp(options = {}) {
   options.protectedRoutes?.(app);
 
   app.use(apiNotFound);
+
+  // Before the static files, so the template with its placeholders is never
+  // served as it is on disk.
+  app.get(
+    '/sw.js',
+    serviceWorkerRoute({
+      frontendDir: FRONTEND_DIR,
+      enabled: (req) => workerEnabledFor(req, config),
+      fixed: isProduction,
+    })
+  );
+
+  if (config.staticPrecompress) {
+    const precompressed = precompressedStatic(FRONTEND_DIR, {
+      cacheControl: isProduction ? 'public, max-age=3600' : 'public, max-age=0',
+      skip: ['/sw.js'],
+    });
+    app.use(precompressed);
+    // In the background: the first phone should not pay for the best setting.
+    if (!isTest) setImmediate(() => precompressed.warm().catch(() => {}));
+  }
 
   app.use(
     express.static(FRONTEND_DIR, {

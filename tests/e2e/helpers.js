@@ -36,13 +36,22 @@ const IGNORED_ERRORS = [
 ];
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  /**
+   * Console errors a spec expects on purpose (resilience.spec.js breaks the
+   * network and the server): `test.use({ allowedErrors: /net::ERR_/ })`. One
+   * expression, because Playwright reads an array here as a [value, options] pair.
+   */
+  allowedErrors: [null, { option: true }],
+
+  page: async ({ page, allowedErrors }, use) => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
     page.on('console', (message) => {
       if (message.type() !== 'error') return;
       const text = `${message.text()} (${message.location().url})`;
-      if (!IGNORED_ERRORS.some((known) => known.test(text))) errors.push(`console: ${text}`);
+      if (!IGNORED_ERRORS.some((known) => known.test(text)) && !allowedErrors?.test(text)) {
+        errors.push(`console: ${text}`);
+      }
     });
 
     await use(page);

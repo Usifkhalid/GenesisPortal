@@ -50,7 +50,8 @@ export function render(root, ctx) {
       </a>
     </div>
     <div class="tk-toolbar">
-      <form class="field tk-toolbar__search" role="search" id="tkMineSearch">
+      <form class="field tk-toolbar__search" role="search" id="tkMineSearch"
+        aria-label="${esc(t('search.landmark.tickets'))}">
         <label class="field__label" for="tkMineQ">${esc(t('tk.mine.search'))}</label>
         <div class="input-group">
           ${icon('search', 'input-group__icon')}

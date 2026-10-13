@@ -16,6 +16,7 @@ import { icon, injectSprite } from '../components/icons.js';
 import { initials } from '../components/initials.js';
 import { loadFailedNotice, notice } from '../components/notice.js';
 import { DEFAULT_LOCALE, getLocale, localized, setLocale, t } from '../i18n.js';
+import { forgetSavedAnswers, startServiceWorker } from '../pwa.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
 
@@ -232,6 +233,7 @@ async function load() {
   try {
     const config = await api('/api/auth/config', { redirectOn401: false, quiet: true });
     setCsrfToken(config.csrfToken);
+    startServiceWorker({ enabled: config.serviceWorker === true });
 
     if (config.signedIn) {
       location.replace('./');
@@ -272,6 +274,8 @@ function readCallbackError() {
 }
 
 async function init() {
+  // Arriving here means signed out: nothing of the last person stays saved.
+  forgetSavedAnswers();
   injectSprite();
   readCallbackError();
   initLanguageSwitch();

@@ -7,6 +7,25 @@
     "loadFailedTitle": "This page did not load",
     "loadFailedText": "The connection may have dropped. Nothing was lost."
   },
+  "pwa": {
+    "offline": {
+      "title": "No signal",
+      "text": "You are seeing what was last saved on this device. Changes cannot be sent until the signal is back.",
+      "action": "Try again"
+    },
+    "update": {
+      "title": "A new version is ready",
+      "text": "Update to get the latest changes. What you are typing now will be lost, so finish first.",
+      "action": "Update now"
+    }
+  },
+  "offline": {
+    "pageTitle": "Offline · MG Holding Portal",
+    "title": "No connection",
+    "text": "This page is not saved on your device yet. Nothing was lost. Check your signal and try again.",
+    "action": "Try again",
+    "home": "Go to Home"
+  },
   "nav": {
     "label": "Main",
     "home": "Home",
@@ -1407,7 +1426,12 @@
       "people": "People"
     },
     "searching": "Searching",
-    "failed": "Search is not available right now."
+    "failed": "Search is not available right now.",
+    "landmark": {
+      "top": "Find a colleague",
+      "directory": "Search the directory",
+      "tickets": "Search tickets"
+    }
   },
   "directory": {
     "title": "Directory",

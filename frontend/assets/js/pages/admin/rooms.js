@@ -350,7 +350,7 @@ async function renderForm(root, { scope }, existing) {
     const tile = root.querySelector('#photoTile');
     if (!tile) return;
     tile.innerHTML = room.photoUrl
-      ? `<img class="admin-photo__img" src="${esc(room.photoUrl)}" alt="" />`
+      ? `<img class="admin-photo__img" src="${esc(room.photoUrl)}" alt="" loading="lazy" decoding="async" />`
       : `<span class="admin-photo__none">${esc(t('rooms.detail.noPhoto'))}</span>`;
     root.querySelector('#photoRemove').hidden = !room.photoUrl;
   }

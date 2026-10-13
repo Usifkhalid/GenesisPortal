@@ -39,6 +39,8 @@ export function fillCompanyMark(mark, company, { small = false } = {}) {
     img.src = company.logoUrl;
     img.alt = '';
     img.decoding = 'async';
+    // A mark far down a list is fetched when it nears the screen.
+    img.loading = 'lazy';
     mark.append(img);
   } else {
     mark.textContent = company.code;

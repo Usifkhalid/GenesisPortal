@@ -59,6 +59,8 @@
    * in both languages, so tabular numerals in a label strip line up
    * identically whichever language the portal is in.
    */
+  /* The device's own face, for the one place the portal does not spend a download. */
+  --font-system: system-ui, -apple-system, 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
   --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Arabic', system-ui, -apple-system,
     'Segoe UI', sans-serif;
 

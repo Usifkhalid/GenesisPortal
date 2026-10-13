@@ -17,6 +17,8 @@ import { api } from './api.js';
 import { loadSession, signOut } from './auth.js';
 import { createRouter } from './router.js';
 import { loadFailedNotice } from './components/notice.js';
+import { createStatusBanner } from './components/status-banner.js';
+import { startServiceWorker } from './pwa.js';
 import { pageSkeleton } from './components/skeleton.js';
 import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
@@ -46,6 +48,9 @@ const state = {
 
 /** Draws the page the address names. Made by init(), once the session is known. */
 let router = null;
+
+/** The strip for the portal's own state: no signal, an update is ready. */
+let banner = null;
 
 /** Admin navigation is the server's call: it sends the group or it does not. */
 const isAdmin = () => state.nav.some((item) => item.group === 'admin');
@@ -92,6 +97,7 @@ async function applyLanguage(lang) {
   renderShellData();
   drawAnnouncementCount();
   updateLanguageMenu();
+  banner?.redraw();
   await router?.refresh();
 }
 
@@ -612,6 +618,31 @@ function initNotifications() {
   refreshNotifCount();
 }
 
+/* -------------------------------------------------------- offline, updates */
+
+/**
+ * The worker (sw.js) shows a saved answer when the network is slow or gone.
+ * Say so, with a way to ask again, and offer a new version without taking it
+ * by force: a reload would lose whatever someone is typing.
+ */
+function initOfflineState(serviceWorker) {
+  banner = createStatusBanner(document.getElementById('statusBanner'));
+  const retry = () => {
+    banner.hideOffline();
+    router?.refresh();
+  };
+  const showOffline = () => banner.showOffline(retry);
+
+  startServiceWorker({
+    enabled: serviceWorker,
+    onSavedAnswer: showOffline,
+    onUpdateReady: (apply) => banner.showUpdate(apply),
+  });
+  window.addEventListener('offline', showOffline);
+  window.addEventListener('online', () => banner.hideOffline());
+  if (!navigator.onLine) showOffline();
+}
+
 /* ----------------------------------------------------------------- sign out */
 
 function initSignOut() {
@@ -686,6 +717,7 @@ async function init() {
   initSearchShortcut();
   initPeopleSearch(document.getElementById('globalSearch'));
   initSignOut();
+  initOfflineState(me.serviceWorker === true);
   initSkipLink();
   document.addEventListener('announcements:changed', refreshAnnouncementCount);
   refreshAnnouncementCount();

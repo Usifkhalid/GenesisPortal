@@ -81,6 +81,9 @@ h6 {
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   text-wrap: balance;
+  /* A single long word ("Announcements" at 200% text on a phone) breaks
+   * rather than leave the screen. */
+  overflow-wrap: anywhere;
 }
 
 /* Large headings are set light: at these sizes the regular weight carries a
@@ -422,4 +425,11 @@ th {
  * directional ones with this class, never the whole icon set. */
 [dir='rtl'] .icon--dir {
   transform: scaleX(-1);
+}
+
+/* A language's own name is written in its own script, but while the page is in
+ * another language it is set in the device's face: otherwise an English reader
+ * would download the Arabic font (46 kB) to draw a single word. */
+html:not([lang='ar']) [data-lang='ar'] {
+  font-family: var(--font-system);
 }

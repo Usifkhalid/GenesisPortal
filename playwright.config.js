@@ -15,6 +15,29 @@ import { defineConfig } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 
+/** What the test servers run with; see the comments on each value. */
+function serverEnv(port, extra = {}) {
+  return {
+    // The e2e server runs on the test database, never the development one.
+    // Both halves of the command read .env themselves and resolve the same
+    // test database from it (backend/src/config/env.js), so the one that is
+    // emptied and seeded is the one the server then uses.
+    USE_TEST_DATABASE: '1',
+    PORT: String(port),
+    NODE_ENV: 'development',
+    AUTH_MODE: 'mock',
+    GRAPH_MODE: 'mock',
+    LOG_LEVEL: 'warn',
+    // Text assets as production serves them, so page-weight.spec.js reports
+    // what a phone would download.
+    STATIC_PRECOMPRESS: process.env.E2E_PRECOMPRESS ?? 'on',
+    // Every test signs in and out from one address; the real cap would trip.
+    AUTH_RATE_LIMIT_MAX: '10000',
+    RATE_LIMIT_MAX: '100000',
+    ...extra,
+  };
+}
+
 export default defineConfig({
   testDir: 'tests/e2e',
   testMatch: '**/*.spec.js',
@@ -28,6 +51,9 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   outputDir: 'test-results',
+  // Twice the default for a test as well: the long flows (a ticket raised,
+  // worked and reopened) take 20 s alone and more beside the other specs.
+  timeout: 60_000,
   // Twice the default: a wait on the server is a wait on a shared database.
   expect: { timeout: 10_000 },
 
@@ -51,20 +77,6 @@ export default defineConfig({
     command: 'node backend/scripts/prepare-test-db.js --seed && node backend/src/server.js',
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
-    env: {
-      // The e2e server runs on the test database, never the development one.
-      // Both halves of the command read .env themselves and resolve the same
-      // test database from it (backend/src/config/env.js), so the one that is
-      // emptied and seeded is the one the server then uses.
-      USE_TEST_DATABASE: '1',
-      PORT: String(PORT),
-      NODE_ENV: 'development',
-      AUTH_MODE: 'mock',
-      GRAPH_MODE: 'mock',
-      LOG_LEVEL: 'warn',
-      // Every test signs in and out from one address; the real cap would trip.
-      AUTH_RATE_LIMIT_MAX: '10000',
-      RATE_LIMIT_MAX: '100000',
-    },
+    env: serverEnv(PORT),
   },
 });

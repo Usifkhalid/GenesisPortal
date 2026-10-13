@@ -181,3 +181,10 @@
     color: var(--brand-accent-ink);
   }
 }
+
+/* offline.html: the same quiet page, with its actions side by side. */
+.offline__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

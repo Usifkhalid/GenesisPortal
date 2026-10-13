@@ -1227,3 +1227,85 @@ not picked up:
   urgency they choose (D106) and only the team changes it after; assigning a New ticket
   makes it Open; a requester's reply to a Resolved ticket reopens it, within seven calendar
   days of `resolvedAt`; auto-close is three full working days of the team's hours.
+
+### D119. Offline: a service worker that saves the shell, and one rule for what it may keep
+
+`frontend/sw.js`, installed by `assets/js/pwa.js`, makes the portal open with no signal.
+
+- **Cache first** for the shell, CSS, JS, i18n files, icons and, once used, fonts and page
+  modules. **Network first** for API reads (`GET /api/*`, not `/api/auth/*`, not `/api/dev`):
+  after 6 s without an answer the last saved one is used, and the page is told, so the shell
+  says "No signal" with a "Try again". Writes are never touched: they fail as before and the
+  existing toast says so. A navigation to an address that was never saved gets
+  `offline.html` (bilingual, no script beyond the language loader).
+- **Versioned with no build step:** `GET /sw.js` is served by `lib/service-worker.js`, which
+  hashes every frontend file's path, size and mtime into `VERSION` and lists the precache.
+  Any edited file is a new worker, installed beside the old one; the page offers "Update
+  now" and reloads only on that choice, so a form being typed is never lost. Old caches are
+  deleted on activation.
+- **What a shared phone must not keep:** API answers are one person's data. They are deleted
+  on sign-out, whenever the login page opens, and by the worker on any 401. Fonts and code
+  are not personal and stay.
+- **Off in development** (`SERVICE_WORKER=off`, the default outside production), because a
+  cache-first worker hides every file edit. The server tells the page (`serviceWorker` in
+  `/api/me` and `/api/auth/config`); where it is off the page removes a worker an earlier run
+  left behind. A 404 for `/sw.js` was tried and rejected: it logs an error in every console.
+  Outside production a browser can ask for it with the cookie `portal_sw=on` (that is how
+  `pwa.spec.js` runs it on the one test server; a second always-on server made the whole suite
+  slower and flakier). Production ignores the cookie.
+- The manifest names the portal in both languages in one string (a manifest has one name);
+  its two shortcuts open "new booking" and "new ticket". Icons are drawn by
+  `backend/scripts/make-icons.js` (the label strip's card on pine) and committed.
+
+### D120. Page weight: what a phone downloads, and where the budget is spent
+
+Measured by `tests/e2e/page-weight.spec.js` (cold cache, bytes on the wire, phone project):
+
+| | English | Arabic |
+|---|---|---|
+| Sign-in page, first load | 138 kB | 231 kB |
+| Shell + Home, first load | 194 kB | 293 kB |
+| Largest page added afterwards | Directory, 55 kB (it brings the Arabic font for Arabic names) | Rooms, 28 kB |
+
+The test fails above 300 kB for a first load and 120 kB for a page. Arabic is the heavier
+language because it downloads three font files (137 kB): the Latin file stays for digits and
+names (session 3), plus the two Arabic weights.
+
+- **Static text is compressed once at Brotli quality 11** and served from memory
+  (`lib/precompressed-static.js`, `STATIC_PRECOMPRESS`, default on in production): about 15-20%
+  smaller than the `compression` middleware's speed-first Brotli. The API still uses
+  `compression`. The files are compressed in the background after start.
+- **The name of the other language costs nothing:** "العربية" in the language switch is set in
+  the device's face while the page is English; it had pulled the 46 kB Arabic font for one word.
+- **Not done, on purpose:** loading each page's CSS with its page (about 18 kB less on first
+  load). The page stylesheets share more classes than their names suggest (`.dir-*` in the
+  people picker, `.typeahead__*` in the top-bar search, `.notice-*`), so it needs a dependency
+  map and a visual check per page first. The Arabic first load is within 7 kB of its budget:
+  the next feature that adds shell code or strings should do this first.
+- Images: company logos and room photos load lazily; covers on the board were already lazy.
+
+### D121. Large text, long names and failed requests: what every page must survive
+
+`tests/e2e/resilience.spec.js` bends every API answer in the browser (long names in both
+languages with an unbroken 70-character token, no data at all, no signal, 500s) and enlarges
+text to 200%, on all 23 addresses, both languages, both screens. A page passes if it drew
+something, nothing hangs past the screen and a failed read is said somewhere. Fixed by it:
+
+- The top bar gives the search its own row when the bar is narrower than 18 rem (a container
+  query, so it answers to the text size in use).
+- The bottom nav is a grid of five `minmax(0, 1fr)` cells: large text cannot push "More" off.
+- Headings break a single long word (`overflow-wrap: anywhere`); a tag wraps instead of
+  growing; `.segmented` wraps; every scroll container is `position: relative`, because a
+  visually hidden label inside one otherwise stretched the whole page sideways (it did, on
+  Admin > Companies).
+- After a booking from the room finder, focus goes to the confirmation (the Book button that
+  held it is gone).
+
+`tests/e2e/a11y.spec.js` runs axe-core (WCAG 2.0/2.1/2.2 A and AA plus best practice) on all
+23 addresses and the login page in both languages on both screens: zero serious or critical
+findings; the two moderate ones (unnamed search landmarks) are fixed. The booking and ticket
+flows are also driven with Tab, Space and Enter alone. `viewport-fit=cover` is set so the
+installed app keeps clear of a notch.
+
+The worker's install keeps what arrives if one file drops (the shell's three pages are the
+only ones it insists on), because `addAll` is all-or-nothing and a weak connection is not.

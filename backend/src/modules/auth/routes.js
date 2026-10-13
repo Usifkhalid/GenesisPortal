@@ -17,6 +17,7 @@
 import { Router } from 'express';
 
 import { destroySession, sessionCookie } from '../../lib/session.js';
+import { workerEnabledFor } from '../../lib/service-worker.js';
 import { csrfToken } from '../../middleware/csrf.js';
 import { HttpError } from '../../middleware/errors.js';
 import { createEntraHandlers, entraLogoutUrl } from './entra.js';
@@ -48,6 +49,8 @@ export function publicAuthRoutes({ config, repo, msalClient }) {
       mode: config.AUTH_MODE,
       signedIn: Boolean(req.session.userId),
       csrfToken: csrfToken(req),
+      // Whether the page should install the offline worker (frontend/sw.js).
+      serviceWorker: workerEnabledFor(req, config),
     });
   });
 

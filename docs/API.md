@@ -407,6 +407,15 @@ Audit, one entry per write, filed under no company: `helpdesk.team.create`,
 happens to a ticket itself (comments, assignment, status, priority, category, files) is
 its own timeline (`TicketEvent`), not the audit log.
 
+### The offline worker (not under /api)
+
+| Route | Answer |
+|---|---|
+| `GET /sw.js` | The worker with `VERSION` (a hash of every frontend file) and `PRECACHE` filled in; `Cache-Control: no-cache`. With `SERVICE_WORKER=off` a worker that deletes its caches and unregisters. |
+| `GET /manifest.webmanifest` | Static. |
+
+`GET /api/me` and `GET /api/auth/config` carry `serviceWorker: boolean`: whether the page installs it.
+
 ### Notifications (`/api/notifications`)
 
 Everything is the signed-in person's own: the person comes from the session and every query

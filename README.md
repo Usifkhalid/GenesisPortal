@@ -59,7 +59,8 @@ must be named `*_test`; anything else is refused.
 
 ```bash
 npm test                 # node:test + supertest, on the test database
-npm run test:e2e         # Playwright, Chromium, 1440 and 360 px, EN and AR
+npm run test:e2e         # Playwright, Chromium, 1440 and 360 px, EN and AR (includes axe,
+                         # resilience, offline/PWA and page-weight specs)
 npm run lint             # ESLint + Prettier check
 npm run format           # Prettier write
 ```

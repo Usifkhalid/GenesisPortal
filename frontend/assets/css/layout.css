@@ -392,10 +392,15 @@
 }
 
 .topbar {
+  /* Asked how much room the bar has, in the text size in use: with large text
+   * the search no longer fits beside the controls and takes a row of its own. */
+  container: topbar / inline-size;
   position: sticky;
   inset-block-start: 0;
   z-index: var(--z-sticky);
   padding-inline: var(--gutter);
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left, 0px));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right, 0px));
   background: var(--surface-ground);
   border-block-end: var(--border-1) solid var(--rule);
 }
@@ -417,6 +422,17 @@
       minmax(max-content, 1fr) minmax(0, var(--search-max))
       minmax(max-content, 1fr);
     gap: var(--space-5);
+  }
+}
+
+@container topbar (max-width: 18rem) {
+  .topbar__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .topbar__search {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 
@@ -531,6 +547,10 @@
 .main {
   min-width: 0;
   padding-inline: var(--gutter);
+  /* A phone held sideways has a notch beside the screen; the page keeps clear
+   * of it (the viewport asks for the full screen with viewport-fit=cover). */
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left, 0px));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right, 0px));
   padding-block: var(--space-6) var(--space-12);
 }
 
@@ -599,7 +619,11 @@
   inset-inline: 0;
   inset-block-end: 0;
   z-index: var(--z-nav);
-  display: flex;
+  /* Equal cells that can never be wider than the screen, whatever their
+   * content: a flex row would let large text push the last cell off it. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   align-items: stretch;
   background: var(--surface-raised);
   border-block-start: var(--border-1) solid var(--rule);
@@ -620,7 +644,9 @@
   justify-content: center;
   gap: var(--space-1);
   min-block-size: var(--bottomnav-height);
-  min-inline-size: var(--tap-min);
+  /* Five cells share the width: with large text a fixed minimum would push the
+   * last one off the screen, so no cell asks for more than its fifth. */
+  min-inline-size: 0;
   padding-block: var(--space-2);
   padding-inline: var(--space-1);
   color: var(--text-muted);
@@ -659,6 +685,7 @@
 }
 
 .bottomnav__label {
+  min-inline-size: 0;
   max-inline-size: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -776,4 +803,27 @@
  * The grid keeps its tracks, so nothing moves when the shell appears. */
 .app[data-booting] > :not(.main) {
   visibility: hidden;
+}
+
+/* The portal's own state (no signal, update ready), above the page. */
+.status-banner {
+  max-inline-size: var(--page-max);
+  margin-inline: auto;
+  margin-block-end: var(--space-4);
+}
+
+.status-banner__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* env() insets are physical: in a right-to-left page the inline start is the
+ * screen's right side, so the two are swapped. */
+[dir='rtl'] .main,
+[dir='rtl'] .topbar {
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-right, 0px));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-left, 0px));
 }

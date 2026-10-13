@@ -373,7 +373,7 @@ export function render(root, ctx) {
 
     const room = rooms.find((r) => r.id === roomId);
     const series = items.length > 1;
-    const confirmation = `<div class="notice notice--success find__done" role="status">
+    const confirmation = `<div class="notice notice--success find__done" role="status" tabindex="-1">
       ${icon('statusResolved', 'notice__icon')}
       <div class="notice__content stack stack--tight">
         <div>
@@ -406,7 +406,10 @@ export function render(root, ctx) {
         { confirmation }
       );
     }
-    body.querySelector('.find__done')?.scrollIntoView({ block: 'nearest' });
+    // The Book button that held focus is gone: focus goes to what was done.
+    const done = body.querySelector('.find__done');
+    done?.focus({ preventScroll: true });
+    done?.scrollIntoView({ block: 'nearest' });
   }
 
   body.addEventListener('click', async (event) => {

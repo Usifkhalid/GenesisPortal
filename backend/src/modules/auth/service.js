@@ -5,6 +5,7 @@
 
 import { ROLES } from '../../lib/roles.js';
 import { regenerateSession } from '../../lib/session.js';
+import { workerEnabledFor } from '../../lib/service-worker.js';
 import { csrfToken } from '../../middleware/csrf.js';
 
 /** Most powerful first: the one role a person is listed under. */
@@ -112,5 +113,7 @@ export async function describeMe(req, repo, config) {
     nav: navFor(user),
     authMode: config.AUTH_MODE,
     csrfToken: csrfToken(req),
+    // Whether the page should install the offline worker (frontend/sw.js).
+    serviceWorker: workerEnabledFor(req, config),
   };
 }

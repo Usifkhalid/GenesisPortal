@@ -104,7 +104,8 @@ export async function render(root, ctx) {
     </div>
 
     <div class="tk-searchrow">
-      <form class="field tk-search" role="search" id="tkSearchForm">
+      <form class="field tk-search" role="search" id="tkSearchForm"
+        aria-label="${esc(t('search.landmark.tickets'))}">
         <label class="field__label" for="tkQ">${esc(t('tk.queue.search'))}</label>
         <div class="input-group">
           ${icon('search', 'input-group__icon')}

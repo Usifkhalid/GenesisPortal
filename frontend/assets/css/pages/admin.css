@@ -10,6 +10,7 @@
 
 /* --- Section switcher ---------------------------------------------------- */
 .subnav {
+  position: relative; /* contains visually hidden labels; see .tabs */
   display: flex;
   gap: var(--space-1);
   overflow-x: auto;

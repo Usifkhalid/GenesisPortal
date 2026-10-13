@@ -301,7 +301,7 @@ function banner({ company, user, admin }, now) {
  * to the directory's address, which that module will read.
  */
 function peopleSearch() {
-  return `<form class="field" role="search" data-people-search>
+  return `<form class="field" role="search" aria-label="${esc(t('search.landmark.directory'))}" data-people-search>
     <label class="field__label" for="homePeopleSearch">${esc(t('home.people.label'))}</label>
     <div class="input-group">
       ${icon('search', 'input-group__icon')}
