@@ -201,7 +201,7 @@ export function render(root, ctx) {
     count.textContent = items.length ? `(${formatNumber(entries.length)})` : '';
 
     if (entries.length === 0) {
-      body.innerHTML = `<div class="empty empty--inline">
+      body.innerHTML = `<div class="empty">
         ${icon('calendar', 'empty__mark')}
         <div class="empty__copy">
           <p class="empty__title">${esc(t('rooms.mine.emptyTitle'))}</p>

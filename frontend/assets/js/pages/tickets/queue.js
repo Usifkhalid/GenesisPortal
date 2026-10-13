@@ -284,7 +284,7 @@ export async function render(root, ctx) {
     countLine.textContent = t('tk.queue.count', { count: formatNumber(total) });
     drawBulk();
     if (items.length === 0) {
-      body.innerHTML = `<div class="empty empty--inline">
+      body.innerHTML = `<div class="empty">
         ${icon('statusResolved', 'empty__mark')}
         <div class="empty__copy">
           <p class="empty__title">${esc(t('tk.queue.emptyTitle'))}</p>

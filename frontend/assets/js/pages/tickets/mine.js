@@ -108,7 +108,7 @@ export function render(root, ctx) {
   function emptyHtml() {
     const searching = Boolean(state.q);
     const key = searching ? 'search' : state.view;
-    return `<div class="empty empty--inline">
+    return `<div class="empty">
       ${icon(searching ? 'search' : 'tickets', 'empty__mark')}
       <div class="empty__copy">
         <p class="empty__title">${esc(t(`tk.mine.empty.${key}.title`))}</p>

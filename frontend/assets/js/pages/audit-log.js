@@ -173,7 +173,7 @@ export async function render(root, ctx) {
 
     ${
       results.items.length === 0
-        ? `<div class="empty empty--inline"><p class="empty__title">${esc(t('audit.empty'))}</p></div>`
+        ? `<div class="empty"><p class="empty__title">${esc(t('audit.empty'))}</p></div>`
         : `<div class="table-wrap" data-density="compact" tabindex="0" role="region"
              aria-label="${esc(t('audit.caption'))}">
             <table class="table" role="table">

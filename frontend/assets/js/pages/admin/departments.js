@@ -24,7 +24,7 @@ export async function render(root, { scope, params, ctx }) {
   // Inactive companies are for the companies list; there is no one to put in them.
   const companies = scope.companies.filter((c) => c.isActive || c.id === params[0]);
   if (companies.length === 0) {
-    root.innerHTML = `<div class="empty empty--inline"><p class="empty__title">${esc(
+    root.innerHTML = `<div class="empty"><p class="empty__title">${esc(
       t('admin.departments.noCompany')
     )}</p></div>`;
     return;
@@ -153,7 +153,7 @@ export async function render(root, { scope, params, ctx }) {
 
       ${
         items.length === 0
-          ? `<div class="empty empty--inline"><p class="empty__title">${esc(
+          ? `<div class="empty"><p class="empty__title">${esc(
               t('admin.departments.empty')
             )}</p></div>`
           : `<div class="table-wrap" data-density="compact" tabindex="0" role="region"

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- impeccable-disable cramped-padding,low-contrast -- chips and the dialog shell are inset by their own children and min-height; the one low-contrast pair is the disabled colour, which WCAG 1.4.3 exempts and the page labels as such -->
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8" />
@@ -246,6 +247,7 @@
                 </div>
               </div>
               <div class="swatch">
+                <!-- impeccable-disable-next-line low-contrast -- the disabled colour is exempt from contrast (WCAG 1.4.3) and is shown as such -->
                 <div
                   class="swatch__chip"
                   style="background: var(--surface-disabled); color: var(--text-disabled)"

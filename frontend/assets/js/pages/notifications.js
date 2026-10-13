@@ -124,7 +124,7 @@ export async function render(root, ctx) {
 
   if (result.items.length === 0) {
     const key = unread ? 'emptyUnread' : 'empty';
-    body.innerHTML = `<div class="empty empty--inline">
+    body.innerHTML = `<div class="empty">
       <div class="empty__copy">
         <p class="empty__title">${esc(t(`notification.${key}Title`))}</p>
         <p class="empty__text">${esc(t(`notification.${key}Text`))}</p>

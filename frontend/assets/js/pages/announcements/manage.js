@@ -251,7 +251,7 @@ export async function render(root, ctx) {
 
   if (result.items.length === 0) {
     const filtered = status || category || companyId;
-    body.innerHTML = `<div class="empty empty--inline"><p class="empty__title">${esc(
+    body.innerHTML = `<div class="empty"><p class="empty__title">${esc(
       t(filtered ? 'ann.admin.emptyFiltered' : 'ann.admin.empty')
     )}</p></div>`;
     return undefined;

@@ -82,9 +82,7 @@ async function renderList(root, { scope }) {
     </div>
     ${
       items.length === 0
-        ? `<div class="empty empty--inline"><p class="empty__title">${esc(
-            t('admin.rooms.empty')
-          )}</p></div>`
+        ? `<div class="empty"><p class="empty__title">${esc(t('admin.rooms.empty'))}</p></div>`
         : `<div class="table-wrap" data-density="compact" tabindex="0" role="region"
              aria-label="${esc(t('admin.rooms.caption'))}">
             <table class="table" role="table">
@@ -111,7 +109,7 @@ async function renderEdit(root, ctx, id) {
   const { items } = await api('/api/admin/rooms');
   const room = items.find((r) => r.id === id);
   if (!room) {
-    root.innerHTML = `<div class="empty empty--inline"><p class="empty__title">${esc(
+    root.innerHTML = `<div class="empty"><p class="empty__title">${esc(
       t('error.notFound.title')
     )}</p></div>
       <p><a class="link-quiet" href="#admin/rooms">${esc(t('admin.rooms.back'))}</a></p>`;

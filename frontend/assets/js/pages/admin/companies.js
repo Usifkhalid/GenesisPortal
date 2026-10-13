@@ -67,7 +67,7 @@ async function renderList(root) {
       </div>
       ${
         shown.length === 0
-          ? `<div class="empty empty--inline"><p class="empty__title">${esc(
+          ? `<div class="empty"><p class="empty__title">${esc(
               t('admin.companies.empty')
             )}</p></div>`
           : `<div class="table-wrap" data-density="compact" tabindex="0" role="region"
@@ -143,7 +143,7 @@ async function renderEdit(root, ctx, id) {
     company = await api(`/api/admin/companies/${encodeURIComponent(id)}`, { quiet: true });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
-      root.innerHTML = `<div class="empty empty--inline"><p class="empty__title">${esc(
+      root.innerHTML = `<div class="empty"><p class="empty__title">${esc(
         t('admin.companies.notFound')
       )}</p><a class="btn btn--secondary" href="#admin/companies">${esc(
         t('admin.companies.back')

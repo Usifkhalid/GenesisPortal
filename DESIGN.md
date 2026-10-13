@@ -56,6 +56,14 @@ typography:
     fontWeight: 600
     lineHeight: 1.35
     letterSpacing: "0.07em"
+  mono:
+    fontFamily: "Cascadia Mono, ui-monospace, Segoe UI Mono, monospace"
+    fontSize: "0.95em"
+    fontWeight: 400
+  system:
+    fontFamily: "system-ui, Tahoma, Noto Sans Arabic, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 400
 rounded:
   xs: "4px"
   sm: "6px"
@@ -219,7 +227,8 @@ In the dark theme the ink and the paper trade places: a deep pine ground (`#0d16
 ## Typography
 
 **Display / Body / Label Font:** IBM Plex Sans (Latin) with IBM Plex Sans Arabic, self-hosted, SIL Open Font License 1.1.
-**Mono:** none. Monospace appears only in the styleguide, to set CSS token names.
+**Mono:** Cascadia Mono, then the system monospace, only in the styleguide, to set CSS token names. Never shipped to a person using the portal.
+**System UI:** Tahoma, then the system UI face, for the single word "العربية" in the language switch before a page has chosen its language (D120): it saves the Arabic font download on a first sign-in that is read in English.
 
 **Character:** Plex is a drafted, slightly mechanical humanist. Set large in its regular weight it reads light and unhurried; set small in its bold it reads like a stamped value. The portal uses both ends: light for the page's voice, bold for its data.
 
@@ -312,7 +321,7 @@ Precise inside, generous outside. Nothing moves unless it has something to say.
 - **Card:** `--radius-card`, raised surface, 1px hairline, no shadow, `--pad-card`. Never nested; the stylesheet flattens a card inside a card.
 - **Head:** a pill tag over a bold title, optionally with a muted count, and a round arrow button at the inline-end when the card opens somewhere.
 - **Record list:** rows divided by hairlines. Each row is a compact label strip over the record's title, with its status badge at the end. Always `data-density="compact"`. Capped on Home, with an "N more" link to the rest; what is overdue sorts first.
-- **Empty:** a card whose list is empty keeps its size and says so in one line (`.empty--inline`: a small mark, a title, a sentence). A page never shows a page-sized empty state because one of its lists is empty.
+- **Empty:** a card whose list is empty keeps its size and says so in one line (`.empty--inline`: a small mark, a title, a sentence). A page never shows a page-sized empty state because one of its lists is empty. When a filtered list is the whole of the page and has nothing in it, it uses the framed `.empty` (dashed, centred), the same on every list page.
 
 ### Welcome banner
 
@@ -327,7 +336,7 @@ The company's logo, shown before its name wherever the name appears: the switche
 - **Shape:** `--radius-control`, 44px tall on a phone, `--control-height` on a pointer device.
 - **Primary:** the company accent with a derived keyline. Home's primaries are "Book a room" and "New ticket"; "New announcement" is secondary and admin-only.
 - **Secondary / Ghost / Danger / Loading:** as before: hairline on raised; no chrome until touched; danger-edged outline; `aria-busy` with the label kept in place.
-- **Round arrow button:** a lime disc with a pine arrow, always a link with a name saying where it goes. The arrow mirrors in Arabic and leans 2px on hover. A quiet outlined variant exists for a secondary destination.
+- **Round arrow button:** a 32px disc of lime washed 38% into the card surface with its lime keyline and a pine arrow (the 44px tap target is an invisible extension; it fills solid lime on hover), so it is quieter than any primary action, always a link with a name saying where it goes. The arrow mirrors in Arabic and leans 2px on hover. A quiet outlined variant exists for a secondary destination.
 
 ### Tags and badges
 
@@ -365,6 +374,7 @@ A table frame is always compact. Below 40rem every row becomes a label card and 
 
 ### Don't:
 
+- **Do** write an English date as "Tue, 13 Oct 2026" and a time on the 24-hour clock; native date and time fields follow the device, so each is also written out in words beneath it.
 - **Don't** nest a card in a card, or frame an empty state inside one.
 - **Don't** put a shadow on a card, or a border and a shadow on the same element.
 - **Don't** use lime as text, as a large surface, or in place of the company accent.
