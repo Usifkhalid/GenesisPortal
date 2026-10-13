@@ -352,6 +352,20 @@ export function createTicketService({
     };
   }
 
+  /**
+   * May this viewer work the ticket: reply to the requester, change its status,
+   * priority or category, reopen it? A Lead or a HoldingAdmin always; an agent
+   * only on a ticket assigned to them (D122). Everyone else on the team reads
+   * it and adds internal notes.
+   */
+  function works(staffRole, ticket, viewer) {
+    if (!staffRole) return false;
+    return isLead(staffRole) || ticket.assigneeId === viewer.user.id;
+  }
+
+  const notAssignee = () =>
+    refuse(403, 'not_assignee', 'Only the agent this ticket is assigned to can do that.');
+
   /** A ticket in full, with what this viewer may do to it. */
   function ticketView({ viewer, staffRole, isRequester }, t, refs, at) {
     const closed = t.status === 'Closed';
@@ -366,11 +380,18 @@ export function createTicketService({
         ? { requesterLanguage: refs.people.get(t.requesterId)?.language === 'ar' ? 'ar' : 'en' }
         : {}),
       can: {
-        comment: !closed,
+        // A public reply: the requester, or the team member who works the ticket.
+        comment: !closed && (!staffRole || isRequester || works(staffRole, t, viewer)),
         internalNote: Boolean(staffRole),
         attach: !closed,
-        reopen: done && (Boolean(staffRole) || (isRequester && withinReopenWindow(t, at))),
+        reopen:
+          done &&
+          ((Boolean(staffRole) && works(staffRole, t, viewer)) ||
+            (isRequester && withinReopenWindow(t, at))),
+        /** The staff view of the ticket (SLA, codes, the team's panels). */
         manage: Boolean(staffRole),
+        /** Status, priority and category: the assignee, a Lead, a HoldingAdmin (D122). */
+        work: works(staffRole, t, viewer),
         reassign: isLead(staffRole),
       },
     };
@@ -671,6 +692,7 @@ export function createTicketService({
     if (ticket.status !== 'Resolved' && ticket.status !== 'Closed') {
       throw refuse(409, 'not_resolved', 'Only a resolved or closed ticket can be reopened.');
     }
+    if (staffRole && !isRequester && !works(staffRole, ticket, ctx.viewer)) throw notAssignee();
     if (!staffRole && !(isRequester && withinReopenWindow(ticket, at))) {
       throw refuse(
         409,
@@ -699,6 +721,11 @@ export function createTicketService({
     const { ticket, staffRole, isRequester, viewer } = ctx;
     const at = now();
     if (isInternal && !staffRole) throw forbidden();
+    // A public word from the team is the assignee's or a Lead's; any other
+    // agent writes an internal note (D122). The requester always may.
+    if (!isInternal && staffRole && !isRequester && !works(staffRole, ticket, viewer)) {
+      throw notAssignee();
+    }
     if (ticket.status === 'Closed' && !isInternal) {
       throw refuse(409, 'ticket_closed', 'This ticket is closed. Reopen it to reply.');
     }
@@ -779,6 +806,10 @@ export function createTicketService({
         throw notFound();
       }
       isInternal = target.isInternal;
+    }
+    // A file on the description or on a public reply speaks for the team.
+    if (!isInternal && staffRole && !ctx.isRequester && !works(staffRole, ticket, viewer)) {
+      throw notAssignee();
     }
 
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
@@ -945,6 +976,12 @@ export function createTicketService({
     const patch = {};
     const changes = {};
     const events = [];
+
+    const assigning =
+      body.assigneeId !== undefined && body.assigneeId !== (ticket.assigneeId ?? null);
+    // Status, priority and category are the assignee's, a Lead's or a
+    // HoldingAdmin's (D122). Assigning is checked first: its refusal says more.
+    if (!assigning && !works(staffRole, ticket, viewer)) throw notAssignee();
 
     if (body.assigneeId !== undefined && body.assigneeId !== (ticket.assigneeId ?? null)) {
       // Assigning, reassigning and unassigning are the Lead's (or a

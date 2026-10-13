@@ -122,6 +122,10 @@ async function world() {
     return res.body;
   };
   w.row = (id) => w.repo.helpdesk.ticket.find((t) => t.id === id);
+  /** Gives a ticket to an agent without the event and status change an assignment makes. */
+  w.give = (id, agent) => {
+    w.row(id).assigneeId = agent.user.id;
+  };
   return w;
 }
 
@@ -158,6 +162,7 @@ describe('raising a ticket', () => {
       attach: true,
       reopen: false,
       manage: false,
+      work: false,
       reassign: false,
     });
 
@@ -215,6 +220,7 @@ describe('raising a ticket', () => {
     // Afterwards only the team changes it, and the history says so.
     const own = chosen.body.ticket;
     assert.equal((await w.gen.patch(`/api/tickets/${own.id}`, { priority: 'P4' })).status, 403);
+    w.give(own.id, w.agent);
     const changed = await w.change(w.agent, own.id, { priority: 'P4' });
     assert.equal(changed.priority, 'P4');
     const detail = await w.ticket(w.agent, own.id);
@@ -533,6 +539,109 @@ describe('who can see a ticket', () => {
   });
 });
 
+describe('who works a ticket (D122)', () => {
+  const refusal = (res) => [res.status, res.body.error?.code];
+
+  test('an agent reads and writes internal notes on a ticket that is not theirs, nothing more', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    w.give(t.id, w.agent2);
+
+    // Reading and the staff view are untouched.
+    const detail = await w.ticket(w.agent, t.id);
+    assert.equal(detail.ticket.can.manage, true);
+    assert.equal(detail.ticket.can.work, false);
+    assert.equal(detail.ticket.can.comment, false);
+    assert.equal(detail.ticket.can.internalNote, true);
+    assert.equal(detail.ticket.can.reopen, false);
+
+    // An internal note, and a file on it, are fine.
+    const note = await w.say(w.agent, t.id, 'Same fault as LT-0031.', true);
+    const commentId = note.timeline.at(-1).comment.id;
+    const file = await w.agent.upload(
+      `/api/tickets/${t.id}/attachments?name=boot.log&commentId=${commentId}`,
+      Buffer.from('ERROR 0x7B')
+    );
+    assert.equal(file.status, 201);
+
+    // Everything else is refused, and nothing changed.
+    const before = JSON.stringify(w.row(t.id));
+    const attempts = [
+      await w.agent.patch(`/api/tickets/${t.id}`, { status: 'Resolved' }),
+      await w.agent.patch(`/api/tickets/${t.id}`, { priority: 'P1' }),
+      await w.agent.patch(`/api/tickets/${t.id}`, { categoryId: w.category('Phone').id }),
+      await w.agent.post(`/api/tickets/${t.id}/comments`, { body: 'Hello', isInternal: false }),
+      await w.agent.upload(`/api/tickets/${t.id}/attachments?name=a.png`, PNG),
+    ];
+    for (const res of attempts) assert.deepEqual(refusal(res), [403, 'not_assignee']);
+    assert.equal(JSON.stringify(w.row(t.id)), before);
+
+    // Assigning keeps its own answer (D118).
+    const assign = await w.agent.patch(`/api/tickets/${t.id}`, { assigneeId: w.agent.user.id });
+    assert.deepEqual(refusal(assign), [403, 'lead_only']);
+  });
+
+  test('an unassigned ticket is nobody’s to work except a Lead or a HoldingAdmin', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    const refused = await w.agent.patch(`/api/tickets/${t.id}`, { status: 'Open' });
+    assert.deepEqual(refusal(refused), [403, 'not_assignee']);
+    assert.equal(
+      (await w.agent.post(`/api/tickets/${t.id}/comments`, { body: 'Hi' })).status,
+      403
+    );
+
+    assert.equal((await w.change(w.lead, t.id, { priority: 'P2' })).priority, 'P2');
+    assert.equal((await w.change(w.ha, t.id, { priority: 'P3' })).priority, 'P3');
+    await w.say(w.lead, t.id, 'Looking at it.');
+    await w.say(w.ha, t.id, 'And me.');
+  });
+
+  test('the assignee works it; a Lead and a HoldingAdmin can whoever has it', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
+
+    const mine = await w.ticket(w.agent, t.id);
+    assert.equal(mine.ticket.can.work, true);
+    assert.equal(mine.ticket.can.comment, true);
+    await w.say(w.agent, t.id, 'On it.');
+    assert.equal((await w.change(w.agent, t.id, { priority: 'P2' })).priority, 'P2');
+    assert.equal(
+      (await w.change(w.agent, t.id, { categoryId: w.category('Phone').id })).category.id,
+      w.category('Phone').id
+    );
+    const resolved = await w.change(w.agent, t.id, { status: 'Resolved' });
+    assert.equal(resolved.status, 'Resolved');
+
+    // The other agent may not reopen it; the Lead may; so may a HoldingAdmin.
+    const no = await w.agent2.post(`/api/tickets/${t.id}/reopen`);
+    assert.deepEqual(refusal(no), [403, 'not_assignee']);
+    await w.change(w.lead, t.id, { status: 'Open' });
+    await w.say(w.ha, t.id, 'Checked.');
+    assert.equal(
+      (await w.change(w.ha, t.id, { status: 'WaitingOnRequester' })).status,
+      'WaitingOnRequester'
+    );
+
+    // Once reassigned, the first agent has lost the controls.
+    await w.change(w.lead, t.id, { assigneeId: w.agent2.user.id });
+    assert.equal((await w.ticket(w.agent, t.id)).ticket.can.work, false);
+    assert.equal((await w.agent.patch(`/api/tickets/${t.id}`, { status: 'Open' })).status, 403);
+  });
+
+  test('an agent’s own ticket is theirs to answer as its requester, not to work', async () => {
+    const w = await world();
+    const t = await w.raise(w.agent, { subject: 'My own laptop' });
+    const view = await w.ticket(w.agent, t.id);
+    assert.equal(view.ticket.can.comment, true, 'as the requester');
+    assert.equal(view.ticket.can.work, false);
+    await w.say(w.agent, t.id, 'More detail.');
+    const refused = await w.agent.patch(`/api/tickets/${t.id}`, { priority: 'P1' });
+    assert.deepEqual(refusal(refused), [403, 'not_assignee']);
+  });
+});
+
 describe('the life of a ticket', () => {
   test('the first public answer from an agent is the first response', async () => {
     const w = await world();
@@ -543,6 +652,7 @@ describe('the life of a ticket', () => {
     assert.equal(w.row(t.id).firstRespondedAt, null);
     assert.equal(w.row(t.id).status, 'New');
 
+    w.give(t.id, w.agent);
     w.at(SUNDAY, '11:40');
     const answered = await w.say(w.agent, t.id, 'Looking at it now.');
     assert.equal(answered.ticket.status, 'Open');
@@ -553,13 +663,14 @@ describe('the life of a ticket', () => {
 
     // A second answer does not move it.
     w.at(SUNDAY, '13:00');
-    const again = await w.say(w.agent2, t.id, 'Parts ordered.');
+    const again = await w.say(w.lead, t.id, 'Parts ordered.');
     assert.equal(iso(again.ticket.firstRespondedAt), iso(cairo(SUNDAY, '11:40')));
   });
 
   test('waiting on the requester stops the clock; their reply starts it again', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     const resolveDue = cairo('2026-10-13', '17:00');
     await w.say(w.agent, t.id, 'Which model is it?');
 
@@ -602,6 +713,7 @@ describe('the life of a ticket', () => {
   test('a change of priority works the due dates out again', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     assert.equal(iso(t.sla.resolveDueAt), iso(cairo('2026-10-13', '17:00')));
 
     const urgent = await w.change(w.agent, t.id, { priority: 'P1' });
@@ -682,6 +794,7 @@ describe('the life of a ticket', () => {
   test('an agent changes the category within the team', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     const changed = await w.change(w.agent, t.id, { categoryId: w.category('Phone').id });
     assert.equal(changed.category.nameEn, 'Phone');
     const event = (await w.ticket(w.agent, t.id)).timeline.at(-1);
@@ -698,6 +811,7 @@ describe('the life of a ticket', () => {
   test('a resolved ticket closes itself after three working days without a reply', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     const other = await w.raise(w.msr);
     await w.say(w.agent, t.id, 'Replaced the battery.');
 
@@ -744,6 +858,7 @@ describe('the life of a ticket', () => {
   test('the job runs the closing rule at startup and reports failures quietly', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     await w.change(w.agent, t.id, { status: 'Resolved' });
     w.at('2026-10-20', '09:00');
 
@@ -769,6 +884,7 @@ describe('the life of a ticket', () => {
   test('a reply from the requester reopens a resolved ticket, so it does not close', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     await w.say(w.agent, t.id, 'Fixed remotely.');
     w.at(SUNDAY, '13:00');
     await w.change(w.agent, t.id, { status: 'Resolved' });
@@ -790,6 +906,7 @@ describe('the life of a ticket', () => {
   test('the requester may reopen for seven days after it was resolved, and no longer', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     const cannot = await w.gen.post(`/api/tickets/${t.id}/reopen`);
     assert.equal(cannot.status, 409);
     assert.equal(cannot.body.error.code, 'not_resolved');
@@ -832,6 +949,7 @@ describe('attachments', () => {
   test('allowed files are stored and come back only as downloads', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
     const up = await w.gen.upload(
       `/api/tickets/${t.id}/attachments?name=${encodeURIComponent('../شاشة 1.png')}`,
       PNG
@@ -969,6 +1087,7 @@ describe('the agent queue', () => {
     ]);
 
     // Paused and finished tickets go below the running ones.
+    for (const p of [w.p1, w.p2]) w.give(p.id, w.agent);
     await w.change(w.agent, w.p1.id, { status: 'WaitingOnRequester' });
     assert.deepEqual(await w.queue(), [
       'Mailbox full',
@@ -1046,6 +1165,7 @@ describe('the agent queue', () => {
     assert.equal(row.sla.state, 'breached');
 
     // Answering P1 puts it on its resolution target (15:00): at risk, not breached.
+    for (const p of [w.p1, w.p2, w.p3]) w.give(p.id, w.agent);
     await w.say(w.agent, w.p1.id, 'On my way to the comms room.');
     assert.deepEqual(await w.queue('?sla=breached'), []);
     assert.deepEqual(await w.queue('?sla=at_risk'), ['Site network down', 'Mailbox full']);

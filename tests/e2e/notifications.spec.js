@@ -13,6 +13,7 @@
 
 import {
   LANGUAGES,
+  assignTicket,
   csrfHeaders,
   expect as strictExpect,
   expectLanguage,
@@ -57,7 +58,10 @@ for (const lang of LANGUAGES) {
       expect(created.ok(), 'the ticket is raised').toBeTruthy();
       const { ticket } = await created.json();
 
-      // An agent answers it.
+      // The Lead gives it to an agent (D122), who answers it.
+      await signOut(page);
+      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      await assignTicket(page, ticket.id, 'Sherif Awad');
       await signOut(page);
       await signIn(page, { company: 'HLD', name: 'Sherif Awad', lang });
       const answered = await page.request.post(`/api/tickets/${ticket.id}/comments`, {

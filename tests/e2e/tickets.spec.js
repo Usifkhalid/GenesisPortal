@@ -5,7 +5,8 @@
  * One story, step by step: a Genesis user raises a ticket with a pasted
  * screenshot and finds it under My tickets; a Masar user and a colleague of
  * another team cannot see it; the IT Lead assigns it to an agent (an agent
- * has no assign control, D118); the agent finds it in the queue,
+ * has no assign control, D118; a colleague who does not have it reads it and
+ * writes internal notes only, D122); the agent finds it in the queue,
  * leaves an internal note and answers with a canned reply; the requester
  * sees the answer but not the note; the agent resolves it and the requester
  * reopens it. A CompanyAdmin who is not on the IT team has no queue.
@@ -39,6 +40,7 @@ const GEN_COLLEAGUE = { company: 'GEN', role: 'User', name: 'Mahmoud Attia' };
 const MSR_USER = { company: 'MSR', role: 'User', name: 'Yasmine Nabil' };
 const AGENT = { company: 'HLD', name: 'Sherif Awad' };
 const LEAD = { company: 'HLD', name: 'Omar Fahmy' };
+const OTHER_AGENT = { company: 'HLD', name: 'Tamer Gad' };
 
 /** Pastes a screenshot into `selector`, as Ctrl+V would. */
 async function pasteScreenshot(page, selector) {
@@ -215,6 +217,28 @@ for (const lang of LANGUAGES) {
       const asRequester = await (await page.request.get(`/api/tickets/${ticketId}`)).json();
       expect(JSON.stringify(asRequester)).not.toContain(note);
       expect('requesterLanguage' in asRequester.ticket).toBe(false);
+
+      /* ------- a colleague who does not have it reads it and writes notes only */
+      await signOut(page);
+      await signIn(page, { ...OTHER_AGENT, lang });
+      await open(page, `#tickets/${ticketId}`);
+      await expect(page.locator('#tkHandle')).toBeVisible();
+      // The facts are there, with nothing to change them (D122).
+      await expect(page.locator('#tkHandle')).toContainText(t(lang, 'tk.side.notYours'));
+      await expect(
+        page.locator('#tkStatus, #tkPriority, #tkCategory, #tkAssignee')
+      ).toHaveCount(0);
+      // The reply box is for internal notes: no public side, no canned replies.
+      await expect(page.locator('#tkReply')).toHaveClass(/tk-reply--internal/);
+      await expect(page.locator('[data-kind], #tkCanned')).toHaveCount(0);
+      await expect(page.locator('#tkReply')).toContainText(t(lang, 'tk.reply.notYours'));
+      const refused = await page.request.patch(`/api/tickets/${ticketId}`, {
+        headers: await csrfHeaders(page),
+        data: { status: 'Resolved' },
+      });
+      expect(refused.status()).toBe(403);
+      expect((await refused.json()).error.code).toBe('not_assignee');
+      await expectNoSidewaysScroll(page);
 
       /* ---------------------------------- IT resolves it; the requester reopens */
       await signOut(page);

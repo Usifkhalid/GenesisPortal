@@ -27,7 +27,8 @@ function serverEnv(port, extra = {}) {
     NODE_ENV: 'development',
     AUTH_MODE: 'mock',
     GRAPH_MODE: 'mock',
-    LOG_LEVEL: 'warn',
+    // E2E_LOG_LEVEL=info also prints the server's request log (see webServer).
+    LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'warn',
     // Text assets as production serves them, so page-weight.spec.js reports
     // what a phone would download.
     STATIC_PRECOMPRESS: process.env.E2E_PRECOMPRESS ?? 'on',
@@ -77,6 +78,8 @@ export default defineConfig({
     command: 'node backend/scripts/prepare-test-db.js --seed && node backend/src/server.js',
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
+    // Hidden unless asked for: E2E_LOG_LEVEL=info npx playwright test --reporter=list
+    stdout: process.env.E2E_LOG_LEVEL ? 'pipe' : 'ignore',
     env: serverEnv(PORT),
   },
 });

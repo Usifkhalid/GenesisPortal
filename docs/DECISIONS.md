@@ -1309,3 +1309,30 @@ installed app keeps clear of a notch.
 
 The worker's install keeps what arrives if one file drops (the shell's three pages are the
 only ones it insists on), because `addAll` is all-or-nothing and a weak connection is not.
+
+### D122. An agent works only the tickets given to them (narrows D118)
+
+D118 left every agent free to reply and to change status, priority and category on any
+ticket of the team, "so a colleague covering a shared ticket still can". That is withdrawn:
+work is given out by a Lead, and the ticket says whose it is.
+
+- **The assignee, a Lead and a HoldingAdmin work a ticket**: public replies (and files on
+  the description or a public reply), status, priority, category, reopening. An agent who is
+  not the assignee gets **403 `not_assignee`** on each of those. Assigning stays D118's
+  `lead_only`: an agent's attempt to assign is answered with that, not with this.
+- **Every team member still reads the ticket and writes internal notes** (with files on
+  them), on any ticket, assigned or not. An unassigned ticket is therefore a Lead's to work
+  until it is given to someone.
+- **A requester who is also on the team** (an agent raising their own laptop) keeps a
+  requester's rights: they answer their own ticket; they do not work it.
+- **`can.work`** says it; `can.comment` is now true for the requester and for whoever
+  works the ticket, `can.reopen` for the requester within the window and for whoever works
+  it. `can.manage` still means "see the team's view", so a colleague keeps the SLA, the
+  codes and the contact card.
+- **Screen:** for a team member who does not have the ticket the handling panel shows the
+  assignee, status, priority and category as plain text with one line saying why, the reply
+  box is internal-notes-only (no public side, no canned replies), and a resolved ticket
+  offers no reopen button. Nothing is disabled-and-clickable.
+- **Cost:** a Lead who is away leaves unassigned tickets unworked; the Lead's queue count
+  ("unassigned") already puts them first. If cover is needed later, the answer is assigning,
+  not a wider rule.

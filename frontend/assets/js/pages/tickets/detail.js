@@ -92,6 +92,9 @@ export async function render(root, ctx) {
   };
 
   const staff = Boolean(data.ticket.can.manage);
+  /** An agent who does not have this ticket reads it and writes internal notes (D122). */
+  const mayWork = () => Boolean(state.ticket.can.work);
+  const noteOnly = () => staff && !state.ticket.can.comment;
   const state = {
     ticket: data.ticket,
     attachments: data.attachments,
@@ -277,6 +280,8 @@ export async function render(root, ctx) {
       text = staff
         ? t('tk.reopen.staffText')
         : t('tk.reopen.text', { until, days: REOPEN_DAYS });
+    } else if (staff) {
+      text = t('tk.reopen.notYoursText');
     } else {
       text = t(tk.status === 'Closed' ? 'tk.reopen.closedText' : 'tk.reopen.lateText');
     }
@@ -292,7 +297,9 @@ export async function render(root, ctx) {
             tk.can.reopen
               ? `<button type="button" class="btn btn--secondary" data-reopen>
                    <span class="btn__label">${esc(t('tk.reopen.action'))}</span></button>`
-              : `<a class="btn btn--secondary" href="#tickets/new">
+              : staff
+                ? ''
+                : `<a class="btn btn--secondary" href="#tickets/new">
                    <span class="btn__label">${esc(t('tk.reopen.new'))}</span></a>`
           }
         </div>
@@ -325,7 +332,8 @@ export async function render(root, ctx) {
   function drawReply() {
     const tk = state.ticket;
     const host = $('#tkReply');
-    if (!tk.can.comment) {
+    // A team member who does not have the ticket still writes internal notes.
+    if (!tk.can.comment && !(staff && tk.can.internalNote && tk.status !== 'Closed')) {
       host.hidden = true;
       host.innerHTML = '';
       queue.current = null;
@@ -333,7 +341,7 @@ export async function render(root, ctx) {
     }
     // Keep a draft across redraws (a status change, a reopen).
     const draft = host.querySelector('#tkReplyText')?.value ?? '';
-    const internal = staff && state.internal;
+    const internal = staff && (state.internal || noteOnly());
     host.hidden = false;
     host.classList.toggle('tk-reply--internal', internal);
     host.innerHTML = `<form id="tkReplyForm" class="stack" novalidate>
@@ -342,7 +350,7 @@ export async function render(root, ctx) {
           t(internal ? 'tk.reply.titleNote' : staff ? 'tk.reply.titleStaff' : 'tk.reply.title')
         )}</h2>
         ${
-          staff
+          staff && !noteOnly()
             ? `<div class="segmented" role="group" aria-label="${esc(t('tk.reply.kind'))}">
                 <button type="button" class="segmented__option" data-kind="public"
                   aria-pressed="${!internal}">${esc(t('tk.reply.public'))}</button>
@@ -354,9 +362,9 @@ export async function render(root, ctx) {
             : ''
         }
       </div>
-      ${internal ? `<p class="tk-reply__warn">${icon('lock', 'tk-reply__warn-icon')}<span>${esc(t('tk.reply.internalHelp'))}</span></p>` : ''}
+      ${internal ? `<p class="tk-reply__warn">${icon('lock', 'tk-reply__warn-icon')}<span>${esc(t(noteOnly() ? 'tk.reply.notYours' : 'tk.reply.internalHelp'))}</span></p>` : ''}
       ${
-        staff && !internal && canned.length
+        staff && !internal && !noteOnly() && canned.length
           ? `<div class="field tk-canned">
               <label class="field__label" for="tkCanned">${esc(t('tk.reply.insert'))}</label>
               <select class="select" id="tkCanned">
@@ -540,6 +548,21 @@ export async function render(root, ctx) {
     );
     // Only a Lead or a HoldingAdmin assigns (D118); an agent just sees who has it.
     const mayAssign = tk.can.reassign;
+    if (!mayWork()) {
+      // Not theirs to work (D122): the facts, with no control to change them.
+      const fact = (key, label, value) => `<div class="field">
+        <p class="field__label" id="${key}">${esc(label)}</p>
+        <p aria-labelledby="${key}">${value}</p>
+      </div>`;
+      $('#tkHandle').innerHTML = `
+      <h2 class="card__title" id="tkHandleTitle">${esc(t('tk.side.handle'))}</h2>
+      ${fact('tkAssigneeLabel', t('ticket.assignee'), esc(tk.assignee ? displayName(tk.assignee) : t('ticket.unassigned')))}
+      ${fact('tkStatusLabel', t('status.label'), esc(statusLabel(tk.status, true)))}
+      ${fact('tkPriorityLabel', t('field.priority'), esc(priorityLabel(tk.priority, true)))}
+      ${fact('tkCategoryLabel', t('tk.field.category'), esc(tk.category ? localized(tk.category) : ''))}
+      <p class="field__help">${esc(t('tk.side.notYours'))}</p>`;
+      return;
+    }
     const option = (value, text, chosen, disabled = false) =>
       `<option value="${esc(value)}" ${value === chosen ? 'selected' : ''} ${
         disabled ? 'disabled' : ''
@@ -702,7 +725,12 @@ export async function render(root, ctx) {
     drawHead();
     drawTimeline();
     drawNotice();
-    if (!draftFiles || !$('#tkReplyForm') || state.ticket.can.comment === false) drawReply();
+    if (
+      !draftFiles ||
+      !$('#tkReplyForm') ||
+      (state.ticket.can.comment === false && !noteOnly())
+    )
+      drawReply();
     drawHandle();
     drawContact();
     drawFacts();

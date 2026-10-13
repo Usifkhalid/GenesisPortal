@@ -200,9 +200,10 @@ describe('tickets against SQL Server', async () => {
       assert.equal(queue.total, 41);
       assert.equal(queue.items[0].id, urgent.ticket.id);
 
-      // Paused: last in the queue, out of the SLA filters.
+      // Paused: last in the queue, out of the SLA filters. (A HoldingAdmin works it:
+      // an agent works only the tickets given to them, D122.)
       clock.now = cairo('2026-10-11', '11:30');
-      await w.tickets.update(w.agentReq, urgent.ticket.id, { status: 'WaitingOnRequester' });
+      await w.tickets.update(w.adminReq, urgent.ticket.id, { status: 'WaitingOnRequester' });
       clock.now = cairo('2026-10-11', '13:00');
       const paused = await w.tickets.queue(w.agentReq, { ...page, sla: 'breached' });
       assert.ok(!paused.items.some((t) => t.id === urgent.ticket.id));
@@ -237,7 +238,7 @@ describe('tickets against SQL Server', async () => {
       clock.now = cairo('2026-10-11', '13:30');
       const late = await w.tickets.counts(w.agentReq);
       assert.equal(late.queue.breachingSoon, 1, 'due at 13:30 after the 90-minute pause');
-      await w.tickets.update(w.agentReq, urgent.ticket.id, { status: 'Resolved' });
+      await w.tickets.update(w.adminReq, urgent.ticket.id, { status: 'Resolved' });
       assert.equal(await w.tickets.closeResolved(), 0);
       clock.now = cairo('2026-10-14', '13:30');
       assert.equal(await w.tickets.closeResolved(), 1);

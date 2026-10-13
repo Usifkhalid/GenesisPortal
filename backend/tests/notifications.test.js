@@ -74,6 +74,10 @@ async function world() {
   w.lead = await who('omar.fahmy@mgholding.example');
   w.agent = await who('sherif.awad@mgholding.example');
   w.agent2 = await who('tamer.gad@mgholding.example');
+  /** Gives a ticket to the agent without an assignment's own notice or status change (D122). */
+  w.give = (ticketId, agent) => {
+    w.repo.helpdesk.ticket.find((t) => t.id === ticketId).assigneeId = agent.user.id;
+  };
 
   w.company = (code) => w.repo.companies.find((c) => c.code === code);
   w.category = (nameEn) => w.repo.helpdesk.category.find((c) => c.nameEn === nameEn);
@@ -293,6 +297,7 @@ describe('tickets tell the right people', () => {
   test('a new status tells the requester, unless they set it themselves', async () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
+    w.give(ticket.id, w.agent);
     await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Resolved' });
     const last = w.say(w.rows(w.gen).at(-1));
     assert.match(last.title, /is now: Resolved/);
@@ -306,6 +311,7 @@ describe('tickets tell the right people', () => {
   test('closing itself after three working days tells the requester', async () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
+    w.give(ticket.id, w.agent);
     await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Resolved' });
     const before = w.rows(w.gen).length;
     w.clock.now = cairo('2026-10-20', '11:00');
@@ -361,6 +367,7 @@ describe('the SLA watch', () => {
   test('a paused clock and a closed ticket raise nothing; the timer reports quietly', async () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
+    w.give(ticket.id, w.agent);
     await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'WaitingOnRequester' });
     const row = w.repo.helpdesk.ticket.find((t) => t.id === ticket.id);
     w.clock.now = new Date(row.nextDueAt.getTime() + 24 * 3_600_000);

@@ -46,6 +46,14 @@ const state = {
   nav: [],
 };
 
+/**
+ * The shell's own background reads (the counts, the bell) share one signal, so
+ * signing out can cancel them: a count that arrives after the session is gone
+ * would only be a 401 in the console and a redirect racing the sign-out's.
+ */
+const background = new AbortController();
+const backgroundSignal = () => background.signal;
+
 /** Draws the page the address names. Made by init(), once the session is known. */
 let router = null;
 
@@ -258,7 +266,10 @@ function drawAnnouncementCount() {
 /** Asks the server how many announcements this person has not opened. */
 async function refreshAnnouncementCount() {
   try {
-    const { count } = await api('/api/announcements/unread-count', { quiet: true });
+    const { count } = await api('/api/announcements/unread-count', {
+      quiet: true,
+      signal: backgroundSignal(),
+    });
     unreadAnnouncements = count;
   } catch {
     // The nav is a convenience: no count is better than a wrong one.
@@ -296,7 +307,10 @@ function drawTicketCount() {
 /** Asks the server for this person's ticket numbers. */
 async function refreshTicketCount() {
   try {
-    ticketCounts = await api('/api/tickets/counts', { quiet: true });
+    ticketCounts = await api('/api/tickets/counts', {
+      quiet: true,
+      signal: backgroundSignal(),
+    });
   } catch {
     // The nav is a convenience: no count is better than a wrong one.
     ticketCounts = { mine: 0, queue: null };
@@ -528,7 +542,10 @@ function drawNotifCount() {
 /** The number on the bell: one small request, tried again every minute. */
 async function refreshNotifCount() {
   try {
-    const result = await api('/api/notifications/unread-count', { quiet: true });
+    const result = await api('/api/notifications/unread-count', {
+      quiet: true,
+      signal: backgroundSignal(),
+    });
     notifUnread = result.unread;
   } catch {
     // The bell is a convenience: keep the last number rather than a wrong one.
@@ -554,7 +571,10 @@ function drawBellList() {
 /** The latest notifications, fetched when the bell is opened. */
 async function loadBellList() {
   try {
-    const result = await api(`/api/notifications?pageSize=${BELL_ITEMS}`, { quiet: true });
+    const result = await api(`/api/notifications?pageSize=${BELL_ITEMS}`, {
+      quiet: true,
+      signal: backgroundSignal(),
+    });
     bellItems = result.items;
     notifUnread = result.unread;
   } catch {
@@ -651,6 +671,7 @@ function initSignOut() {
   button.addEventListener('click', async () => {
     if (button.getAttribute('aria-busy') === 'true') return;
     button.setAttribute('aria-busy', 'true');
+    background.abort();
     // Never fails: the page always leaves for the login screen.
     await signOut();
   });

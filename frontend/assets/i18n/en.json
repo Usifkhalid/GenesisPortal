@@ -1840,7 +1840,8 @@
       "action": "Reopen the ticket",
       "new": "Open a new ticket",
       "done": "Ticket reopened",
-      "failed": "The ticket could not be reopened"
+      "failed": "The ticket could not be reopened",
+      "notYoursText": "Only the agent this ticket is assigned to, or a Lead, can reopen it."
     },
     "reply": {
       "title": "Add a reply",
@@ -1863,7 +1864,8 @@
       "sent": "Reply sent",
       "noteSent": "Note saved",
       "failed": "The message was not sent",
-      "filesFailed": "{count} file(s) did not upload."
+      "filesFailed": "{count} file(s) did not upload.",
+      "notYours": "This ticket is assigned to someone else. You can add an internal note; only the assignee or a Lead answers the requester."
     },
     "side": {
       "label": "Handling this ticket",
@@ -1875,7 +1877,8 @@
       "noLocation": "Not given",
       "dueAt": "Due {when}",
       "saved": "Saved",
-      "failed": "The change was not saved"
+      "failed": "The change was not saved",
+      "notYours": "Only the agent this ticket is assigned to, or a Lead, can change these."
     },
     "error": {
       "closed": "This ticket is closed.",

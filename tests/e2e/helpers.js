@@ -136,6 +136,10 @@ export async function signIn(page, { company, role = 'User', name = null, lang =
 
 /** Signs out from the account menu and waits for the login page. */
 export async function signOut(page) {
+  // Whatever the page is still asking for finishes first: a request that
+  // meets the closed session is a 401 in the console, and that is a test
+  // racing itself, not the portal failing.
+  await page.waitForLoadState('networkidle');
   await page.locator('#userMenuBtn').click();
   await page.locator('#signOutBtn').click();
   // Under load the redirect can supersede a request the page still had in
@@ -195,4 +199,20 @@ export async function cairoInstant(page, day, time) {
     },
     [day, time]
   );
+}
+
+/**
+ * As the signed-in IT Lead, gives a ticket to an agent by name. An agent works
+ * only the tickets assigned to them (docs/DECISIONS.md D122), so a spec that
+ * has an agent reply or change a status has the Lead hand it over first.
+ */
+export async function assignTicket(page, ticketId, agentName) {
+  const options = await (await page.request.get('/api/tickets/queue/options')).json();
+  const agent = options.agents.find((a) => a.displayNameEn === agentName);
+  if (!agent) throw new Error(`No IT agent called ${agentName}`);
+  const res = await page.request.patch(`/api/tickets/${ticketId}`, {
+    headers: await csrfHeaders(page),
+    data: { assigneeId: agent.id },
+  });
+  expect(res.ok(), 'the Lead assigns the ticket').toBeTruthy();
 }

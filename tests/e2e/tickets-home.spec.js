@@ -13,6 +13,7 @@
 
 import {
   LANGUAGES,
+  assignTicket,
   csrfHeaders,
   expect as strictExpect,
   expectLanguage,
@@ -88,6 +89,13 @@ for (const lang of LANGUAGES) {
       await expect(
         page.locator('[data-card="tickets"] .record', { hasText: subject })
       ).toHaveCount(0);
+
+      // The Lead gives it to this agent (D122): only the assignee answers.
+      await signOut(page);
+      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      await assignTicket(page, ticket.id, 'Sherif Awad');
+      await signOut(page);
+      await signIn(page, { company: 'HLD', name: 'Sherif Awad', lang });
 
       const headers = await csrfHeaders(page);
       const asked = await page.request.post(`/api/tickets/${ticket.id}/comments`, {

@@ -72,6 +72,8 @@ export function errorKey(err) {
 }
 
 function announce(err) {
+  // Cancelled on purpose; there is nothing to tell.
+  if (err.code === 'aborted') return;
   const key = errorKey(err);
   showToast({
     // No signal is the site's weather, not a fault: a warning, not an alarm.
@@ -85,7 +87,7 @@ function announce(err) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function send(path, method, body) {
+async function send(path, method, body, signal) {
   const headers = { Accept: 'application/json' };
   // A Blob (a logo) goes as its own bytes; anything else as JSON.
   const raw = typeof Blob !== 'undefined' && body instanceof Blob;
@@ -99,11 +101,14 @@ async function send(path, method, body) {
       headers,
       credentials: 'same-origin',
       body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
+      signal,
     });
 
   try {
     return await attempt();
   } catch {
+    // The caller gave up (the person is signing out): not a failure to retry.
+    if (signal?.aborted) throw new ApiError(0, 'aborted');
     // No signal, DNS, a dropped connection: common on site.
     if (method !== 'GET') throw new ApiError(0, 'network');
   }
@@ -112,7 +117,7 @@ async function send(path, method, body) {
   try {
     return await attempt();
   } catch {
-    throw new ApiError(0, 'network');
+    throw new ApiError(0, signal?.aborted ? 'aborted' : 'network');
   }
 }
 
@@ -136,11 +141,11 @@ async function refreshCsrfToken() {
   setCsrfToken((await res.json()).csrfToken);
 }
 
-async function request(path, { method, body, redirectOn401 }) {
+async function request(path, { method, body, redirectOn401, signal }) {
   const changesState = !SAFE_METHODS.has(method);
   if (changesState && !csrfToken) await refreshCsrfToken();
 
-  let res = await send(path, method, body);
+  let res = await send(path, method, body, signal);
 
   // The token belongs to a session that has since been replaced: get the
   // current one and try once more.
@@ -235,14 +240,15 @@ export async function upload(path, blob, { onProgress } = {}) {
  * @param {unknown} [options.body]  sent as JSON
  * @param {boolean} [options.redirectOn401]  false on the login page itself
  * @param {boolean} [options.quiet]  true when the caller shows the failure itself
+ * @param {AbortSignal} [options.signal]  to cancel it; a cancelled read is not retried
  * @returns {Promise<any>} the parsed JSON body, or null for an empty one
  */
 export async function api(
   path,
-  { method = 'GET', body, redirectOn401 = true, quiet = false } = {}
+  { method = 'GET', body, redirectOn401 = true, quiet = false, signal } = {}
 ) {
   try {
-    return await request(path, { method, body, redirectOn401 });
+    return await request(path, { method, body, redirectOn401, signal });
   } catch (err) {
     if (!quiet && err instanceof ApiError) announce(err);
     throw err;
