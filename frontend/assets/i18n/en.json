@@ -601,6 +601,26 @@
       "too_many_attempts": {
         "title": "Too many sign-ins",
         "text": "This account has signed in too many times in a short while. Wait 15 minutes, then try again."
+      },
+      "consent_required": {
+        "title": "The portal needs approval in Microsoft",
+        "text": "Microsoft says the portal has not been approved for your organisation yet. Ask your Global Administrator to grant admin consent to the portal's app registration (Microsoft Graph, User.Read) in Entra ID, under Enterprise applications, Permissions."
+      },
+      "not_assigned": {
+        "title": "Your account is not assigned to the portal",
+        "text": "Microsoft only lets assigned people into the portal. Ask your Global Administrator to assign you, or a group you are in, to the portal in Entra ID, under Enterprise applications, Users and groups."
+      },
+      "app_setup": {
+        "title": "The portal's Microsoft sign-in is not set up correctly",
+        "text": "Microsoft refused the portal itself, not your account. Ask your Global Administrator to check the portal's app registration: its client secret may have expired, or its redirect address may not be registered. Tell them the time you tried."
+      },
+      "cancelled": {
+        "title": "Sign-in was cancelled",
+        "text": "You left the Microsoft sign-in before it finished. Try again when you are ready."
+      },
+      "company_not_set_up": {
+        "title": "Your company is not set up in the portal",
+        "text": "Microsoft confirmed who you are, but your email domain does not belong to any company in the portal yet, so nothing was created for you. Ask the portal's holding administrator to add your company and its email domain."
       }
     }
   },

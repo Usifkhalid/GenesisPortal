@@ -6,6 +6,8 @@
  * DATABASE_URL.
  */
 
+import { randomUUID } from 'node:crypto';
+
 import {
   COMPANIES,
   DEPARTMENTS,
@@ -92,6 +94,18 @@ export function createMemoryUserRepo() {
 
   const brief = (user) => (user ? { id: user.id, isActive: user.isActive } : null);
 
+  /** What lib/audit.js writes to, in place of a Prisma transaction. */
+  const auditLogs = [];
+  const auditTx = {
+    auditLog: {
+      async create({ data }) {
+        const row = { id: randomUUID(), at: new Date(), createdAt: new Date(), ...data };
+        auditLogs.push(row);
+        return row;
+      },
+    },
+  };
+
   const rooms = ROOMS.map((room, i) => ({
     id: fakeId(5, i),
     ...room,
@@ -176,7 +190,7 @@ export function createMemoryUserRepo() {
     users,
     departments,
     /** Rows written by the admin module, for tests and development. */
-    auditLogs: [],
+    auditLogs,
     /** Directory sync runs (modules/directory/store-memory.js). */
     syncRuns: [],
     /** Rooms and bookings (modules/rooms/store-memory.js). */
@@ -221,6 +235,69 @@ export function createMemoryUserRepo() {
 
     async listCompanies(ids) {
       return companies.filter((c) => c.isActive && (!ids || ids.includes(c.id)));
+    },
+
+    async findCompanyByDomain(domain) {
+      const company = companies.find((c) => c.domain === domain || c.domains.includes(domain));
+      return company ? { id: company.id, isActive: company.isActive } : null;
+    },
+
+    async createEntraProfile(profile, audit) {
+      const company = companies.find((c) => c.id === profile.companyId);
+      const user = {
+        id: randomUUID(),
+        ...profile,
+        jobTitle: null,
+        officeLocation: null,
+        phone: null,
+        mobilePhone: null,
+        managerId: null,
+        graphDepartment: null,
+        graphCompanyName: null,
+        searchKey: searchKeyOf(profile),
+        language: 'en',
+        isActive: true,
+        company,
+        departmentId: null,
+        department: null,
+        roles: [{ id: randomUUID(), role: ROLES.USER, scopeCompanyId: profile.companyId }],
+      };
+      users.push(user);
+      const created = {
+        id: user.id,
+        isActive: true,
+        entraObjectId: user.entraObjectId,
+        email: user.email,
+        companyId: user.companyId,
+        displayNameEn: user.displayNameEn,
+      };
+      await audit(auditTx, created);
+      return created;
+    },
+
+    async hasRealHoldingAdmin(standInPrefix) {
+      return users.some(
+        (u) =>
+          u.isActive &&
+          !u.entraObjectId.startsWith(standInPrefix) &&
+          u.roles.some((r) => r.role === ROLES.HOLDING_ADMIN && r.scopeCompanyId === null)
+      );
+    },
+
+    async grantHoldingAdmin(userId, audit) {
+      const user = users.find((u) => u.id === userId);
+      if (user.roles.some((r) => r.role === ROLES.HOLDING_ADMIN && r.scopeCompanyId === null)) {
+        return false;
+      }
+      const assignment = {
+        id: randomUUID(),
+        userId,
+        role: ROLES.HOLDING_ADMIN,
+        scopeCompanyId: null,
+      };
+      user.roles.push({ id: assignment.id, role: assignment.role, scopeCompanyId: null });
+      await audit(auditTx, assignment);
+      return true;
     },
   };
 }

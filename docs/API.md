@@ -135,8 +135,15 @@ not keep anyone signed in), is not rate-limited, and destroys the session when t
 Authorization-code flow with PKCE, state and nonce, run on the server. `/auth/login`
 redirects to Entra; `/auth/callback` redeems the code, finds the `UserProfile` by
 `entraObjectId` and then by email (tying the profile to the object id when found that way),
-starts the session and redirects to `/`. On failure it redirects to
-`/login.html?error=signin_failed` or `?error=not_provisioned`. The redirect URI is
+starts the session and redirects to `/`. Someone with no profile gets one from the ID token
+(object id, name, email; role User) in the company owning their email domain
+(`Company.domain` or `CompanyDomain`), audited `user.jit_create`; an address in
+`INITIAL_HOLDING_ADMINS` also becomes HoldingAdmin while no active HoldingAdmin with a
+real Entra account exists, audited `role.bootstrap` (D136). On failure it redirects to
+`/login.html?error=<reason>`: `company_not_set_up` (domain owned by no company; nothing is
+created), `not_provisioned` (profile or company inactive), `consent_required`,
+`not_assigned`, `app_setup` (Microsoft refused the app: AADSTS code or OAuth error),
+`cancelled`, `too_many_attempts` or `signin_failed`. The redirect URI is
 `<APP_BASE_URL>/auth/callback`. No token reaches the browser or is kept.
 
 #### `GET /api/me`

@@ -48,6 +48,16 @@ if (wantsTestDatabase && process.env.TEST_DATABASE_ACTIVE !== '1') {
   }
 }
 
+/**
+ * "a@x.eg, B@y.eg" → ['a@x.eg', 'b@y.eg']. Also takes an array, which is what
+ * a test's config override may hold.
+ * @param {string | string[] | undefined} value
+ */
+export function parseEmailList(value) {
+  const items = Array.isArray(value) ? value : String(value ?? '').split(',');
+  return items.map((email) => email.trim().toLowerCase()).filter(Boolean);
+}
+
 /** True for a value still carrying a .env.example placeholder. */
 const isPlaceholder = (value) => !value || value.includes('CHANGE_ME');
 
@@ -176,6 +186,17 @@ const schema = z
     ENTRA_TENANT_ID: z.string().optional(),
     ENTRA_CLIENT_ID: z.string().optional(),
     ENTRA_CLIENT_SECRET: z.string().optional(),
+
+    /**
+     * Comma-separated emails made HoldingAdmin at their Entra sign-in, but only
+     * while no active HoldingAdmin with a real Entra account exists: the way in
+     * for the first administrator, closed once there is one (D136).
+     */
+    INITIAL_HOLDING_ADMINS: z
+      .string()
+      .optional()
+      .transform((value) => parseEmailList(value))
+      .pipe(z.array(z.email())),
   })
   .superRefine((value, ctx) => {
     const require = (key, why) => {

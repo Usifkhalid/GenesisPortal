@@ -11,12 +11,16 @@
  * The tokens Entra returns are read once for their claims and dropped. The
  * browser never sees one, and none is kept in the session.
  *
- * NOT YET RUN AGAINST THE REAL TENANT (access has not been granted). The flow
- * is covered by tests with a stand-in for the MSAL client.
+ * A person the portal does not know yet gets a profile from the ID token
+ * (provision.js). When Microsoft refuses, the login page is told why in terms
+ * of what to ask the Global Administrator for (D136).
+ *
+ * Tests use a stand-in for the MSAL client.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { bootstrapHoldingAdmin, createProfileFromToken } from './provision.js';
 import { entraCallbackQuery } from './schema.js';
 import { startSession } from './service.js';
 
@@ -30,6 +34,37 @@ const same = (a, b) => {
   const right = Buffer.from(String(b ?? ''));
   return left.length > 0 && left.length === right.length && timingSafeEqual(left, right);
 };
+
+/**
+ * Entra's answer, put as one of the login page's reasons. AADSTS codes come
+ * in error_description on the redirect, and in the message of an MSAL error
+ * when the code is redeemed.
+ */
+const AADSTS_REASONS = [
+  // Consent: not granted for the tenant, declined, or admin-only.
+  [/AADSTS(65001|65004|90094|90095|90099)\b/, 'consent_required'],
+  // "Assignment required" is on and this person is not assigned to the app.
+  [/AADSTS50105\b/, 'not_assigned'],
+  // The registration: not in this tenant, wrong or expired secret, redirect URI.
+  [/AADSTS(700016|7000215|7000222|50011|500113|700054|50194)\b/, 'app_setup'],
+];
+const ERROR_REASONS = {
+  consent_required: 'consent_required',
+  interaction_required: 'consent_required',
+  access_denied: 'cancelled',
+  invalid_client: 'app_setup',
+  unauthorized_client: 'app_setup',
+  invalid_request: 'app_setup',
+  unsupported_response_type: 'app_setup',
+};
+
+export function reasonForEntraError(code, description) {
+  const text = String(description ?? '');
+  for (const [pattern, reason] of AADSTS_REASONS) if (pattern.test(text)) return reason;
+  return ERROR_REASONS[code] ?? 'signin_failed';
+}
+
+const aadstsOf = (text) => /AADSTS\d+/.exec(String(text ?? ''))?.[0];
 
 export const authorityFor = (config) =>
   `https://login.microsoftonline.com/${encodeURIComponent(config.ENTRA_TENANT_ID)}`;
@@ -99,7 +134,11 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
     delete req.session.entra;
 
     if (query.error || !query.code) {
-      return fail(req, res, 'signin_failed', { entraError: query.error });
+      const reason = reasonForEntraError(query.error, query.error_description);
+      return fail(req, res, reason, {
+        entraError: query.error,
+        aadsts: aadstsOf(query.error_description),
+      });
     }
     if (!pending || !same(query.state, pending.state)) {
       return fail(req, res, 'signin_failed', { cause: 'state mismatch' });
@@ -118,7 +157,11 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
       // Nothing here calls an API as the user, so no token is worth keeping.
       msal.clearCache?.();
     } catch (err) {
-      return fail(req, res, 'signin_failed', { cause: err?.errorCode ?? err?.name });
+      const reason = reasonForEntraError(err?.errorCode, err?.errorMessage ?? err?.message);
+      return fail(req, res, reason, {
+        cause: err?.errorCode ?? err?.name,
+        aadsts: aadstsOf(err?.errorMessage ?? err?.message),
+      });
     }
 
     if (!same(claims.nonce, pending.nonce)) {
@@ -151,9 +194,19 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
       }
     }
 
+    // Known to Entra, new here: a profile from the token, placed by email domain.
+    if (!person) {
+      const name = typeof claims.name === 'string' ? claims.name : '';
+      const made = await createProfileFromToken(req, repo, { oid, email, name });
+      if (made.refused) return fail(req, res, made.refused, { oid });
+      person = made.person;
+    }
+
     if (!person?.isActive || person.company?.isActive === false) {
       return fail(req, res, 'not_provisioned', { oid });
     }
+
+    await bootstrapHoldingAdmin(req, repo, config, person, email);
 
     await startSession(req, person.id);
     res.redirect('/');

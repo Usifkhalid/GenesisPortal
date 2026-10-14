@@ -214,6 +214,18 @@ describe('config loader', () => {
     assert.equal(env.hasDatabase, false);
   });
 
+  test('INITIAL_HOLDING_ADMINS is a list of lower-case emails, and nothing else', () => {
+    assert.deepEqual(loadEnv({}).INITIAL_HOLDING_ADMINS, []);
+    assert.deepEqual(
+      loadEnv({ INITIAL_HOLDING_ADMINS: ' A@x.eg, ,b@Y.eg ' }).INITIAL_HOLDING_ADMINS,
+      ['a@x.eg', 'b@y.eg']
+    );
+    assert.throws(
+      () => loadEnv({ INITIAL_HOLDING_ADMINS: 'a@x.eg, not-an-email' }),
+      /INITIAL_HOLDING_ADMINS/
+    );
+  });
+
   test('a placeholder DATABASE_URL does not count as a database', () => {
     assert.equal(
       loadEnv({ DATABASE_URL: 'sqlserver://x;password=CHANGE_ME' }).hasDatabase,

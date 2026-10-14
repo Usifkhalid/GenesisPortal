@@ -520,6 +520,8 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
     const calls = { url: null, token: null, cleared: 0 };
     return {
       calls,
+      /** Who the next redemption says signed in; a test may change it. */
+      claims,
       async getAuthCodeUrl(req) {
         calls.url = req;
         return `https://login.example/authorize?state=${encodeURIComponent(req.state)}`;
@@ -528,7 +530,12 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
         calls.token = req;
         if (req.code === 'bad-code')
           throw Object.assign(new Error('x'), { errorCode: 'invalid_grant' });
-        return { idTokenClaims: { tid: TENANT, nonce: calls.url.nonce, ...claims } };
+        if (req.code === 'expired-secret')
+          throw Object.assign(new Error('x'), {
+            errorCode: 'invalid_client',
+            errorMessage: 'AADSTS7000222: The provided client secret keys are expired.',
+          });
+        return { idTokenClaims: { tid: TENANT, nonce: calls.url.nonce, ...this.claims } };
       },
       clearCache() {
         calls.cleared += 1;
@@ -613,11 +620,15 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
       oid: crypto.randomUUID(),
       preferred_username: 'who@else.eg',
     });
+    const before = stranger.repo.users.length;
     const res = await stranger.agent
       .get('/auth/callback')
       .query({ code: 'good', state: stranger.msal.url.state });
-    assert.equal(res.headers.location, '/login.html?error=not_provisioned');
+    assert.equal(res.headers.location, '/login.html?error=company_not_set_up');
     assert.equal((await stranger.agent.get('/api/me')).status, 401);
+    // An unknown domain creates nothing.
+    assert.equal(stranger.repo.users.length, before);
+    assert.equal(stranger.repo.auditLogs.length, 0);
 
     const gone = await start({ preferred_username: 'rania.farouk@masar.eg' });
     gone.repo.users.find((u) => u.email === 'rania.farouk@masar.eg').isActive = false;
@@ -654,7 +665,7 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
     const cancel = await denied.agent
       .get('/auth/callback')
       .query({ error: 'access_denied', state: denied.msal.url.state });
-    assert.equal(cancel.headers.location, failed);
+    assert.equal(cancel.headers.location, '/login.html?error=cancelled');
 
     const bad = await start(email);
     const redeem = await bad.agent
@@ -677,6 +688,149 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
     for (const { agent } of [forged, denied, bad, tenant, nonce]) {
       assert.equal((await agent.get('/api/me')).status, 401);
     }
+  });
+
+  test("Microsoft's refusals say what to ask the Global Administrator for", async () => {
+    const email = { preferred_username: 'ahmed.shawky@masar.eg' };
+    const refused = async (query) => {
+      const { agent, msal } = await start(email);
+      const res = await agent.get('/auth/callback').query({ state: msal.url.state, ...query });
+      assert.equal((await agent.get('/api/me')).status, 401);
+      return res.headers.location.replace('/login.html?error=', '');
+    };
+
+    const consent =
+      'AADSTS65001: The user or administrator has not consented to use the application.';
+    assert.equal(
+      await refused({ error: 'invalid_grant', error_description: consent }),
+      'consent_required'
+    );
+    assert.equal(await refused({ error: 'consent_required' }), 'consent_required');
+    assert.equal(
+      await refused({
+        error: 'access_denied',
+        error_description: 'AADSTS50105: The signed in user is not assigned to a role.',
+      }),
+      'not_assigned'
+    );
+    assert.equal(await refused({ error: 'unauthorized_client' }), 'app_setup');
+    assert.equal(await refused({ code: 'expired-secret' }), 'app_setup');
+    assert.equal(await refused({ error: 'server_error' }), 'signin_failed');
+  });
+
+  describe('a person new to the portal', () => {
+    /** One app, signed in to by several people in turn. */
+    function entraApp(config = {}) {
+      const msalClient = fakeMsal();
+      const built = build({ config: { ...ENTRA, ...config }, msalClient });
+      const id = (code) => built.repo.companies.find((c) => c.code === code).id;
+      const signInAs = async (claims) => {
+        msalClient.claims = { oid: crypto.randomUUID(), ...claims };
+        const agent = request.agent(built.app);
+        await agent.get('/auth/login');
+        const res = await agent
+          .get('/auth/callback')
+          .query({ code: 'good', state: msalClient.calls.url.state });
+        const me = await agent.get('/api/me');
+        return { location: res.headers.location, me, oid: msalClient.claims.oid };
+      };
+      return { ...built, id, signInAs };
+    }
+
+    const isHoldingAdmin = (me) =>
+      me.body.roles.some((r) => r.role === ROLES.HOLDING_ADMIN && r.scopeCompanyId === null);
+
+    test('gets a profile from the ID token, in the company of their email domain', async () => {
+      const { repo, id, signInAs } = entraApp();
+      const first = await signInAs({
+        preferred_username: 'Nour.Hassan@genesismining-eg.com',
+        name: 'Nour Hassan',
+      });
+
+      assert.equal(first.location, '/');
+      assert.equal(first.me.status, 200);
+      assert.equal(first.me.body.user.email, 'nour.hassan@genesismining-eg.com');
+      assert.equal(first.me.body.user.displayNameEn, 'Nour Hassan');
+      assert.equal(first.me.body.company.code, 'GEN');
+      assert.deepEqual(first.me.body.roles, [{ role: ROLES.USER, scopeCompanyId: id('GEN') }]);
+
+      const row = repo.users.find((u) => u.email === 'nour.hassan@genesismining-eg.com');
+      assert.equal(row.entraObjectId, first.oid);
+      const audit = repo.auditLogs.filter((a) => a.action === 'user.jit_create');
+      assert.equal(audit.length, 1);
+      assert.equal(audit[0].actorId, row.id);
+      assert.equal(audit[0].companyId, id('GEN'));
+
+      // The next sign-in finds that profile; nothing new is made.
+      const count = repo.users.length;
+      const again = await signInAs({
+        oid: first.oid,
+        preferred_username: 'nour.hassan@genesismining-eg.com',
+      });
+      assert.equal(again.me.body.user.id, first.me.body.user.id);
+      assert.equal(repo.users.length, count);
+    });
+
+    test("a company's other domains place people too; an inactive company's do not", async () => {
+      const { repo, signInAs } = entraApp();
+      repo.companies.find((c) => c.code === 'MSR').domains.push('masar-group.example');
+      const placed = await signInAs({ preferred_username: 'omar@masar-group.example' });
+      assert.equal(placed.me.body.company.code, 'MSR');
+
+      repo.companies.find((c) => c.code === 'GEN').isActive = false;
+      const count = repo.users.length;
+      const closed = await signInAs({ preferred_username: 'new@genesismining-eg.com' });
+      assert.equal(closed.location, '/login.html?error=not_provisioned');
+      assert.equal(repo.users.length, count);
+    });
+
+    test('INITIAL_HOLDING_ADMINS makes the first real HoldingAdmin, once, audited', async () => {
+      const { repo, signInAs } = entraApp({
+        INITIAL_HOLDING_ADMINS: 'boss@mgholding.example, Deputy@mgholding.example',
+      });
+      // A seeded HoldingAdmin exists, but as a stand-in it does not count.
+      assert.ok(repo.users.some((u) => u.roles.some((r) => r.role === ROLES.HOLDING_ADMIN)));
+
+      const unlisted = await signInAs({ preferred_username: 'clerk@mgholding.example' });
+      assert.equal(unlisted.me.status, 200);
+      assert.ok(!isHoldingAdmin(unlisted.me));
+
+      const boss = await signInAs({ preferred_username: 'boss@mgholding.example' });
+      assert.ok(isHoldingAdmin(boss.me));
+      assert.ok(boss.me.body.nav.some((n) => n.key === 'admin'));
+      const grants = repo.auditLogs.filter((a) => a.action === 'role.bootstrap');
+      assert.equal(grants.length, 1);
+      assert.equal(grants[0].actorId, boss.me.body.user.id);
+      assert.equal(grants[0].companyId, null);
+      assert.equal(grants[0].entity, 'RoleAssignment');
+
+      // A real HoldingAdmin now exists: the next listed address gets nothing.
+      const deputy = await signInAs({ preferred_username: 'deputy@mgholding.example' });
+      assert.equal(deputy.me.status, 200);
+      assert.ok(!isHoldingAdmin(deputy.me));
+      assert.equal(repo.auditLogs.filter((a) => a.action === 'role.bootstrap').length, 1);
+    });
+
+    test('the bootstrap counts only an active HoldingAdmin with a real Entra account', async () => {
+      const { repo, signInAs } = entraApp({ INITIAL_HOLDING_ADMINS: 'boss@mgholding.example' });
+      const seeded = repo.users.find((u) =>
+        u.roles.some((r) => r.role === ROLES.HOLDING_ADMIN)
+      );
+
+      // The seeded HoldingAdmin, once tied to a real account, closes the way in...
+      seeded.entraObjectId = crypto.randomUUID();
+      const shut = await signInAs({ preferred_username: 'boss@mgholding.example' });
+      assert.equal(shut.me.status, 200);
+      assert.ok(!isHoldingAdmin(shut.me));
+
+      // ...until they are deactivated.
+      seeded.isActive = false;
+      const open = await signInAs({
+        oid: shut.oid,
+        preferred_username: 'boss@mgholding.example',
+      });
+      assert.ok(isHoldingAdmin(open.me));
+    });
   });
 
   test('sign-out also leaves the Entra session', async () => {
