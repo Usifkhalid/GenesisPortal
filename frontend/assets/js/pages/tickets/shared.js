@@ -173,6 +173,7 @@ const CODE_KEYS = {
   unknown_assignee: 'tk.error.unknownAssignee',
   name_taken: 'tk.error.nameTaken',
   code_taken: 'tk.error.codeTaken',
+  last_lead: 'tk.error.lastLead',
   date_taken: 'tk.error.dateTaken',
   unknown_company: 'tk.error.unknownCompany',
   unknown_user: 'tk.error.unknownUser',

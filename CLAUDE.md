@@ -18,7 +18,7 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 - Hosting target: Azure App Service, South Africa North.
 
 ## Folder layout
-/frontend: index.html, login.html, styleguide.html
+/frontend: index.html (the portal), helpdesk.html (the IT Helpdesk, IT team only: docs/DECISIONS.md D135), login.html, no-access.html, styleguide.html
   /assets/css: tokens.css, base.css, layout.css, components.css, pages/*.css
   /assets/js: app.js, router.js, api.js, i18n.js, auth.js, components/*, pages/*
   /assets/i18n: en.json, ar.json

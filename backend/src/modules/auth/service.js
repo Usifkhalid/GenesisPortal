@@ -70,11 +70,16 @@ export async function startSession(req, userId) {
   return csrfToken(req);
 }
 
+/** Where a person works after sign-in: IT team members in the Helpdesk (D135). */
+export const homeOf = (user) => (user.it ? '/helpdesk' : '/');
+
 /**
  * The navigation this person may see. The frontend draws only these; the
- * routes behind them enforce the same thing for themselves.
+ * routes behind them enforce the same thing for themselves. An IT team
+ * member has none of the portal's: the Helpdesk draws its own.
  */
 export function navFor(user) {
+  if (user.it) return [];
   const nav = ['home', 'announcements', 'rooms', 'tickets', 'directory'].map((key) => ({
     key,
     group: 'main',
@@ -114,6 +119,9 @@ export async function describeMe(req, repo, config) {
     companies,
     roles: user.roles,
     nav: navFor(user),
+    // 'Lead' | 'Agent' on an IT team, null otherwise; and the page that is theirs.
+    helpdesk: user.it ? { role: user.it } : null,
+    home: homeOf(user),
     authMode: config.AUTH_MODE,
     csrfToken: csrfToken(req),
     // Whether the page should install the offline worker (frontend/sw.js).

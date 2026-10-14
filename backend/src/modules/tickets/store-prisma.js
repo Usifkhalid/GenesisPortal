@@ -75,6 +75,7 @@ const PERSON = {
  *   sla           on_track | at_risk | breached, judged at `now`
  *   riskBy        the clock is running and 75% is used by this instant
  *   autoCloseBy   due to close itself by this instant
+ *   createdFrom, createdBefore   raised in [from, before)
  *   q             in the number or the subject
  */
 export function ticketWhere(f = {}) {
@@ -95,6 +96,8 @@ export function ticketWhere(f = {}) {
   if (f.sla === 'breached') AND.push({ slaActive: true, nextDueAt: { lte: f.now } });
   if (f.riskBy) AND.push({ slaActive: true, nextRiskAt: { lte: f.riskBy } });
   if (f.autoCloseBy) AND.push({ autoCloseAt: { lte: f.autoCloseBy } });
+  if (f.createdFrom) AND.push({ createdAt: { gte: f.createdFrom } });
+  if (f.createdBefore) AND.push({ createdAt: { lt: f.createdBefore } });
 
   return {
     ...(f.requesterId ? { requesterId: f.requesterId } : {}),

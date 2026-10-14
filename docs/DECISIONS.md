@@ -1227,6 +1227,8 @@ not picked up:
   urgency they choose (D106) and only the team changes it after; assigning a New ticket
   makes it Open; a requester's reply to a Resolved ticket reopens it, within seven calendar
   days of `resolvedAt`; auto-close is three full working days of the team's hours.
+- **Updated by D135:** a HoldingAdmin no longer assigns, reads or works tickets. Only a
+  team's Lead assigns; D122's agent rules are unchanged.
 
 ### D119. Offline: a service worker that saves the shell, and one rule for what it may keep
 
@@ -1356,7 +1358,7 @@ work is given out by a Lead, and the ticket says whose it is.
 
 ### D126. A change of role ends the session
 
-- **Decision:** the session stores a privilege key (company + roles). When the roles read on a request differ from it, the session is destroyed and the person signs in again. Helpdesk team membership is not part of the key (it is read per ticket request and grants nothing outside the ticket service).
+- **Decision:** the session stores a privilege key (company + roles). When the roles read on a request differ from it, the session is destroyed and the person signs in again. Membership of an active support team became part of the key with D135, since it now moves a person between the portal and the IT Helpdesk.
 - **Why:** OWASP asks for a new session id on any change of privilege. Swapping the id in the middle of a page's parallel requests would 401 the ones still carrying the old cookie anyway, so ending the session is the same experience with less machinery; with Entra the way back is one redirect.
 - **Cost:** an admin who is granted or loses a role is sent to sign-in on their next click.
 
@@ -1407,3 +1409,15 @@ work is given out by a Lead, and the ticket says whose it is.
 - **Decision:** with no duration in the address, the default is an hour or, after 17:00, as much of one as still ends inside working hours (`fitDuration`). An explicit `duration=` is still honoured and still refused if it does not fit.
 - **Why:** from 17:01 to 17:45 Cairo time the page's first, automatic search was `start=17:15&duration=60`, which the API rightly refuses (400). People saw an error before typing, and every e2e spec that opens Rooms failed on the console error. It had gone unseen because earlier sessions ran in the morning; the previous commit fails the same way at that hour.
 
+
+### D135. The IT Helpdesk is a workspace of its own, for the IT team only (updates D99, D118, D126)
+
+- **Decision:** IT staff (members of an active support team: agents and leads) work in `/helpdesk` (`frontend/helpdesk.html`, `assets/js/helpdesk.js`), a smaller shell on the same design system: the Helpdesk's name, Queue, My assigned tickets, Reports and, for leads, IT settings, the bell and the account menu with the language switch and "New ticket for me". It has no link to the portal. They have no portal at all: the portal's script sends them to `/helpdesk` from `GET /api/me` (`home`; the server does not read the session on `/`, which would cost every navigation a database round trip); every API outside `/api/me`, `/api/notifications`, `/api/tickets` and `/api/helpdesk` answers `403 helpdesk_only` (`middleware/auth.js` `helpdeskOnly`). They still appear in the directory for others. Anyone else is refused the Helpdesk: `GET /helpdesk` is `403` with `no-access.html` (not signed in: the login page), and every IT route is `403` (`requireIt`).
+- **Administrators lose the tickets:** a HoldingAdmin or CompanyAdmin who is not on the IT team reads only their own tickets, like any employee: no queue, no other ticket (404), no attachment, no report, no settings, and does not assign (D118 updated). Employees, admins included, keep New ticket and My tickets in the portal; the portal has no IT queue, IT settings or IT card on Home.
+- **Settings are the IT Leads':** categories, canned replies, SLA targets, working hours and the team's name and served companies for the team they lead; locations and holidays for any lead. Moved from `/api/admin/helpdesk/*` to `/api/helpdesk/settings/*`, every write still audited. Creating or retiring a team is no longer offered (it was API-only): a team without members has nobody to run it, so it is a migration or a seed.
+- **Who is on the team is the HoldingAdmin's** (Administration > IT team, `/api/admin/it-team`), with names and roles only, audited. An active team keeps at least one active lead: demoting or removing the last one is `409 last_lead`.
+- **Joining or leaving moves a person from their next request:** IT membership is part of the session's privilege key (D126), so adding, removing, promoting or demoting someone ends their session; they sign in again and land on the right side. Switching a team off does the same for its members.
+- **Notifications:** IT recipients get `/helpdesk#tickets/<id>` (new ticket, assigned, a requester's reply, SLA at risk or breached), employees `#tickets/<id>`; the email's settings link follows. Decided per recipient, so an IT member's own ticket also opens in the Helpdesk.
+- **Reports** (`/api/helpdesk/reports`, `.../export.csv`, any IT member): tickets raised on Cairo days in a range (30 days by default, a year at most), counted by status, priority, category, company and location; first response and resolution met, breached or still running; average first response and resolution in business minutes on the team's clock (resolution less the paused minutes). The CSV is one row per ticket.
+- **Why:** ticket contents (which can hold personal details) stay with the people who work them; administrators reading every ticket was more access than their role needs, and IT gets one workspace with nothing of the portal in the way.
+- **Cost:** an IT member who also holds an admin role cannot use it while on the team. The people search for logging a ticket for someone is `/api/helpdesk/people` (the directory's rules). A notification an IT member had from before (a booking, an announcement) opens a "page not found" in the Helpdesk.

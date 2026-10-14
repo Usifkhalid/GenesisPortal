@@ -97,26 +97,17 @@ const companyIds = z
   .max(100)
   .transform((value) => [...new Set(value)]);
 
-export const teamCreateBody = z.strictObject({
-  code: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z][A-Za-z0-9]{1,9}$/, '2 to 10 letters or digits, starting with a letter')
-    .transform((value) => value.toUpperCase()),
-  nameEn: text(200),
-  nameAr: text(200),
-  servesAllCompanies: z.boolean().default(true),
-  /** Read only when servesAllCompanies is false. */
-  companyIds: companyIds.default([]),
-});
-
+/**
+ * What a Lead may change about their team. Making or retiring a team is not
+ * a screen's job (D135): a team without members would have no Lead to run it.
+ */
 export const teamUpdateBody = z
   .strictObject({
     nameEn: text(200).optional(),
     nameAr: text(200).optional(),
     servesAllCompanies: z.boolean().optional(),
+    /** Read only when servesAllCompanies is false. */
     companyIds: companyIds.optional(),
-    isActive: z.boolean().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, 'nothing to change');
 
@@ -220,6 +211,12 @@ export const holidayCreateBody = z.strictObject({
 });
 
 export const holidayUpdateBody = partial({ date: day, nameEn: text(200), nameAr: text(200) });
+
+/** The Helpdesk's reports: Cairo calendar days, both ends included (reports.js). */
+export const reportQuery = z.strictObject({
+  from: day.optional(),
+  to: day.optional(),
+});
 
 export const holidayQuery = z.strictObject({
   year: z.coerce.number().int().min(2000).max(2100).optional(),

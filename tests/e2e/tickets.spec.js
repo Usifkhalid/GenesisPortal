@@ -2,14 +2,18 @@
  * tickets.spec.js — the IT helpdesk, end to end, in English and Arabic at
  * 1440 and 360 px.
  *
- * One story, step by step: a Genesis user raises a ticket with a pasted
- * screenshot and finds it under My tickets; a Masar user and a colleague of
- * another team cannot see it; the IT Lead assigns it to an agent (an agent
- * has no assign control, D118; a colleague who does not have it reads it and
- * writes internal notes only, D122); the agent finds it in the queue,
- * leaves an internal note and answers with a canned reply; the requester
- * sees the answer but not the note; the agent resolves it and the requester
- * reopens it. A CompanyAdmin who is not on the IT team has no queue.
+ * One story, step by step: a Genesis user raises a ticket in the portal with
+ * a pasted screenshot and finds it under My tickets; a Masar user and a
+ * colleague cannot see it; the IT Lead assigns it to an agent in the IT
+ * Helpdesk (an agent has no assign control, D118; a colleague who does not
+ * have it reads it and writes internal notes only, D122); the agent works the
+ * queue in the Helpdesk, leaves an internal note and answers with a canned
+ * reply; the requester sees the answer in the portal but not the note; the
+ * agent resolves it and the requester reopens it.
+ *
+ * Then the split itself (D135): the IT team has the Helpdesk and no portal;
+ * the Lead keeps the IT settings; a CompanyAdmin and Nadia (HoldingAdmin)
+ * cannot open the Helpdesk or anyone's ticket, and Nadia staffs the team.
  *
  * Four runs share one database, so everything is found by this run's subject.
  */
@@ -57,6 +61,12 @@ async function pasteScreenshot(page, selector) {
 /** Opens an address inside the signed-in portal. */
 async function open(page, hash) {
   await page.goto(`/${hash}`);
+  await expect(page.locator('#page')).not.toContainText('Loading');
+}
+
+/** Opens an address inside the IT Helpdesk. */
+async function openHd(page, hash) {
+  await page.goto(`/helpdesk${hash}`);
   await expect(page.locator('#page')).not.toContainText('Loading');
 }
 
@@ -140,7 +150,8 @@ for (const lang of LANGUAGES) {
       /* ------------------------------------- the Lead assigns it to an agent */
       await signOut(page);
       await signIn(page, { ...LEAD, lang });
-      await open(page, '#tickets/queue');
+      await expect(page).toHaveURL(/\/helpdesk/);
+      await openHd(page, '#queue');
       await page.locator('#tkQ').fill(subject);
       const leadRow = page.locator('#tkQueueBody tbody tr', { hasText: subject });
       await expect(leadRow).toHaveCount(1);
@@ -158,7 +169,7 @@ for (const lang of LANGUAGES) {
       /* ----------------- the agent sees the queue, cannot assign, and answers */
       await signOut(page);
       await signIn(page, { ...AGENT, lang });
-      await open(page, '#tickets/queue');
+      await openHd(page, '#queue');
       await expect(page.locator('#tkQ')).toBeVisible();
       await page.locator('#tkQ').fill(subject);
       const row = page.locator('#tkQueueBody tbody tr', { hasText: subject });
@@ -221,7 +232,7 @@ for (const lang of LANGUAGES) {
       /* ------- a colleague who does not have it reads it and writes notes only */
       await signOut(page);
       await signIn(page, { ...OTHER_AGENT, lang });
-      await open(page, `#tickets/${ticketId}`);
+      await openHd(page, `#tickets/${ticketId}`);
       await expect(page.locator('#tkHandle')).toBeVisible();
       // The facts are there, with nothing to change them (D122).
       await expect(page.locator('#tkHandle')).toContainText(t(lang, 'tk.side.notYours'));
@@ -243,7 +254,7 @@ for (const lang of LANGUAGES) {
       /* ---------------------------------- IT resolves it; the requester reopens */
       await signOut(page);
       await signIn(page, { ...AGENT, lang });
-      await open(page, `#tickets/${ticketId}`);
+      await openHd(page, `#tickets/${ticketId}`);
       await page.locator('#tkStatus').selectOption('Resolved');
       await expect(page.locator('#tkHead .labelstrip')).toContainText(
         t(lang, 'ticket.status.Resolved')
@@ -272,60 +283,156 @@ for (const lang of LANGUAGES) {
       expect(closed.ok()).toBeTruthy();
     });
 
-    test('a CompanyAdmin who is not on the IT team has no queue', async ({ page }) => {
+    test('the IT team works in the Helpdesk only; the Lead keeps the IT settings', async ({
+      page,
+    }) => {
+      // An agent lands in the Helpdesk: Queue, My assigned tickets and Reports.
+      await signIn(page, { ...AGENT, lang });
+      await expect(page).toHaveURL(/\/helpdesk/);
+      await expectLanguage(page, lang);
+      const nav = page.locator('.app--helpdesk [data-nav]:visible');
+      const names = page.locator('.app--helpdesk');
+      await expect(names.locator('[data-nav="queue"]:visible')).toHaveCount(1);
+      await expect(names.locator('[data-nav="assigned"]:visible')).toHaveCount(1);
+      await expect(names.locator('[data-nav="reports"]:visible')).toHaveCount(1);
+      await expect(names.locator('[data-nav="settings"]:visible')).toHaveCount(0);
+      await expect(nav).toHaveCount(3);
+      await expect(page.locator('#tkQueueBody')).toBeVisible();
+      // No way into the portal from here.
+      await expect(
+        page.locator('a[href="/"], a[href^="/#"], a[href="/index.html"]')
+      ).toHaveCount(0);
+      await expectNoSidewaysScroll(page);
+      await shot(page, `helpdesk-queue-${lang}`);
+
+      // My assigned tickets: the same table, fixed to the agent's own.
+      await page.locator('[data-nav="assigned"]:visible').click();
+      await expect(page.locator('h1')).toHaveText(t(lang, 'hd.nav.assigned'));
+      await expect(page.locator('#tkQuick')).toBeHidden();
+
+      // Reports: counts and the SLA for a range of days, and the CSV.
+      await page.locator('[data-nav="reports"]:visible').click();
+      await expect(page.locator('#hdSummaryTitle')).toBeVisible();
+      await expect(page.locator('#hdSlaTitle')).toBeVisible();
+      await expect(page.locator('#hdByCompany')).toBeVisible();
+      const csv = await page.locator('#hdCsv').getAttribute('href');
+      expect(csv).toMatch(/^\/api\/helpdesk\/reports\/export\.csv\?from=\d{4}-\d{2}-\d{2}&to=/);
+      expect((await page.request.get(csv)).ok()).toBeTruthy();
+      await expectNoSidewaysScroll(page);
+      await shot(page, `helpdesk-reports-${lang}`);
+
+      // The portal is not theirs: its pages send them back, its API refuses them.
+      await page.goto('/#announcements');
+      await page.waitForURL((url) => url.pathname === '/helpdesk');
+      // The Helpdesk has drawn before the next address is typed.
+      await expect(page.locator('#tkQueueBody')).toBeVisible();
+      const refused = await page.request.get('/api/announcements');
+      expect(refused.status()).toBe(403);
+      expect((await refused.json()).error.code).toBe('helpdesk_only');
+
+      // Settings is the Lead's; an agent who types the address is told no.
+      await openHd(page, '#settings');
+      await expect(page.locator('#page')).toContainText(t(lang, 'page.noAccess.title'));
+
+      // The Lead edits a setting: a holiday added, then taken away again.
+      await signOut(page);
+      await signIn(page, { ...LEAD, lang });
+      await expect(page.locator('[data-nav="settings"]:visible')).toHaveCount(1);
+      await page.locator('[data-nav="settings"]:visible').click();
+      await expect(page.locator('#cfgNav')).toBeVisible();
+      await expect(page.locator('#cfgNav [data-section="members"]')).toHaveCount(0);
+      await page.locator('[data-section="holidays"]').click();
+      const run = runIndex(page, lang);
+      const day = `2028-0${run + 1}-1${run}`;
+      const name = `Helpdesk e2e ${lang} ${run}`;
+      await page.locator('[data-add="holiday"]').click();
+      await page.locator('#cfg-date').fill(day);
+      await page.locator('#cfg-nameEn').fill(name);
+      await page.locator('#cfg-nameAr').fill(`عطلة ${run}`);
+      await page.locator('#cfgSave').click();
+      await page.locator('#cfgYear').selectOption('2028');
+      const holiday = page.locator('#cfgBody tbody tr', { hasText: name });
+      await expect(holiday).toHaveCount(1);
+      await expectNoSidewaysScroll(page);
+      await shot(page, `helpdesk-settings-${lang}`);
+      await holiday.locator('[data-del-holiday]').click();
+      await page.locator('[data-confirm]').click();
+      await expect(holiday).toHaveCount(0);
+    });
+
+    test('a CompanyAdmin has My tickets and New ticket, and no Helpdesk', async ({ page }) => {
       await signIn(page, { company: 'GEN', role: 'CompanyAdmin', lang });
       await open(page, '#tickets');
       await expect(page.locator('#tkMine')).toBeVisible();
-      await expect(page.getByRole('link', { name: t(lang, 'tk.nav.queue') })).toHaveCount(0);
-      await expect(page.getByRole('link', { name: t(lang, 'tk.nav.settings') })).toHaveCount(0);
+      const links = page.locator('.tk .rooms-nav__link');
+      await expect(links).toHaveText([t(lang, 'tk.nav.mine'), t(lang, 'tk.nav.new')]);
 
-      await open(page, '#tickets/queue');
-      await expect(page.locator('#tkView')).toContainText(t(lang, 'page.noAccess.title'));
+      const helpdesk = await page.goto('/helpdesk');
+      expect(helpdesk.status()).toBe(403);
+      await expect(page.locator('h1')).toHaveText(t(lang, 'hd.noAccess.title'));
+      await expectLanguage(page, lang);
+      await expectNoSidewaysScroll(page);
       expect((await page.request.get('/api/tickets/queue')).status()).toBe(403);
-      await expectNoSidewaysScroll(page);
+      expect((await page.request.get('/api/helpdesk/reports')).status()).toBe(403);
     });
 
-    test('IT sees the queue card on Home and the helpdesk settings', async ({ page }) => {
-      await signIn(page, { ...AGENT, lang });
-      await open(page, '');
-      const card = page.locator('[data-card="queue"]');
-      await expect(card).toBeVisible();
-      // An agent's number is the tickets given to them; the unassigned are the Lead's.
-      await expect(card).toContainText(t(lang, 'tk.queue.quick.mine'));
-      await expect(card).not.toContainText(t(lang, 'tk.queue.quick.unassigned'));
-      await card.getByRole('link', { name: t(lang, 'home.queue.open') }).click();
-      await expect(page.locator('#tkQueueTitle')).toBeVisible();
-      await expect(page.locator('#tkQuick')).toBeVisible();
-      await expectNoSidewaysScroll(page);
-
-      // A Lead and a HoldingAdmin open the helpdesk settings; an agent does not.
-      await expect(page.getByRole('link', { name: t(lang, 'tk.nav.settings') })).toHaveCount(0);
+    test('Nadia cannot open the Helpdesk or a ticket, and staffs the IT team', async ({
+      page,
+    }) => {
+      // Someone raises a ticket.
+      await signIn(page, { ...GEN_USER, lang });
+      const options = await (await page.request.get('/api/tickets/options')).json();
+      const raised = await page.request.post('/api/tickets', {
+        headers: await csrfHeaders(page),
+        data: {
+          subject: `Monitor flickers ${lang} ${runIndex(page, lang)} ${Date.now()}`,
+          description: 'Since this morning.',
+          categoryId: options.categories[0].id,
+        },
+      });
+      expect(raised.status()).toBe(201);
+      const { ticket } = await raised.json();
       await signOut(page);
-      await signIn(page, { ...LEAD, lang });
-      await expect(page.locator('[data-card="queue"]')).toContainText(
-        t(lang, 'tk.queue.quick.unassigned')
-      );
-      await open(page, '#tickets/settings');
-      await expect(page.locator('#cfgNav')).toBeVisible();
-      await page.locator('[data-section="replies"]').click();
-      await expect(page.locator('#cfgBody .record').first()).toBeVisible();
-      await expectNoSidewaysScroll(page);
-      await shot(page, `tickets-settings-${lang}`);
-    });
 
-    test('the HoldingAdmin configures the helpdesk in the Admin area', async ({ page }) => {
       const holding = await findUser(page, { company: 'HLD', role: 'HoldingAdmin' });
       await signIn(page, { company: holding.company.code, role: 'HoldingAdmin', lang });
-      await open(page, '#admin/helpdesk');
-      await expect(page.locator('#cfgNav [data-section]')).toHaveCount(6);
-      await page.locator('[data-section="targets"]').click();
-      await expect(page.locator('#cfgSla')).toBeVisible();
-      await expect(page.locator('#cfgHours')).toBeVisible();
-      await page.locator('[data-section="holidays"]').click();
-      await expect(page.locator('#cfgBody tbody tr').first()).toBeVisible();
-      await page.locator('[data-section="members"]').click();
+      expect((await page.goto('/helpdesk')).status()).toBe(403);
+      await expect(page.locator('h1')).toHaveText(t(lang, 'hd.noAccess.title'));
+      expect((await page.request.get(`/api/tickets/${ticket.id}`)).status()).toBe(404);
+      expect((await page.request.get('/api/tickets/queue')).status()).toBe(403);
+      await open(page, `#tickets/${ticket.id}`);
+      await expect(page.locator('#tkView')).toContainText(t(lang, 'tk.detail.missingTitle'));
+
+      // Administration > IT team: people and roles, nothing of the tickets.
+      await open(page, '#admin/it-team');
+      await expect(page.locator('#cfgNav')).toBeHidden();
       await expect(page.locator('[data-role]').first()).toBeVisible();
+      await expect(page.locator('#page')).not.toContainText(ticket.subject);
       await expectNoSidewaysScroll(page);
+      await shot(page, `admin-it-team-${lang}`);
+
+      // Adding and removing someone changes who works where, so it runs once
+      // per language, on the desktop, with a person no other spec signs in as.
+      if (page.viewportSize().width < 600) return;
+      const [person, personAr] =
+        lang === 'en'
+          ? ['Mona Abdel Rahman', 'منى عبد الرحمن']
+          : ['Karim Mansour', 'كريم منصور'];
+      const shown = lang === 'ar' ? personAr : person;
+      await page.locator('#cfgMemberInput').fill(person.split(' ')[0]);
+      await page
+        .getByRole('option', { name: new RegExp(shown) })
+        .first()
+        .dispatchEvent('mousedown');
+      await page.locator('#cfgAddMember button[type="submit"]').click();
+      const row = page.locator('#cfgBody tbody tr', { hasText: shown });
+      await expect(row).toHaveCount(1);
+      await expect(row.locator('[data-role]')).toHaveValue('Agent');
+
+      // Back off the team, so the portal is theirs again.
+      await row.locator('[data-remove-member]').click();
+      await page.locator('[data-confirm]').click();
+      await expect(row).toHaveCount(0);
     });
   });
 }

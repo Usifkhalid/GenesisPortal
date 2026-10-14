@@ -3,17 +3,21 @@
  * categories, locations, SLA targets, working hours, public holidays and
  * canned replies.
  *
- * A HoldingAdmin may change all of it. A team's Lead may also manage that
- * team's categories and canned replies, and nothing else. Every write is one
- * transaction with its AuditLog row (CLAUDE.md rule 7); the rows are
+ * IT settings are the IT Leads' (D135): a team's Lead manages that team's
+ * name, served companies, categories, canned replies, SLA targets and
+ * working hours, and any Lead manages the shared locations and holidays.
+ * Who is on the team is the HoldingAdmin's alone (`listMembership`,
+ * `setMember`, `removeMember`), and a team always keeps at least one active
+ * Lead. Nobody else reaches any of it, administrators included. Every write
+ * is one transaction with its AuditLog row (CLAUDE.md rule 7); the rows are
  * holding-wide (companyId NULL), since the helpdesk belongs to no one company.
  *
  * A change to targets, hours or holidays applies to a ticket the next time
  * its status or priority changes; tickets already resolved keep the dates
  * they were judged by.
  *
- * Errors a screen can act on: code_taken, name_taken, date_taken,
- * unknown_company, unknown_user, unknown_team.
+ * Errors a screen can act on: name_taken, date_taken, unknown_company,
+ * unknown_user, unknown_team, last_lead.
  */
 
 import { writeAudit } from '../../lib/audit.js';
@@ -54,15 +58,20 @@ const policyView = (row) => ({
 export function createHelpdeskAdminService({ store }) {
   /* ------------------------------------------------------------ permission */
 
-  function assertAdmin(req) {
+  /** Team membership is the HoldingAdmin's. */
+  function assertHolding(req) {
     requireUser(req);
     if (!isHoldingAdmin(req)) throw forbidden();
   }
 
-  /** The teams the caller may manage categories and canned replies for: null is all. */
+  /** Locations and holidays are shared by every team: any Lead. */
+  async function assertAnyLead(req) {
+    await ledTeamIds(req);
+  }
+
+  /** The active teams the caller leads; 403 when they lead none. */
   async function ledTeamIds(req) {
     const user = requireUser(req);
-    if (isHoldingAdmin(req)) return null;
     const leading = await store.find('member', { userId: user.id, role: 'Lead' });
     if (leading.length === 0) throw forbidden();
     const teams = await store.find('team', {
@@ -76,7 +85,7 @@ export function createHelpdeskAdminService({ store }) {
   /** 404 when the team is not one the caller leads: its existence is not theirs to learn. */
   async function assertLeads(req, teamId) {
     const ids = await ledTeamIds(req);
-    if (ids !== null && !ids.includes(teamId)) throw notFound();
+    if (!ids.includes(teamId)) throw notFound();
   }
 
   async function teamOr404(id) {
@@ -133,13 +142,38 @@ export function createHelpdeskAdminService({ store }) {
     }));
   }
 
-  /** Every team for a HoldingAdmin; the teams they lead for a Lead. */
+  /** The teams the caller leads, with their settings. */
   async function listTeams(req) {
     const ids = await ledTeamIds(req);
-    const teams = await store.find('team', ids === null ? {} : { id: ids }, {
-      orderBy: [{ nameEn: 'asc' }],
-    });
+    const teams = await store.find('team', { id: ids }, { orderBy: [{ nameEn: 'asc' }] });
     return { items: await teamViews(teams) };
+  }
+
+  const membershipView = (view) => ({
+    id: view.id,
+    code: view.code,
+    nameEn: view.nameEn,
+    nameAr: view.nameAr,
+    isActive: view.isActive,
+    members: view.members,
+  });
+
+  /**
+   * For the HoldingAdmin: every active team with its members, and nothing
+   * else (no settings, no tickets).
+   */
+  async function listMembership(req) {
+    assertHolding(req);
+    const teams = await store.find(
+      'team',
+      { isActive: true },
+      { orderBy: [{ nameEn: 'asc' }] }
+    );
+    return { items: (await teamViews(teams)).map(membershipView) };
+  }
+
+  async function membershipOf(teamId) {
+    return membershipView(await teamView(teamId));
   }
 
   async function teamView(id) {
@@ -166,30 +200,9 @@ export function createHelpdeskAdminService({ store }) {
     return ids;
   }
 
-  /** A new team starts with the default hours and targets, and no members. */
-  async function createTeam(req, body) {
-    assertAdmin(req);
-    const { companyIds: wanted, ...data } = body;
-    const companyIds = data.servesAllCompanies ? [] : await knownCompanyIds(wanted);
-    if ((await store.find('team', { code: data.code })).length > 0) {
-      throw taken('code_taken', 'Another team already uses this code.');
-    }
-    const made = await audited(req, 'helpdesk.team.create', 'SupportTeam', async (tx) => {
-      const team = await tx.insert('team', { ...data, isActive: true });
-      for (const companyId of companyIds) {
-        await tx.insert('teamCompany', { teamId: team.id, companyId });
-      }
-      await tx.insert('calendar', { teamId: team.id, ...DEFAULT_CALENDAR });
-      for (const priority of PRIORITIES) {
-        await tx.insert('sla', { teamId: team.id, priority, ...DEFAULT_SLA[priority] });
-      }
-      return { after: teamSnapshot(team, companyIds) };
-    });
-    return teamView(made.id);
-  }
-
+  /** A Lead renames their team or changes the companies it serves. */
   async function updateTeam(req, id, body) {
-    assertAdmin(req);
+    await assertLeads(req, id);
     const team = await teamOr404(id);
     const { companyIds: wanted, ...patch } = body;
     const current = (await store.find('teamCompany', { teamId: id })).map((c) => c.companyId);
@@ -217,15 +230,33 @@ export function createHelpdeskAdminService({ store }) {
     role: m.role,
   });
 
-  /** Adds someone to a team, or changes their role on it. */
+  /**
+   * 409 `last_lead` when taking `userId` off the Leads would leave the team
+   * with no active Lead to assign tickets and keep its settings.
+   */
+  async function assertKeepsLead(teamId, userId) {
+    const others = (await store.find('member', { teamId, role: 'Lead' })).filter(
+      (m) => m.userId !== userId
+    );
+    const people = others.length ? await store.getUsers(others.map((m) => m.userId)) : [];
+    if (!people.some((p) => p.isActive)) {
+      throw new HttpError(409, 'last_lead', 'The team needs at least one active lead.');
+    }
+  }
+
+  /**
+   * Adds someone to a team, or changes their role on it. From their next
+   * request they work in the Helpdesk and no longer in the portal (D135).
+   */
   async function setMember(req, teamId, userId, { role }) {
-    assertAdmin(req);
+    assertHolding(req);
     await teamOr404(teamId);
     const [user] = await store.getUsers([userId]);
     if (!user?.isActive) {
       throw new HttpError(400, 'unknown_user', 'That person is not in the directory.');
     }
     const [existing] = await store.find('member', { teamId, userId });
+    if (existing?.role === 'Lead' && role !== 'Lead') await assertKeepsLead(teamId, userId);
     if (existing?.role !== role) {
       await audited(
         req,
@@ -242,26 +273,30 @@ export function createHelpdeskAdminService({ store }) {
         }
       );
     }
-    return teamView(teamId);
+    return membershipOf(teamId);
   }
 
-  /** Off the team. Their tickets stay assigned until someone moves them. */
+  /**
+   * Off the team: from their next request they are back in the portal. Their
+   * tickets stay assigned until a Lead moves them.
+   */
   async function removeMember(req, teamId, userId) {
-    assertAdmin(req);
+    assertHolding(req);
     await teamOr404(teamId);
     const [existing] = await store.find('member', { teamId, userId });
     if (!existing) throw notFound();
+    if (existing.role === 'Lead') await assertKeepsLead(teamId, userId);
     await audited(req, 'helpdesk.member.remove', 'SupportTeamMember', async (tx) => {
       await tx.remove('member', { id: existing.id });
       return { before: memberSnapshot(existing), entityId: existing.id };
     });
-    return teamView(teamId);
+    return membershipOf(teamId);
   }
 
   /* ------------------------------------------------- targets and the calendar */
 
   async function setSla(req, teamId, { policies }) {
-    assertAdmin(req);
+    await assertLeads(req, teamId);
     await teamOr404(teamId);
     const current = await store.find('sla', { teamId });
     const asMap = (rows) =>
@@ -287,7 +322,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function setCalendar(req, teamId, body) {
-    assertAdmin(req);
+    await assertLeads(req, teamId);
     await teamOr404(teamId);
     const [current] = await store.find('calendar', { teamId });
     const data = { ...body, workingDays: body.workingDays.join(',') };
@@ -310,8 +345,8 @@ export function createHelpdeskAdminService({ store }) {
     return {
       async list(req, { teamId } = {}) {
         const ids = await ledTeamIds(req);
-        if (teamId && ids !== null && !ids.includes(teamId)) throw notFound();
-        const where = teamId ? { teamId } : ids === null ? {} : { teamId: ids };
+        if (teamId && !ids.includes(teamId)) throw notFound();
+        const where = teamId ? { teamId } : { teamId: ids };
         const rows = await store.find(table, where, {
           orderBy: [{ teamId: 'asc' }, { sortOrder: 'asc' }],
         });
@@ -403,13 +438,13 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function listLocations(req) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     const rows = await store.find('location', {}, { orderBy: [{ sortOrder: 'asc' }] });
     return { items: rows.map(locationView) };
   }
 
   async function createLocation(req, body) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     await assertLocationName(body.nameEn, null);
     const row = await audited(
       req,
@@ -423,7 +458,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function updateLocation(req, id, patch) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     const before = await store.get('location', id);
     if (!before) throw notFound();
     await assertLocationName(patch.nameEn, id);
@@ -450,7 +485,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function listHolidays(req, { year } = {}) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     const rows = await store.find('holiday', {}, { orderBy: [{ date: 'asc' }] });
     return {
       items: rows.filter((h) => !year || h.date.startsWith(`${year}-`)).map(holidayView),
@@ -458,7 +493,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function createHoliday(req, body) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     await assertHolidayDate(body.date, null);
     const row = await audited(req, 'helpdesk.holiday.create', 'Holiday', async (tx) => ({
       after: await tx.insert('holiday', body),
@@ -467,7 +502,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function updateHoliday(req, id, patch) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     const before = await store.get('holiday', id);
     if (!before) throw notFound();
     await assertHolidayDate(patch.date, id);
@@ -479,7 +514,7 @@ export function createHelpdeskAdminService({ store }) {
   }
 
   async function removeHoliday(req, id) {
-    assertAdmin(req);
+    await assertAnyLead(req);
     const before = await store.get('holiday', id);
     if (!before) throw notFound();
     await audited(req, 'helpdesk.holiday.remove', 'Holiday', async (tx) => {
@@ -490,7 +525,7 @@ export function createHelpdeskAdminService({ store }) {
 
   return {
     listTeams,
-    createTeam,
+    listMembership,
     updateTeam,
     setMember,
     removeMember,

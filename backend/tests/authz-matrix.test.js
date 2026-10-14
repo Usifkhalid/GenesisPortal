@@ -25,6 +25,11 @@ import { createMemoryUserRepo } from '../src/modules/auth/repo-memory.js';
  * Masar person refused on Genesis records. The IT team and the holding admins
  * exist once, at the holding, and serve every company.
  *
+ * The IT team works in the IT Helpdesk and nowhere else (D135): an agent or a
+ * lead is refused every main-portal route, and every IT route refuses
+ * everyone who is not on the team, the HoldingAdmin and CompanyAdmins
+ * included. Who is on the team is the HoldingAdmin's, with no ticket contents.
+ *
  * What counts:
  *   allowed  2xx (or a 4xx about the content of the request: 400, 409, 415 —
  *            the request got past the permission check)
@@ -58,11 +63,14 @@ const PEOPLE = {
 const ACTORS = Object.keys(PEOPLE);
 
 const ALL = ACTORS;
+/** Everyone with the main portal: not the IT team (D135). */
+const PORTAL = ['userGen', 'userMsr', 'caGen', 'caMsr', 'ha'];
 const ADMINS = ['caGen', 'caMsr', 'ha'];
 const GEN_ADMINS = ['caGen', 'ha'];
 const HA = ['ha'];
-const STAFF = ['agent', 'lead', 'ha'];
-const LEADS = ['lead', 'ha'];
+/** The IT team: the IT Helpdesk and its API. */
+const STAFF = ['agent', 'lead'];
+const LEADS = ['lead'];
 const GEN_PEOPLE = ['userGen', 'caGen', 'ha'];
 const GEN_READERS = ['userGen', 'caGen'];
 /** Marks a route anyone may call without a session. */
@@ -467,8 +475,11 @@ const MATRIX = {
   ],
 
   /* ---- announcements */
-  'GET /api/announcements': [ALL, (a) => a.get('/api/announcements')],
-  'GET /api/announcements/unread-count': [ALL, (a) => a.get('/api/announcements/unread-count')],
+  'GET /api/announcements': [PORTAL, (a) => a.get('/api/announcements')],
+  'GET /api/announcements/unread-count': [
+    PORTAL,
+    (a) => a.get('/api/announcements/unread-count'),
+  ],
   // The reader's view is for the company's own people. A holding admin is an
   // MG Holding employee: they manage a Genesis post through the admin route.
   'GET /api/announcements/:id': [
@@ -547,12 +558,12 @@ const MATRIX = {
   ],
 
   /* ---- directory (group-wide by decision D82) */
-  'GET /api/directory/people': [ALL, (a) => a.get('/api/directory/people')],
+  'GET /api/directory/people': [PORTAL, (a) => a.get('/api/directory/people')],
   'GET /api/directory/people/:id': [
-    ALL,
+    PORTAL,
     (a, f) => a.get(`/api/directory/people/${f.person('userGen').id}`),
   ],
-  'GET /api/directory/filters': [ALL, (a) => a.get('/api/directory/filters')],
+  'GET /api/directory/filters': [PORTAL, (a) => a.get('/api/directory/filters')],
   'GET /api/admin/directory/quality': [ADMINS, (a) => a.get('/api/admin/directory/quality')],
   'GET /api/admin/directory/quality/export.csv': [
     ADMINS,
@@ -579,22 +590,25 @@ const MATRIX = {
   'POST /api/admin/directory/sync': [HA, (a) => a.post('/api/admin/directory/sync', {})],
 
   /* ---- rooms and bookings (the seeded HQ rooms are open to every company) */
-  'GET /api/rooms': [ALL, (a) => a.get('/api/rooms')],
-  'GET /api/rooms/availability': [ALL, (a) => a.get(`/api/rooms/availability?date=${MONDAY}`)],
+  'GET /api/rooms': [PORTAL, (a) => a.get('/api/rooms')],
+  'GET /api/rooms/availability': [
+    PORTAL,
+    (a) => a.get(`/api/rooms/availability?date=${MONDAY}`),
+  ],
   'GET /api/rooms/find': [
-    ALL,
+    PORTAL,
     (a) => a.get(`/api/rooms/find?date=${MONDAY}&start=10:00&duration=60`),
   ],
-  'GET /api/rooms/:id': [ALL, async (a, f) => a.get(`/api/rooms/${(await f.room()).id}`)],
+  'GET /api/rooms/:id': [PORTAL, async (a, f) => a.get(`/api/rooms/${(await f.room()).id}`)],
   'GET /api/rooms/:id/photo': [
-    ALL,
+    PORTAL,
     async (a, f) => {
       await f.roomPhoto();
       return a.get(`/api/rooms/${(await f.room()).id}/photo`);
     },
   ],
   'POST /api/bookings': [
-    ALL,
+    PORTAL,
     async (a, f) =>
       a.post('/api/bookings', {
         roomId: (await f.room()).id,
@@ -603,7 +617,7 @@ const MATRIX = {
         end: at(MONDAY, '13:30'),
       }),
   ],
-  'GET /api/bookings/mine': [ALL, (a) => a.get('/api/bookings/mine')],
+  'GET /api/bookings/mine': [PORTAL, (a) => a.get('/api/bookings/mine')],
   // A booking is its organiser's, and their company's admins'.
   'GET /api/bookings/:id': [
     GEN_PEOPLE,
@@ -671,15 +685,14 @@ const MATRIX = {
     ['userGen', ...STAFF],
     async (a, f) => a.get(`/api/tickets/${(await f.ticket()).id}`),
   ],
-  // Assigning is a lead's decision (D118).
+  // Assigning is a lead's decision (D118, D135).
   'PATCH /api/tickets/:id': [
     LEADS,
     async (a, f) =>
       a.patch(`/api/tickets/${(await f.ticket()).id}`, { assigneeId: f.person('agent').id }),
   ],
   // A public reply: the requester, or the team member the ticket is assigned
-  // to; it is unassigned here, so of the team only its lead and the holding
-  // admin (D122).
+  // to; it is unassigned here, so of the team only its lead (D122).
   'POST /api/tickets/:id/comments': [
     ['userGen', ...LEADS],
     async (a, f) =>
@@ -699,69 +712,63 @@ const MATRIX = {
     async (a, f) => a.get((await f.ticket({ file: true })).file.url),
   ],
 
-  /* ---- helpdesk settings: the holding admin; a lead for their own team's
-     categories and canned replies */
-  'GET /api/admin/helpdesk/teams': [LEADS, (a) => a.get('/api/admin/helpdesk/teams')],
-  'POST /api/admin/helpdesk/teams': [
-    HA,
-    (a) =>
-      a.post('/api/admin/helpdesk/teams', {
-        code: 'FAC',
-        nameEn: 'Facilities',
-        nameAr: 'المرافق',
-      }),
+  /* ---- the IT Helpdesk's own routes: the IT team (D135) */
+  'GET /api/helpdesk/reports': [STAFF, (a) => a.get('/api/helpdesk/reports')],
+  'GET /api/helpdesk/reports/export.csv': [
+    STAFF,
+    (a) => a.get('/api/helpdesk/reports/export.csv'),
   ],
-  'PATCH /api/admin/helpdesk/teams/:id': [
-    HA,
-    (a, f) => a.patch(`/api/admin/helpdesk/teams/${f.team.id}`, { nameEn: 'IT Helpdesk' }),
+  'GET /api/helpdesk/people': [STAFF, (a) => a.get('/api/helpdesk/people?q=sal')],
+  'GET /api/helpdesk/people/:id': [
+    STAFF,
+    (a, f) => a.get(`/api/helpdesk/people/${f.person('userGen').id}`),
   ],
-  'PUT /api/admin/helpdesk/teams/:id/members/:userId': [
-    HA,
+
+  /* ---- IT settings: IT leads only, never an administrator (D135) */
+  'GET /api/helpdesk/settings/teams': [LEADS, (a) => a.get('/api/helpdesk/settings/teams')],
+  'PATCH /api/helpdesk/settings/teams/:id': [
+    LEADS,
+    (a, f) => a.patch(`/api/helpdesk/settings/teams/${f.team.id}`, { nameEn: 'IT Helpdesk' }),
+  ],
+  'PUT /api/helpdesk/settings/teams/:id/sla': [
+    LEADS,
+    (a, f) => a.put(`/api/helpdesk/settings/teams/${f.team.id}/sla`, { policies }),
+  ],
+  'PUT /api/helpdesk/settings/teams/:id/calendar': [
+    LEADS,
     (a, f) =>
-      a.put(`/api/admin/helpdesk/teams/${f.team.id}/members/${f.person('userGen').id}`, {
-        role: 'Agent',
-      }),
-  ],
-  'DELETE /api/admin/helpdesk/teams/:id/members/:userId': [
-    HA,
-    (a, f) => a.del(`/api/admin/helpdesk/teams/${f.team.id}/members/${f.person('agent').id}`),
-  ],
-  'PUT /api/admin/helpdesk/teams/:id/sla': [
-    HA,
-    (a, f) => a.put(`/api/admin/helpdesk/teams/${f.team.id}/sla`, { policies }),
-  ],
-  'PUT /api/admin/helpdesk/teams/:id/calendar': [
-    HA,
-    (a, f) =>
-      a.put(`/api/admin/helpdesk/teams/${f.team.id}/calendar`, {
+      a.put(`/api/helpdesk/settings/teams/${f.team.id}/calendar`, {
         timeZone: 'Africa/Cairo',
         workingDays: [0, 1, 2, 3, 4],
         startMin: 540,
         endMin: 1020,
       }),
   ],
-  'GET /api/admin/helpdesk/categories': [LEADS, (a) => a.get('/api/admin/helpdesk/categories')],
-  'POST /api/admin/helpdesk/categories': [
+  'GET /api/helpdesk/settings/categories': [
+    LEADS,
+    (a) => a.get('/api/helpdesk/settings/categories'),
+  ],
+  'POST /api/helpdesk/settings/categories': [
     LEADS,
     (a, f) =>
-      a.post('/api/admin/helpdesk/categories', {
+      a.post('/api/helpdesk/settings/categories', {
         teamId: f.team.id,
         nameEn: 'Badge reader',
         nameAr: 'قارئ البطاقات',
       }),
   ],
-  'PATCH /api/admin/helpdesk/categories/:id': [
+  'PATCH /api/helpdesk/settings/categories/:id': [
     LEADS,
-    (a, f) => a.patch(`/api/admin/helpdesk/categories/${f.category.id}`, { sortOrder: 7 }),
+    (a, f) => a.patch(`/api/helpdesk/settings/categories/${f.category.id}`, { sortOrder: 7 }),
   ],
-  'GET /api/admin/helpdesk/canned-replies': [
+  'GET /api/helpdesk/settings/canned-replies': [
     LEADS,
-    (a) => a.get('/api/admin/helpdesk/canned-replies'),
+    (a) => a.get('/api/helpdesk/settings/canned-replies'),
   ],
-  'POST /api/admin/helpdesk/canned-replies': [
+  'POST /api/helpdesk/settings/canned-replies': [
     LEADS,
     (a, f) =>
-      a.post('/api/admin/helpdesk/canned-replies', {
+      a.post('/api/helpdesk/settings/canned-replies', {
         teamId: f.team.id,
         titleEn: 'On it',
         titleAr: 'نعمل عليه',
@@ -769,36 +776,57 @@ const MATRIX = {
         bodyAr: 'نحن ننظر في الأمر.',
       }),
   ],
-  'PATCH /api/admin/helpdesk/canned-replies/:id': [
+  'PATCH /api/helpdesk/settings/canned-replies/:id': [
     LEADS,
-    (a, f) => a.patch(`/api/admin/helpdesk/canned-replies/${f.canned.id}`, { sortOrder: 7 }),
+    (a, f) => a.patch(`/api/helpdesk/settings/canned-replies/${f.canned.id}`, { sortOrder: 7 }),
   ],
-  'GET /api/admin/helpdesk/locations': [HA, (a) => a.get('/api/admin/helpdesk/locations')],
-  'POST /api/admin/helpdesk/locations': [
-    HA,
-    (a) => a.post('/api/admin/helpdesk/locations', { nameEn: 'Warehouse', nameAr: 'المستودع' }),
+  'GET /api/helpdesk/settings/locations': [
+    LEADS,
+    (a) => a.get('/api/helpdesk/settings/locations'),
   ],
-  'PATCH /api/admin/helpdesk/locations/:id': [
-    HA,
-    (a, f) => a.patch(`/api/admin/helpdesk/locations/${f.location.id}`, { sortOrder: 7 }),
-  ],
-  'GET /api/admin/helpdesk/holidays': [HA, (a) => a.get('/api/admin/helpdesk/holidays')],
-  'POST /api/admin/helpdesk/holidays': [
-    HA,
+  'POST /api/helpdesk/settings/locations': [
+    LEADS,
     (a) =>
-      a.post('/api/admin/helpdesk/holidays', {
+      a.post('/api/helpdesk/settings/locations', { nameEn: 'Warehouse', nameAr: 'المستودع' }),
+  ],
+  'PATCH /api/helpdesk/settings/locations/:id': [
+    LEADS,
+    (a, f) => a.patch(`/api/helpdesk/settings/locations/${f.location.id}`, { sortOrder: 7 }),
+  ],
+  'GET /api/helpdesk/settings/holidays': [
+    LEADS,
+    (a) => a.get('/api/helpdesk/settings/holidays'),
+  ],
+  'POST /api/helpdesk/settings/holidays': [
+    LEADS,
+    (a) =>
+      a.post('/api/helpdesk/settings/holidays', {
         date: '2027-03-03',
         nameEn: 'Extra day',
         nameAr: 'يوم إضافي',
       }),
   ],
-  'PATCH /api/admin/helpdesk/holidays/:id': [
-    HA,
-    (a, f) => a.patch(`/api/admin/helpdesk/holidays/${f.holiday.id}`, { nameEn: 'Renamed' }),
+  'PATCH /api/helpdesk/settings/holidays/:id': [
+    LEADS,
+    (a, f) => a.patch(`/api/helpdesk/settings/holidays/${f.holiday.id}`, { nameEn: 'Renamed' }),
   ],
-  'DELETE /api/admin/helpdesk/holidays/:id': [
+  'DELETE /api/helpdesk/settings/holidays/:id': [
+    LEADS,
+    (a, f) => a.del(`/api/helpdesk/settings/holidays/${f.holiday.id}`),
+  ],
+
+  /* ---- who is on the IT team: the holding admin, in the portal (D135) */
+  'GET /api/admin/it-team/teams': [HA, (a) => a.get('/api/admin/it-team/teams')],
+  'PUT /api/admin/it-team/teams/:id/members/:userId': [
     HA,
-    (a, f) => a.del(`/api/admin/helpdesk/holidays/${f.holiday.id}`),
+    (a, f) =>
+      a.put(`/api/admin/it-team/teams/${f.team.id}/members/${f.person('userGen').id}`, {
+        role: 'Agent',
+      }),
+  ],
+  'DELETE /api/admin/it-team/teams/:id/members/:userId': [
+    HA,
+    (a, f) => a.del(`/api/admin/it-team/teams/${f.team.id}/members/${f.person('agent').id}`),
   ],
 };
 

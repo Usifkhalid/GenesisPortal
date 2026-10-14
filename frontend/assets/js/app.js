@@ -24,11 +24,8 @@ import { injectSprite, icon } from './components/icons.js';
 import { companyMark, companyName, fillCompanyMark } from './components/company-mark.js';
 import { initials } from './components/initials.js';
 import { initPeopleSearch } from './components/people-search.js';
-import {
-  markRead as markNotificationRead,
-  notificationHtml,
-} from './components/notification-item.js';
-import { esc } from './html.js';
+import { initBell, redrawBell } from './components/bell.js';
+import { closeMenu, initPopover } from './components/popover.js';
 import { initDateInputs } from './date-inputs.js';
 
 const STORED_LOCALE_KEY = 'mgp.locale';
@@ -246,9 +243,7 @@ function renderShellData() {
   toggle.setAttribute('aria-label', t(collapsed ? 'nav.expandRail' : 'nav.collapseRail'));
 
   drawTicketCount();
-
-  drawNotifCount();
-  drawBellList();
+  redrawBell();
 }
 
 /* ------------------------------------------------------ announcement count */
@@ -281,23 +276,13 @@ async function refreshAnnouncementCount() {
 
 /* ------------------------------------------------------------ ticket count */
 
-/** GET /api/tickets/counts. `queue` is null for anyone not on a support team. */
-let ticketCounts = { mine: 0, queue: null };
+/** GET /api/tickets/counts: here only `mine` matters (the IT team is in /helpdesk, D135). */
+let ticketCounts = { mine: 0 };
 
-/**
- * Draws the number beside Tickets: for the support team, the tickets nobody
- * has picked up yet; for everyone else, their own open ones.
- */
+/** Draws the number beside Tickets: this person's own open tickets. */
 function drawTicketCount() {
-  const { mine, queue } = ticketCounts;
-  // A Lead's number is the unassigned tickets; an agent's, their own open ones (D118).
-  const count = queue ? (queue.canAssign ? queue.unassigned : queue.assignedToMe) : mine;
-  const label = queue
-    ? t(queue.canAssign ? 'tickets.navCountQueue' : 'tickets.navCountAgent', {
-        count,
-        soon: queue.breachingSoon,
-      })
-    : t('tickets.navCount', { count });
+  const count = ticketCounts.mine;
+  const label = t('tickets.navCount', { count });
   for (const el of document.querySelectorAll('[data-ticket-count]')) {
     el.hidden = count === 0;
     el.textContent = count > 99 ? '99+' : String(count);
@@ -314,7 +299,7 @@ async function refreshTicketCount() {
     });
   } catch {
     // The nav is a convenience: no count is better than a wrong one.
-    ticketCounts = { mine: 0, queue: null };
+    ticketCounts = { mine: 0 };
   }
   drawTicketCount();
 }
@@ -410,67 +395,6 @@ function initRailToggle() {
   setRailCollapsed(readStored(STORED_RAIL_KEY) === 'true');
 }
 
-/* --------------------------------------------------------------- popovers */
-
-/**
- * These are disclosure popovers, not the WAI-ARIA application-menu pattern:
- * they hold a mix of static text and ordinary links/buttons rather than a
- * roving-tabindex menu with arrow-key traversal, so none of this carries
- * role="menu"/"menuitem" — that role would promise keyboard behaviour this
- * code does not implement.
- */
-function closeMenu(id, { restoreFocus = false } = {}) {
-  const menu = document.getElementById(id);
-  const trigger = document.querySelector(`[aria-controls="${id}"]`);
-  if (menu) menu.hidden = true;
-  trigger?.setAttribute('aria-expanded', 'false');
-  if (restoreFocus) trigger?.focus();
-}
-
-/**
- * Wires a trigger button to a popover: click to toggle, Escape and an
- * outside click to close, and the trigger regains focus on close so keyboard
- * use never loses its place.
- */
-function initPopover(triggerId, menuId) {
-  const trigger = document.getElementById(triggerId);
-  const menu = document.getElementById(menuId);
-  if (!trigger || !menu) return;
-
-  trigger.addEventListener('click', () => {
-    const opening = menu.hidden;
-    for (const other of document.querySelectorAll('.menu')) {
-      if (other !== menu) closeMenu(other.id);
-    }
-    menu.hidden = !opening;
-    trigger.setAttribute('aria-expanded', String(opening));
-  });
-
-  document.addEventListener('click', (event) => {
-    if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) {
-      closeMenu(menuId);
-    }
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !menu.hidden) {
-      closeMenu(menuId, { restoreFocus: true });
-    }
-  });
-
-  // Tabbing out of the popover closes it, so it never stays open behind the
-  // place a keyboard user has moved on to.
-  menu.parentElement.addEventListener('focusout', (event) => {
-    if (
-      !menu.hidden &&
-      event.relatedTarget &&
-      !menu.parentElement.contains(event.relatedTarget)
-    ) {
-      closeMenu(menuId);
-    }
-  });
-}
-
 /* ------------------------------------------------------------- more sheet */
 
 function initMoreSheet() {
@@ -511,132 +435,6 @@ function initSearchShortcut() {
     event.preventDefault();
     search.focus();
   });
-}
-
-/* -------------------------------------------------------------- notifications */
-
-let notifUnread = 0;
-/** The latest few, as the server listed them; null before the first answer. */
-let bellItems = null;
-const BELL_ITEMS = 6;
-const NOTIF_POLL_MS = 60_000;
-
-/**
- * aria-label is explicit on the bell button, so it overrides any name the
- * browser would otherwise compute from its content — the unread count has to
- * be folded into that label directly, or a screen reader never hears it.
- */
-function drawNotifCount() {
-  const el = document.getElementById('notifCount');
-  el.hidden = notifUnread === 0;
-  el.textContent = notifUnread > 99 ? '99+' : String(notifUnread);
-  document
-    .getElementById('notifBtn')
-    .setAttribute(
-      'aria-label',
-      notifUnread > 0
-        ? t('notification.unreadLabel', { count: notifUnread })
-        : t('nav.notifications')
-    );
-}
-
-/** The number on the bell: one small request, tried again every minute. */
-async function refreshNotifCount() {
-  try {
-    const result = await api('/api/notifications/unread-count', {
-      quiet: true,
-      signal: backgroundSignal(),
-    });
-    notifUnread = result.unread;
-  } catch {
-    // The bell is a convenience: keep the last number rather than a wrong one.
-  }
-  drawNotifCount();
-}
-
-function drawBellList() {
-  const list = document.getElementById('notifList');
-  if (!list) return;
-  const markAll = document.getElementById('notifMarkAll');
-  markAll.hidden = notifUnread === 0;
-  if (bellItems === null) {
-    list.innerHTML = '';
-    return;
-  }
-  list.innerHTML =
-    bellItems.length === 0
-      ? `<p class="menu__empty">${esc(t('notification.empty'))}</p>`
-      : bellItems.map((item) => notificationHtml(item)).join('');
-}
-
-/** The latest notifications, fetched when the bell is opened. */
-async function loadBellList() {
-  try {
-    const result = await api(`/api/notifications?pageSize=${BELL_ITEMS}`, {
-      quiet: true,
-      signal: backgroundSignal(),
-    });
-    bellItems = result.items;
-    notifUnread = result.unread;
-  } catch {
-    // Keep what was there; an empty bell on a weak connection is not "no news".
-  }
-  drawNotifCount();
-  drawBellList();
-}
-
-function initNotifications() {
-  const button = document.getElementById('notifBtn');
-  const menu = document.getElementById('notifMenu');
-
-  // initPopover has already toggled the menu by the time this runs.
-  button.addEventListener('click', () => {
-    if (!menu.hidden) loadBellList();
-  });
-
-  // Following a notification marks it read; the page it leads to is the news.
-  menu.addEventListener('click', (event) => {
-    const link = event.target.closest('[data-notification]');
-    if (link) {
-      if (link.dataset.noticeUnread === 'true')
-        markNotificationRead([link.dataset.notification]);
-      closeMenu('notifMenu');
-    }
-  });
-
-  document.getElementById('notifMarkAll').addEventListener('click', async () => {
-    try {
-      await api('/api/notifications/read-all', { method: 'POST', body: {}, quiet: true });
-      notifUnread = 0;
-      bellItems =
-        bellItems?.map((item) => ({ ...item, readAt: item.readAt ?? new Date() })) ?? null;
-      drawNotifCount();
-      drawBellList();
-    } catch {
-      // Still unread: the count stays honest.
-    }
-  });
-
-  document.addEventListener('notifications:changed', (event) => {
-    if (typeof event.detail?.unread === 'number') notifUnread = event.detail.unread;
-    drawNotifCount();
-    if (!menu.hidden) {
-      loadBellList();
-    } else {
-      // Closed: what it showed is out of date, and it is fetched again on open.
-      bellItems = null;
-      drawBellList();
-    }
-  });
-
-  // Not while the tab is hidden: a phone in a pocket should not be polling.
-  setInterval(() => {
-    if (document.visibilityState === 'visible') refreshNotifCount();
-  }, NOTIF_POLL_MS);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshNotifCount();
-  });
-  refreshNotifCount();
 }
 
 /* -------------------------------------------------------- offline, updates */
@@ -707,6 +505,13 @@ async function init() {
     return;
   }
 
+  // IT team members work in the IT Helpdesk, never here (D135). The server
+  // sends them there too; this covers a portal page kept on the device.
+  if (me.home && me.home !== '/') {
+    location.replace(me.home);
+    return;
+  }
+
   state.user = me.user;
   state.nav = me.nav;
   state.companies = me.companies;
@@ -733,7 +538,7 @@ async function init() {
   initPopover('companyBtn', 'companyMenu');
   initPopover('companyBtnTop', 'companyMenuTop');
   initPopover('notifBtn', 'notifMenu');
-  initNotifications();
+  initBell({ signal: backgroundSignal });
   initPopover('userMenuBtn', 'userMenu');
   initMoreSheet();
   initSearchShortcut();

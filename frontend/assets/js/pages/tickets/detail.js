@@ -59,7 +59,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export async function render(root, ctx) {
   const { ticketId, who: support } = ctx;
-  const fromQueue = ctx.route.query.get('from') === 'queue';
+  const from = ctx.route.query.get('from');
 
   let data;
   try {
@@ -105,12 +105,19 @@ export async function render(root, ctx) {
   let contact = null;
   let leaving = false;
 
-  const backHref = fromQueue ? '#tickets/queue' : '#tickets';
+  // The IT team reads a ticket in the Helpdesk (D135): back to the list it
+  // came from there. A requester goes back to their own tickets.
+  const back =
+    staff && from === 'assigned'
+      ? { href: '#assigned', label: 'hd.backAssigned' }
+      : staff
+        ? { href: '#queue', label: 'tk.detail.backQueue' }
+        : { href: '#tickets', label: 'tk.detail.backMine' };
   root.innerHTML = `<div class="tk-detail" data-staff="${staff}">
     <p class="tk-detail__back">
-      <a class="link-quiet link-icon" href="${backHref}">
+      <a class="link-quiet link-icon" href="${back.href}">
         ${icon('chevronStart', '', { directional: true })}
-        <span>${esc(t(fromQueue ? 'tk.detail.backQueue' : 'tk.detail.backMine'))}</span>
+        <span>${esc(t(back.label))}</span>
       </a>
     </p>
     <div class="tk-detail__grid">
@@ -759,7 +766,7 @@ export async function render(root, ctx) {
         quiet: true,
       }).catch(() => ({ items: [] })),
       requesterId
-        ? api(`/api/directory/people/${encodeURIComponent(requesterId)}`, {
+        ? api(`/api/helpdesk/people/${encodeURIComponent(requesterId)}`, {
             quiet: true,
           }).catch(() => null)
         : null,

@@ -28,7 +28,7 @@ import helmet from 'helmet';
 
 import { FRONTEND_DIR, env, isProduction, isTest } from './config/env.js';
 import { PrismaSessionStore, sessionLifetime, sessionMiddleware } from './lib/session.js';
-import { loadUser, requireAuth } from './middleware/auth.js';
+import { helpdeskOnly, loadUser, requireAuth } from './middleware/auth.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { apiNotFound, errorHandler, pageNotFound } from './middleware/errors.js';
 import { accountLimiter, apiLimiter, authLimiter } from './middleware/rate-limit.js';
@@ -79,8 +79,15 @@ import {
 import { createRoomService } from './modules/rooms/service.js';
 import { createMemoryRoomStore } from './modules/rooms/store-memory.js';
 import { createPrismaRoomStore } from './modules/rooms/store-prisma.js';
+import {
+  helpdeskRoutes,
+  helpdeskSettingsRoutes,
+  itTeamRoutes,
+} from './modules/helpdesk/routes.js';
+import { helpdeskPages } from './modules/helpdesk/pages.js';
 import { createHelpdeskAdminService } from './modules/tickets/admin-service.js';
-import { helpdeskAdminRoutes, ticketRoutes } from './modules/tickets/routes.js';
+import { createReportService } from './modules/tickets/reports.js';
+import { ticketRoutes } from './modules/tickets/routes.js';
 import { createTicketService } from './modules/tickets/service.js';
 import { createMemoryTicketStore } from './modules/tickets/store-memory.js';
 import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
@@ -212,6 +219,7 @@ export function createApp(options = {}) {
     notify,
   });
   const helpdeskAdmin = createHelpdeskAdminService({ store: ticketStore });
+  const reports = createReportService({ store: ticketStore, tickets, now: options.now });
   app.locals.sessionStore = store;
   app.locals.tickets = tickets;
   app.locals.announcements = announcements;
@@ -382,7 +390,9 @@ export function createApp(options = {}) {
     res.set('Cache-Control', 'no-store');
     next();
   });
-  app.use(stateful, sessionMiddleware(config, store));
+  // One instance, shared with the IT Helpdesk's page gate below.
+  const sessions = sessionMiddleware(config, store);
+  app.use(stateful, sessions);
   // Twelve hours after sign-in the session ends, however active (lib/session.js).
   app.use(stateful, sessionLifetime(config));
   // Signing out is never refused: a stale token (a restarted server, a second
@@ -404,8 +414,9 @@ export function createApp(options = {}) {
     })
   );
 
-  // The guard. Below this line every /api route has a req.user.
-  app.use('/api', loadUser(repo, config), requireAuth);
+  // The guard. Below this line every /api route has a req.user. IT team
+  // members are kept to the Helpdesk's part of it (D135).
+  app.use('/api', loadUser(repo, config), requireAuth, helpdeskOnly);
 
   mount('', meRoutes({ config, repo }));
 
@@ -423,7 +434,11 @@ export function createApp(options = {}) {
   mount('/api/rooms', roomRoutes(rooms));
   mount('/api/bookings', bookingRoutes(rooms));
 
-  mount('/api/admin/helpdesk', helpdeskAdminRoutes(helpdeskAdmin));
+  // The IT Helpdesk (D135): its settings for IT Leads, its reports and people
+  // search for the IT team, and who is on the team for the HoldingAdmin.
+  mount('/api/helpdesk/settings', helpdeskSettingsRoutes(helpdeskAdmin));
+  mount('/api/helpdesk', helpdeskRoutes({ reports, directory }));
+  mount('/api/admin/it-team', itTeamRoutes(helpdeskAdmin));
   mount('/api/tickets', ticketRoutes(tickets));
 
   mount('/api/notifications', notificationRoutes(notifications));
@@ -434,6 +449,15 @@ export function createApp(options = {}) {
   options.protectedRoutes?.(app);
 
   app.use(apiNotFound);
+
+  // The IT Helpdesk's page is for the IT team (D135): anyone else asking for
+  // /helpdesk is shown that it is not theirs. The API enforces it as well.
+  app.use(
+    helpdeskPages({
+      frontendDir: FRONTEND_DIR,
+      session: [sessions, sessionLifetime(config), loadUser(repo, config)],
+    })
+  );
 
   // Before the static files, so the template with its placeholders is never
   // served as it is on disk.

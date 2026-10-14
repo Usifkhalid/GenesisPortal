@@ -1,15 +1,16 @@
 /**
  * pages/tickets/config.js — the helpdesk's own configuration screens, shared
- * by two addresses:
+ * by two addresses (D135):
  *
- *   #admin/helpdesk      HoldingAdmin: everything
- *   #tickets/settings    a team's Lead: categories and canned replies of their team
+ *   /helpdesk#settings   an IT Lead: categories, locations, SLA targets and
+ *                        working hours, holidays and canned replies
+ *                        (/api/helpdesk/settings)
+ *   #admin/it-team       the HoldingAdmin, in the portal: who is on the IT team
+ *                        and as what, nothing else (/api/admin/it-team)
  *
- * Team members and their roles, categories, locations, SLA targets and
- * working hours, holidays, and canned replies in both languages. Every write
- * is audited by the API (helpdesk.* actions); nothing here is cached beyond
- * the page. Leads and HoldingAdmins see the same screens for the sections
- * they are allowed; the API refuses the rest.
+ * Every write is audited by the API (helpdesk.* actions); nothing here is
+ * cached beyond the page. The API refuses whatever a section's reader may
+ * not do.
  */
 
 import { api } from '../../api.js';
@@ -25,12 +26,10 @@ import { esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
 import { PRIORITIES, errorText, priorityLabel } from './shared.js';
 
-const BASE = '/api/admin/helpdesk';
-
-const SECTIONS_ALL = ['members', 'categories', 'locations', 'targets', 'holidays', 'replies'];
-const SECTIONS_LEAD = ['categories', 'replies'];
-
-const call = (path, options = {}) => api(`${BASE}${path}`, { quiet: true, ...options });
+/** An IT Lead's sections, in the Helpdesk. */
+export const LEAD_SECTIONS = ['categories', 'targets', 'locations', 'holidays', 'replies'];
+/** The HoldingAdmin's one section, in the portal's Administration. */
+export const MEMBER_SECTIONS = ['members'];
 
 /** A name pair, the language in use first. */
 function namePair(record, stem = 'name') {
@@ -154,9 +153,11 @@ async function editRecord({ title, fields, values = {}, save, extraHtml = '' }) 
 
 /**
  * @param {HTMLElement} root
- * @param {{ holding: boolean }} options
+ * @param {{ base: string, sections: string[] }} options  the API the screens
+ *   call and the sections they offer
  */
-export async function renderConfig(root, { holding }) {
+export async function renderConfig(root, { base, sections }) {
+  const call = (path, options = {}) => api(`${base}${path}`, { quiet: true, ...options });
   let teams;
   try {
     teams = (await call('/teams')).items;
@@ -164,7 +165,7 @@ export async function renderConfig(root, { holding }) {
     root.innerHTML = loadFailedNotice();
     root
       .querySelector('[data-retry]')
-      .addEventListener('click', () => renderConfig(root, { holding }));
+      .addEventListener('click', () => renderConfig(root, { base, sections }));
     return undefined;
   }
   teams = teams.filter((team) => team.isActive);
@@ -174,7 +175,6 @@ export async function renderConfig(root, { holding }) {
     return undefined;
   }
 
-  const sections = holding ? SECTIONS_ALL : SECTIONS_LEAD;
   const state = { teamId: teams[0].id, section: sections[0], year: new Date().getFullYear() };
   const team = () => teams.find((x) => x.id === state.teamId) ?? teams[0];
 
@@ -189,7 +189,9 @@ export async function renderConfig(root, { holding }) {
           </div>`
         : ''
     }
-    <nav class="subnav" aria-label="${esc(t('tk.cfg.sections'))}" id="cfgNav">
+    <nav class="subnav" aria-label="${esc(t('tk.cfg.sections'))}" id="cfgNav" ${
+      sections.length < 2 ? 'hidden' : ''
+    }>
       ${sections
         .map(
           (s) =>

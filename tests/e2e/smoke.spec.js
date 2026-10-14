@@ -50,8 +50,9 @@ for (const lang of LANGUAGES) {
 
         // Home: greeted by first name, every card drawn and none left loading.
         await expect(page.locator('#homeGreeting')).toContainText(name.split(' ')[0]);
-        // The five jobs; a HoldingAdmin works every queue, so has the IT queue's card too.
-        await expect(page.locator('[data-card]')).toHaveCount(who.admin ? 6 : 5);
+        // The five jobs. The IT queue is not here for anyone: it is the IT
+        // Helpdesk's (D135).
+        await expect(page.locator('[data-card]')).toHaveCount(5);
         await expect(page.locator('#page [aria-busy="true"]')).toHaveCount(0);
         await expectNoSidewaysScroll(page);
 

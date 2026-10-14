@@ -1,0 +1,168 @@
+/* =========================================================================
+ * helpdesk.css — the IT Helpdesk's shell and its Reports page (D135).
+ *
+ * The Helpdesk is the portal's design system with a smaller frame: no rail,
+ * one top bar with the Helpdesk's name, its four destinations and the
+ * person's own controls; on a phone the destinations move to the bottom nav,
+ * as the portal's do. Logical properties only.
+ * ========================================================================= */
+
+/* --- Frame: one column at every width ----------------------------------- */
+
+@media (min-width: 48rem) {
+  .app--helpdesk {
+    grid-template-areas:
+      'topbar'
+      'main';
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The bar's three zones: the name, the destinations, the person's controls.
+ * On a phone the destinations are in the bottom nav, so two zones. */
+.hd-topbar__inner {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (min-width: 48rem) {
+  .hd-topbar__inner {
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+  }
+}
+
+/* --- The Helpdesk's name ------------------------------------------------ */
+
+.hd-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  min-block-size: var(--tap-min);
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+.hd-brand:hover {
+  text-decoration: none;
+}
+
+.hd-brand__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  background: var(--brand-accent-fill);
+  color: var(--brand-accent-on);
+  border: var(--border-1) solid var(--brand-accent-edge);
+  border-radius: var(--radius-sm);
+}
+
+.hd-brand__mark svg {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+}
+
+.hd-brand__text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  line-height: var(--leading-tight);
+}
+
+.hd-brand__name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hd-brand__group {
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Destinations, in the bar from 48rem -------------------------------- */
+
+.hd-nav {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .hd-nav {
+    display: flex;
+    align-self: stretch;
+    gap: var(--space-1);
+    min-inline-size: 0;
+    overflow-x: auto;
+  }
+}
+
+/* The current destination: accent ink, bold weight and a rule under it,
+ * as the portal's tabs. */
+.hd-nav__link {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-3);
+  border-block-end: var(--border-2) solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-cell);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.hd-nav__link:hover {
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+.hd-nav__link[aria-current='page'] {
+  color: var(--brand-accent-ink);
+  border-block-end-color: var(--brand-accent-edge);
+  font-weight: var(--weight-bold);
+}
+
+.hd-nav__link[hidden],
+.hd-bottomnav .bottomnav__link[hidden] {
+  display: none;
+}
+
+/* --- Reports ------------------------------------------------------------ */
+
+.hd-report__range {
+  align-items: end;
+}
+
+.hd-report__actions {
+  align-self: end;
+}
+
+.hd-report__grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+
+.hd-report__card {
+  min-inline-size: 0;
+}
+
+.hd-report__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hd-report__note {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.hd-report__muted {
+  color: var(--text-muted);
+}

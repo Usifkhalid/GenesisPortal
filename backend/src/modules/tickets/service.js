@@ -2,8 +2,9 @@
  * service.js — helpdesk tickets: the rules, apart from HTTP and from storage.
  *
  * Who reads a ticket (rules.js, docs/DECISIONS.md D99): its requester, the
- * members of its support team for the companies that team serves, and a
- * HoldingAdmin. Not the requester's colleagues and not their CompanyAdmin.
+ * members of its support team for the companies that team serves. Not the
+ * requester's colleagues, not their CompanyAdmin and not a HoldingAdmin who is
+ * not on the team (D135).
  * Every route here starts from `loadTicket` or from a filter that carries the
  * viewer's own id or team scopes, and anything out of reach answers 404, so a
  * ticket's existence is never disclosed: not by id, list, search, count,
@@ -44,7 +45,7 @@ import { ATTACHMENT_EXTENSIONS, detectAttachment } from '../../lib/file-type.js'
 import { logger } from '../../lib/logger.js';
 import { bothLanguages } from '../../lib/messages.js';
 import { silentNotify } from '../../lib/notify.js';
-import { isHoldingAdmin, requireUser } from '../../lib/scope.js';
+import { requireUser } from '../../lib/scope.js';
 import {
   DEFAULT_CALENDAR,
   createSchedule,
@@ -84,6 +85,9 @@ const person = (p) =>
   p ? { id: p.id, displayNameEn: p.displayNameEn, displayNameAr: p.displayNameAr } : null;
 const named = (row) => (row ? { id: row.id, nameEn: row.nameEn, nameAr: row.nameAr } : null);
 
+/** Where a notification about a ticket leads: the Helpdesk for IT, the portal otherwise. */
+const ticketLink = (id, inHelpdesk) => `${inHelpdesk ? '/helpdesk' : ''}#tickets/${id}`;
+
 const statusesOf = (filter) =>
   filter === 'all' ? undefined : filter === 'active' ? ACTIVE_STATUSES : [filter];
 
@@ -107,12 +111,12 @@ export function createTicketService({
 
   /**
    * Who is asking, in helpdesk terms: the teams they are on (active ones),
-   * the companies each of those serves, and whether they are a HoldingAdmin.
-   * Read on every request, so someone taken off a team loses the queue at once.
+   * the companies each of those serves. Read on every request, so someone
+   * taken off a team loses the queue at once. An administrator's role counts
+   * for nothing here (D135).
    */
   async function viewerOf(req) {
     const user = requireUser(req);
-    const holdingAdmin = isHoldingAdmin(req);
     const mine = await store.find('member', { userId: user.id });
     let memberships = [];
     if (mine.length > 0) {
@@ -130,14 +134,12 @@ export function createTicketService({
           : served.filter((s) => s.teamId === team.id).map((s) => s.companyId),
       }));
     }
-    return { user, holdingAdmin, memberships, isStaff: holdingAdmin || memberships.length > 0 };
+    return { user, memberships, isStaff: memberships.length > 0 };
   }
 
   /** The filter part that keeps a staff list inside what the viewer serves. */
   const scopesOf = (viewer) =>
-    viewer.holdingAdmin
-      ? undefined
-      : viewer.memberships.map(({ teamId, companyIds }) => ({ teamId, companyIds }));
+    viewer.memberships.map(({ teamId, companyIds }) => ({ teamId, companyIds }));
 
   /** A ticket and the viewer's standing on it, or 404. */
   async function loadTicket(req, id) {
@@ -157,6 +159,18 @@ export function createTicketService({
     if (!userId) return '';
     const [p] = await store.getUsers([userId]);
     return p ? { en: p.displayNameEn, ar: p.displayNameAr || p.displayNameEn } : '';
+  }
+
+  /** Which of these people are on an active support team: they work in /helpdesk. */
+  async function itMemberIds(userIds) {
+    const rows = await store.find('member', { userId: userIds });
+    if (rows.length === 0) return new Set();
+    const active = await store.find('team', {
+      id: unique(rows.map((r) => r.teamId)),
+      isActive: true,
+    });
+    const teamIds = new Set(active.map((t) => t.id));
+    return new Set(rows.filter((r) => teamIds.has(r.teamId)).map((r) => r.userId));
   }
 
   /** Ids of the team's leads who are still active. */
@@ -180,12 +194,19 @@ export function createTicketService({
     try {
       const to = unique(userIds).filter((id) => id !== actorId);
       if (to.length === 0) return;
-      await notify(to, key, {
-        link: `#tickets/${ticket.id}`,
-        number: ticket.number,
-        subject: ticket.subject,
-        ...extra,
-      });
+      // IT team members open the ticket in the Helpdesk, everyone else in the
+      // portal (D135).
+      const it = await itMemberIds(to);
+      for (const inHelpdesk of [false, true]) {
+        const group = to.filter((id) => it.has(id) === inHelpdesk);
+        if (group.length === 0) continue;
+        await notify(group, key, {
+          link: ticketLink(ticket.id, inHelpdesk),
+          number: ticket.number,
+          subject: ticket.subject,
+          ...extra,
+        });
+      }
     } catch (err) {
       log.warn({ err, ticketId: ticket.id, key }, 'ticket notification failed');
     }
@@ -354,7 +375,7 @@ export function createTicketService({
 
   /**
    * May this viewer work the ticket: reply to the requester, change its status,
-   * priority or category, reopen it? A Lead or a HoldingAdmin always; an agent
+   * priority or category, reopen it? A Lead always; an agent
    * only on a ticket assigned to them (D122). Everyone else on the team reads
    * it and adds internal notes.
    */
@@ -390,7 +411,7 @@ export function createTicketService({
             (isRequester && withinReopenWindow(t, at))),
         /** The staff view of the ticket (SLA, codes, the team's panels). */
         manage: Boolean(staffRole),
-        /** Status, priority and category: the assignee, a Lead, a HoldingAdmin (D122). */
+        /** Status, priority and category: the assignee or a Lead (D122). */
         work: works(staffRole, t, viewer),
         reassign: isLead(staffRole),
       },
@@ -520,9 +541,7 @@ export function createTicketService({
     ]);
     const servedBy = (team) =>
       teamCompanies.filter((s) => s.teamId === team.id).map((s) => s.companyId);
-    const staffTeams = new Set(
-      viewer.holdingAdmin ? teams.map((t) => t.id) : viewer.memberships.map((m) => m.teamId)
-    );
+    const staffTeams = new Set(viewer.memberships.map((m) => m.teamId));
     const open = new Set(
       teams
         .filter((t) => staffTeams.has(t.id) || serves(t, servedBy(t), viewer.user.companyId))
@@ -556,8 +575,7 @@ export function createTicketService({
     const team = category?.isActive ? await store.get('team', category.teamId) : null;
     if (!team?.isActive) throw refuse(400, 'unknown_category', 'Choose a category.');
 
-    const isMember =
-      viewer.holdingAdmin || viewer.memberships.some((m) => m.teamId === team.id);
+    const isMember = viewer.memberships.some((m) => m.teamId === team.id);
     const forOther = body.requesterId !== undefined && body.requesterId !== viewer.user.id;
     // The priority is the requester's own answer to "how urgent is it?"; only
     // the source and another requester are for the team (D106).
@@ -687,7 +705,7 @@ export function createTicketService({
     ]);
     // `canAssign` tells the navigation which number matters: a Lead's is the
     // unassigned tickets, an agent's the ones given to them (D118).
-    const canAssign = viewer.holdingAdmin || viewer.memberships.some((m) => m.role === 'Lead');
+    const canAssign = viewer.memberships.some((m) => m.role === 'Lead');
     return { mine, queue: { unassigned, breachingSoon, assignedToMe, canAssign } };
   }
 
@@ -854,7 +872,7 @@ export function createTicketService({
     await storage.put(storageKey, buffer, {
       uploadedById: viewer.user.id,
       fileName,
-      link: `#tickets/${ticket.id}`,
+      link: ticketLink(ticket.id, viewer.isStaff),
     });
     try {
       const row = await store.transaction(async (tx) => {
@@ -935,10 +953,9 @@ export function createTicketService({
     return { total, page, pageSize, items: items.map((t) => summaryView(viewer, t, refs, at)) };
   }
 
-  /** The teams a staff viewer works in: every active one for a HoldingAdmin. */
+  /** The teams a staff viewer works in. */
   async function teamsOf(viewer) {
     const teams = await store.find('team', { isActive: true });
-    if (viewer.holdingAdmin) return teams;
     const mine = new Set(viewer.memberships.map((m) => m.teamId));
     return teams.filter((t) => mine.has(t.id));
   }
@@ -994,13 +1011,13 @@ export function createTicketService({
 
     const assigning =
       body.assigneeId !== undefined && body.assigneeId !== (ticket.assigneeId ?? null);
-    // Status, priority and category are the assignee's, a Lead's or a
-    // HoldingAdmin's (D122). Assigning is checked first: its refusal says more.
+    // Status, priority and category are the assignee's or a Lead's (D122).
+    // Assigning is checked first: its refusal says more.
     if (!assigning && !works(staffRole, ticket, viewer)) throw notAssignee();
 
     if (body.assigneeId !== undefined && body.assigneeId !== (ticket.assigneeId ?? null)) {
-      // Assigning, reassigning and unassigning are the Lead's (or a
-      // HoldingAdmin's) alone; an agent works the tickets given to them (D118).
+      // Assigning, reassigning and unassigning are the Lead's alone; an agent
+      // works the tickets given to them (D118, D135).
       if (!isLead(staffRole)) {
         throw refuse(403, 'lead_only', 'Only a team lead can assign or reassign a ticket.');
       }
@@ -1170,7 +1187,8 @@ export function createTicketService({
           const phase = ticket.firstRespondedAt ? 'resolution' : 'firstResponse';
           const to = unique([ticket.assigneeId, ...(await leadIds(ticket.teamId))]);
           const sent = await notify(to, breached ? 'ticket.slaBreached' : 'ticket.slaAtRisk', {
-            link: `#tickets/${ticket.id}`,
+            // The assignee and the leads: the IT team, in the Helpdesk.
+            link: ticketLink(ticket.id, true),
             number: ticket.number,
             subject: ticket.subject,
             phase: bothLanguages(`notification.phase.${phase}`),
@@ -1202,5 +1220,8 @@ export function createTicketService({
     cannedReplies,
     closeResolved,
     watchSla,
+    /** For the Helpdesk's reports (reports.js): the reader's team scopes, or 403. */
+    staffScopes: async (req) => scopesOf(await staffViewer(req)),
+    scheduleFor,
   };
 }

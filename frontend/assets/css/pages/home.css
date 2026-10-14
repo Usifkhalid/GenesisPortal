@@ -111,32 +111,6 @@
   }
 }
 
-/* --- IT's queue card ---------------------------------------------------
- * Added after the banner for the support team. It spans the page, and the
- * cards that had explicit rows move down one so nothing overlaps.
- */
-.home__queue {
-  grid-column: 1 / -1;
-}
-
-@container page (min-width: 68rem) {
-  .home__queue {
-    grid-row: 2;
-  }
-
-  .home--staff .home__waiting {
-    grid-row: 3;
-  }
-
-  .home--staff .home__rooms {
-    grid-row: 4;
-  }
-
-  .home--staff .home__tickets {
-    grid-row: 3 / span 2;
-  }
-}
-
 /* --- A record on a narrow page ---------------------------------------------
  * Beside a 360px title a status badge leaves room for two words a line. It
  * drops under the title instead, so the subject reads in one or two lines.

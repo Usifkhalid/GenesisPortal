@@ -166,7 +166,8 @@ for (const lang of LANGUAGES) {
       });
       expect(created.ok(), 'a ticket to handle').toBeTruthy();
       const { ticket } = await created.json();
-      await page.goto(`/#tickets/${ticket.id}`);
+      // The IT team handles tickets in the IT Helpdesk (D135).
+      await page.goto(`/helpdesk#tickets/${ticket.id}`);
       await expect(page.locator('#tkHandle')).toBeVisible();
       await scan('ticket assign');
 

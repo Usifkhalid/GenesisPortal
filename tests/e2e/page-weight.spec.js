@@ -32,11 +32,10 @@ const ROUTES = [
   '#rooms/mine',
   '#tickets',
   '#tickets/new',
-  '#tickets/queue',
   '#directory',
   '#admin/companies',
   '#admin/rooms',
-  '#admin/helpdesk',
+  '#admin/it-team',
   '#audit-log',
   '#notifications',
 ];

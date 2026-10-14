@@ -30,6 +30,9 @@ const IGNORED_ERRORS = [
   // By design: someone else's ticket is 404, so a ticket's existence is not
   // learned from its address (tickets.spec.js opens one as other people).
   /status of 404 .*\/api\/tickets\/[\w-]+\)$/,
+  // By design: the IT Helpdesk answers 403 to anyone not on the IT team, and
+  // Chromium logs the page's own status (tickets.spec.js asks for it, D135).
+  /status of 403 .*\/helpdesk\)$/,
   // By design: the development outbox draws an email in a sandboxed frame with
   // no scripts; what is "blocked" is Playwright's own injected script.
   /Blocked script execution in '[^']*\/api\/dev\/outbox\/[\w-]+\/html'/,
@@ -119,7 +122,8 @@ export async function findUser(page, { company, role = 'User', name = null }) {
 }
 
 /**
- * Signs in through the login page and waits for the shell.
+ * Signs in through the login page and waits for the shell: the portal, or
+ * for the IT team the IT Helpdesk (D135).
  * @param {import('@playwright/test').Page} page
  * @param {{ company: string, role?: string, name?: string, lang?: string }} who
  * @returns the person signed in, as findUser returns it
@@ -129,7 +133,7 @@ export async function signIn(page, { company, role = 'User', name = null, lang =
   const person = await findUser(page, { company, role, name });
 
   await page.locator(`[data-user-id="${person.id}"]`).click();
-  await page.waitForURL((url) => url.pathname === '/');
+  await page.waitForURL((url) => url.pathname === '/' || url.pathname === '/helpdesk');
   await expect(page.locator('#menuUserName')).not.toBeEmpty();
   return person;
 }
@@ -203,8 +207,9 @@ export async function cairoInstant(page, day, time) {
 
 /**
  * As the signed-in IT Lead, gives a ticket to an agent by name. An agent works
- * only the tickets assigned to them (docs/DECISIONS.md D122), so a spec that
- * has an agent reply or change a status has the Lead hand it over first.
+ * only the tickets assigned to them (docs/DECISIONS.md D122), and only a Lead
+ * assigns (D118, D135), so a spec that has an agent reply or change a status
+ * has the Lead hand it over first.
  */
 export async function assignTicket(page, ticketId, agentName) {
   const options = await (await page.request.get('/api/tickets/queue/options')).json();

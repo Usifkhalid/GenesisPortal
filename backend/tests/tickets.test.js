@@ -361,9 +361,10 @@ describe('who can see a ticket', () => {
         404
       );
       assert.equal((await w.gen.post(`/api/tickets/${other.id}/reopen`)).status, 404);
+      // Changing a ticket is IT's alone: refused before any ticket is looked up.
       assert.equal(
         (await w.gen.patch(`/api/tickets/${other.id}`, { priority: 'P1' })).status,
-        404
+        403
       );
       assert.equal(
         (await w.gen.upload(`/api/tickets/${other.id}/attachments?name=a.png`, PNG)).status,
@@ -421,7 +422,7 @@ describe('who can see a ticket', () => {
       queue: { unassigned: 3, breachingSoon: 0, assignedToMe: 0, canAssign: false },
     });
     assert.equal((await w.lead.get('/api/tickets/counts')).body.queue.canAssign, true);
-    assert.equal((await w.ha.get('/api/tickets/counts')).body.queue.canAssign, true);
+    assert.equal((await w.ha.get('/api/tickets/counts')).body.queue, null);
     const byCompany = await w.agent.get(`/api/tickets/queue?companyId=${w.company('MSR').id}`);
     assert.deepEqual(
       byCompany.body.items.map((t) => t.id),
@@ -443,18 +444,34 @@ describe('who can see a ticket', () => {
     assert.equal((await w.ticket(w.caGen, own.id)).ticket.can.manage, false);
   });
 
-  test('a HoldingAdmin sees everything', async () => {
+  test('a HoldingAdmin who is not on the IT team sees none but their own (D135)', async () => {
     const w = await three();
-    assert.equal((await w.ha.get('/api/tickets/queue')).body.total, 3);
-    const detail = await w.ticket(w.ha, w.t3.id);
-    assert.equal(detail.ticket.can.manage, true);
-    assert.equal(detail.ticket.can.reassign, true);
+    assert.equal((await w.ha.get('/api/tickets/queue')).status, 403);
+    assert.equal((await w.ha.get('/api/tickets/queue/options')).status, 403);
+    assert.equal((await w.ha.get('/api/tickets/canned-replies')).status, 403);
+    assert.equal((await w.ha.get('/api/helpdesk/reports')).status, 403);
+    for (const t of [w.t1, w.t2, w.t3]) {
+      assert.equal((await w.ha.get(`/api/tickets/${t.id}`)).status, 404);
+      assert.equal(
+        (await w.ha.post(`/api/tickets/${t.id}/comments`, { body: 'Hello' })).status,
+        404
+      );
+      assert.equal((await w.ha.patch(`/api/tickets/${t.id}`, { priority: 'P1' })).status, 403);
+    }
+    assert.equal((await w.ha.get(w.file2.url)).status, 404);
+    assert.deepEqual((await w.ha.get('/api/tickets/counts')).body, { mine: 0, queue: null });
+
+    // Their own ticket is theirs like anyone's, the requester's view.
+    const own = await w.raise(w.ha);
+    const view = await w.ticket(w.ha, own.id);
+    assert.equal(view.ticket.can.manage, false);
+    assert.equal(view.ticket.can.reassign, false);
   });
 
   test('a team that serves only some companies shows its agents only those', async () => {
     const w = await three();
-    // Restrict IT to Masar, as an administrator would.
-    const res = await w.ha.patch(`/api/admin/helpdesk/teams/${w.team.id}`, {
+    // Restrict IT to Masar, as its lead would.
+    const res = await w.lead.patch(`/api/helpdesk/settings/teams/${w.team.id}`, {
       servesAllCompanies: false,
       companyIds: [w.company('MSR').id],
     });
@@ -489,12 +506,15 @@ describe('who can see a ticket', () => {
     const w = await three();
     assert.equal((await w.agent.get(`/api/tickets/${w.t1.id}`)).status, 200);
     const res = await w.ha.del(
-      `/api/admin/helpdesk/teams/${w.team.id}/members/${w.agent.user.id}`
+      `/api/admin/it-team/teams/${w.team.id}/members/${w.agent.user.id}`
     );
     assert.equal(res.status, 200);
-    assert.equal((await w.agent.get(`/api/tickets/${w.t1.id}`)).status, 404);
-    assert.equal((await w.agent.get('/api/tickets/queue')).status, 403);
-    assert.deepEqual((await w.agent.get('/api/tickets/counts')).body, { mine: 0, queue: null });
+    // Their privileges changed, so their session ended (D126, D135).
+    assert.equal((await w.agent.get(`/api/tickets/${w.t1.id}`)).status, 401);
+    const again = await signIn(w.app, w.agent.user);
+    assert.equal((await again.get(`/api/tickets/${w.t1.id}`)).status, 404);
+    assert.equal((await again.get('/api/tickets/queue')).status, 403);
+    assert.deepEqual((await again.get('/api/tickets/counts')).body, { mine: 0, queue: null });
   });
 
   test('an internal note, its file and its trace are for the team only', async () => {
@@ -581,7 +601,7 @@ describe('who works a ticket (D122)', () => {
     assert.deepEqual(refusal(assign), [403, 'lead_only']);
   });
 
-  test('an unassigned ticket is nobody’s to work except a Lead or a HoldingAdmin', async () => {
+  test('an unassigned ticket is nobody’s to work except a Lead', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     const refused = await w.agent.patch(`/api/tickets/${t.id}`, { status: 'Open' });
@@ -592,12 +612,16 @@ describe('who works a ticket (D122)', () => {
     );
 
     assert.equal((await w.change(w.lead, t.id, { priority: 'P2' })).priority, 'P2');
-    assert.equal((await w.change(w.ha, t.id, { priority: 'P3' })).priority, 'P3');
     await w.say(w.lead, t.id, 'Looking at it.');
-    await w.say(w.ha, t.id, 'And me.');
+    // A HoldingAdmin is not on the team: nothing of it is theirs (D135).
+    assert.equal((await w.ha.patch(`/api/tickets/${t.id}`, { priority: 'P3' })).status, 403);
+    assert.equal(
+      (await w.ha.post(`/api/tickets/${t.id}/comments`, { body: 'And me.' })).status,
+      404
+    );
   });
 
-  test('the assignee works it; a Lead and a HoldingAdmin can whoever has it', async () => {
+  test('the assignee works it; a Lead can whoever has it', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
@@ -614,13 +638,13 @@ describe('who works a ticket (D122)', () => {
     const resolved = await w.change(w.agent, t.id, { status: 'Resolved' });
     assert.equal(resolved.status, 'Resolved');
 
-    // The other agent may not reopen it; the Lead may; so may a HoldingAdmin.
+    // The other agent may not reopen it; the Lead may.
     const no = await w.agent2.post(`/api/tickets/${t.id}/reopen`);
     assert.deepEqual(refusal(no), [403, 'not_assignee']);
     await w.change(w.lead, t.id, { status: 'Open' });
-    await w.say(w.ha, t.id, 'Checked.');
+    await w.say(w.lead, t.id, 'Checked.');
     assert.equal(
-      (await w.change(w.ha, t.id, { status: 'WaitingOnRequester' })).status,
+      (await w.change(w.lead, t.id, { status: 'WaitingOnRequester' })).status,
       'WaitingOnRequester'
     );
 
@@ -737,7 +761,7 @@ describe('the life of a ticket', () => {
     assert.equal(refused.status, 403);
   });
 
-  test('assigning: only a lead or a HoldingAdmin assigns, reassigns or unassigns (D118)', async () => {
+  test('assigning: only a lead assigns, reassigns or unassigns (D118, D135)', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
 
@@ -768,11 +792,13 @@ describe('the life of a ticket', () => {
       assert.equal(res.body.error.code, 'lead_only');
     }
 
-    // The lead moves it; so does a HoldingAdmin; either can put it back.
+    // The lead moves it and can put it back. A HoldingAdmin no longer assigns.
     const moved = await w.change(w.lead, t.id, { assigneeId: w.agent2.user.id });
     assert.equal(moved.assignee.id, w.agent2.user.id);
-    await w.change(w.ha, t.id, { assigneeId: w.agent.user.id });
-    const released = await w.change(w.ha, t.id, { assigneeId: null });
+    const ha = await w.ha.patch(`/api/tickets/${t.id}`, { assigneeId: w.agent.user.id });
+    assert.equal(ha.status, 403);
+    await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
+    const released = await w.change(w.lead, t.id, { assigneeId: null });
     assert.equal(released.assignee, null);
     await w.change(w.lead, t.id, { assigneeId: w.agent.user.id });
 
@@ -1207,15 +1233,17 @@ describe('the agent queue', () => {
       (await w.agent.get(`/api/tickets/canned-replies?teamId=${w.company('GEN').id}`)).status,
       404
     );
-    assert.equal((await w.ha.get('/api/tickets/canned-replies')).body.items.length, 3);
+    assert.equal((await w.lead.get('/api/tickets/canned-replies')).body.items.length, 3);
+    assert.equal((await w.ha.get('/api/tickets/canned-replies')).status, 403);
   });
 });
 
-describe('helpdesk configuration', () => {
+describe('helpdesk configuration (D135)', () => {
   const audit = (w, action) => w.repo.auditLogs.filter((row) => row.action === action);
-  const base = '/api/admin/helpdesk';
+  const base = '/api/helpdesk/settings';
+  const membership = '/api/admin/it-team/teams';
 
-  test('a HoldingAdmin configures everything, and every change is audited', async () => {
+  test('an IT lead keeps the IT settings, and every change is audited', async () => {
     const w = await world();
     const before = w.repo.auditLogs.length;
     const ok = (res, status = 200) => {
@@ -1223,46 +1251,26 @@ describe('helpdesk configuration', () => {
       return res.body;
     };
 
-    // A second department, with no code change.
-    const hr = ok(
-      await w.ha.post(`${base}/teams`, {
-        code: 'hr',
-        nameEn: 'HR Services',
-        nameAr: 'خدمات الموارد البشرية',
-        servesAllCompanies: false,
-        companyIds: [w.company('GEN').id],
-      }),
-      201
+    const [own] = ok(await w.lead.get(`${base}/teams`)).items;
+    assert.equal(own.id, w.team.id);
+    ok(await w.lead.patch(`${base}/teams/${w.team.id}`, { nameEn: 'IT Helpdesk' }));
+    // Retiring a team is not a lead's to do from a screen.
+    assert.equal(
+      (await w.lead.patch(`${base}/teams/${w.team.id}`, { isActive: false })).status,
+      400
     );
-    assert.equal(hr.code, 'HR');
-    assert.deepEqual(hr.companyIds, [w.company('GEN').id]);
-    assert.equal(hr.sla.length, 4);
-    assert.deepEqual(hr.calendar, {
-      timeZone: 'Africa/Cairo',
-      workingDays: [0, 1, 2, 3, 4],
-      startMin: 480,
-      endMin: 1020,
-    });
-    const dup = await w.ha.post(`${base}/teams`, { code: 'IT', nameEn: 'x', nameAr: 'y' });
-    assert.equal(dup.body.error.code, 'code_taken');
-
-    ok(await w.ha.patch(`${base}/teams/${hr.id}`, { nameEn: 'People Services' }));
-    ok(await w.ha.put(`${base}/teams/${hr.id}/members/${w.caGen.user.id}`, { role: 'Agent' }));
-    ok(await w.ha.put(`${base}/teams/${hr.id}/members/${w.caGen.user.id}`, { role: 'Lead' }));
-    const team = ok(await w.ha.del(`${base}/teams/${hr.id}/members/${w.caGen.user.id}`));
-    assert.deepEqual(team.members, []);
 
     const category = ok(
-      await w.ha.post(`${base}/categories`, {
-        teamId: hr.id,
-        nameEn: 'Payslip',
-        nameAr: 'قسيمة الراتب',
+      await w.lead.post(`${base}/categories`, {
+        teamId: w.team.id,
+        nameEn: 'Badge reader',
+        nameAr: 'قارئ البطاقات',
         defaultPriority: 'P2',
       }),
       201
     );
-    ok(await w.ha.patch(`${base}/categories/${category.id}`, { isActive: false }));
-    const sameName = await w.ha.post(`${base}/categories`, {
+    ok(await w.lead.patch(`${base}/categories/${category.id}`, { isActive: false }));
+    const sameName = await w.lead.post(`${base}/categories`, {
       teamId: w.team.id,
       nameEn: 'Phone',
       nameAr: 'هاتف',
@@ -1270,10 +1278,10 @@ describe('helpdesk configuration', () => {
     assert.equal(sameName.body.error.code, 'name_taken');
 
     const location = ok(
-      await w.ha.post(`${base}/locations`, { nameEn: 'Aswan office', nameAr: 'مكتب أسوان' }),
+      await w.lead.post(`${base}/locations`, { nameEn: 'Aswan office', nameAr: 'مكتب أسوان' }),
       201
     );
-    ok(await w.ha.patch(`${base}/locations/${location.id}`, { sortOrder: 9 }));
+    ok(await w.lead.patch(`${base}/locations/${location.id}`, { sortOrder: 9 }));
 
     const policies = [
       { priority: 'P1', firstResponseMinutes: 30, resolveMinutes: 120 },
@@ -1281,17 +1289,12 @@ describe('helpdesk configuration', () => {
       { priority: 'P3', firstResponseMinutes: 480, resolveMinutes: 1440 },
       { priority: 'P4', firstResponseMinutes: 960, resolveMinutes: 2400 },
     ];
-    const withSla = ok(await w.ha.put(`${base}/teams/${w.team.id}/sla`, { policies }));
+    const withSla = ok(await w.lead.put(`${base}/teams/${w.team.id}/sla`, { policies }));
     assert.deepEqual(withSla.sla, policies);
-    const backwards = await w.ha.put(`${base}/teams/${w.team.id}/sla`, {
+    const backwards = await w.lead.put(`${base}/teams/${w.team.id}/sla`, {
       policies: [{ ...policies[0], firstResponseMinutes: 500 }, ...policies.slice(1)],
     });
     assert.equal(backwards.status, 400);
-    assert.equal(
-      (await w.ha.put(`${base}/teams/${w.team.id}/sla`, { policies: policies.slice(1) }))
-        .status,
-      400
-    );
 
     const calendar = {
       timeZone: 'Africa/Cairo',
@@ -1300,37 +1303,36 @@ describe('helpdesk configuration', () => {
       endMin: 1080,
     };
     assert.deepEqual(
-      ok(await w.ha.put(`${base}/teams/${w.team.id}/calendar`, calendar)).calendar,
+      ok(await w.lead.put(`${base}/teams/${w.team.id}/calendar`, calendar)).calendar,
       calendar
     );
-    const badZone = await w.ha.put(`${base}/teams/${w.team.id}/calendar`, {
+    const badZone = await w.lead.put(`${base}/teams/${w.team.id}/calendar`, {
       ...calendar,
       timeZone: 'UTC+2',
     });
     assert.equal(badZone.status, 400);
 
     const holiday = ok(
-      await w.ha.post(`${base}/holidays`, {
+      await w.lead.post(`${base}/holidays`, {
         date: '2026-12-24',
         nameEn: 'Company day',
         nameAr: 'يوم الشركة',
       }),
       201
     );
-    ok(await w.ha.patch(`${base}/holidays/${holiday.id}`, { date: '2026-12-27' }));
-    const taken = await w.ha.post(`${base}/holidays`, {
+    ok(await w.lead.patch(`${base}/holidays/${holiday.id}`, { date: '2026-12-27' }));
+    const taken = await w.lead.post(`${base}/holidays`, {
       date: '2026-10-06',
       nameEn: 'x',
       nameAr: 'y',
     });
     assert.equal(taken.body.error.code, 'date_taken');
-    assert.equal((await w.ha.del(`${base}/holidays/${holiday.id}`)).status, 204);
-    const list = ok(await w.ha.get(`${base}/holidays?year=2027`));
+    assert.equal((await w.lead.del(`${base}/holidays/${holiday.id}`)).status, 204);
+    const list = ok(await w.lead.get(`${base}/holidays?year=2027`));
     assert.equal(list.items.length, 5);
-    assert.ok(list.items.every((h) => h.date.startsWith('2027-')));
 
     const reply = ok(
-      await w.ha.post(`${base}/canned-replies`, {
+      await w.lead.post(`${base}/canned-replies`, {
         teamId: w.team.id,
         titleEn: 'Asset returned',
         titleAr: 'تم إرجاع الجهاز',
@@ -1339,42 +1341,35 @@ describe('helpdesk configuration', () => {
       }),
       201
     );
-    ok(await w.ha.patch(`${base}/canned-replies/${reply.id}`, { sortOrder: 1 }));
+    ok(await w.lead.patch(`${base}/canned-replies/${reply.id}`, { sortOrder: 1 }));
 
-    // One audit row per write, by the admin, holding-wide, with before and after.
-    const actions = w.repo.auditLogs.slice(before).map((row) => row.action);
-    assert.deepEqual(actions, [
-      'helpdesk.team.create',
-      'helpdesk.team.update',
-      'helpdesk.member.add',
-      'helpdesk.member.update',
-      'helpdesk.member.remove',
-      'helpdesk.category.create',
-      'helpdesk.category.update',
-      'helpdesk.location.create',
-      'helpdesk.location.update',
-      'helpdesk.sla.update',
-      'helpdesk.calendar.update',
-      'helpdesk.holiday.create',
-      'helpdesk.holiday.update',
-      'helpdesk.holiday.remove',
-      'helpdesk.canned.create',
-      'helpdesk.canned.update',
-    ]);
-    for (const row of w.repo.auditLogs.slice(before)) {
-      assert.equal(row.actorId, w.ha.user.id);
+    // One audit row per write, by the lead, holding-wide, with before and after.
+    const rows = w.repo.auditLogs.slice(before);
+    assert.deepEqual(
+      rows.map((row) => row.action),
+      [
+        'helpdesk.team.update',
+        'helpdesk.category.create',
+        'helpdesk.category.update',
+        'helpdesk.location.create',
+        'helpdesk.location.update',
+        'helpdesk.sla.update',
+        'helpdesk.calendar.update',
+        'helpdesk.holiday.create',
+        'helpdesk.holiday.update',
+        'helpdesk.holiday.remove',
+        'helpdesk.canned.create',
+        'helpdesk.canned.update',
+      ]
+    );
+    for (const row of rows) {
+      assert.equal(row.actorId, w.lead.user.id);
       assert.equal(row.companyId, null);
       assert.ok(row.entityId, row.action);
     }
     const [sla] = audit(w, 'helpdesk.sla.update');
     assert.equal(JSON.parse(sla.before).P1.firstResponseMinutes, 60);
     assert.equal(JSON.parse(sla.after).P1.firstResponseMinutes, 30);
-    const [renamed] = audit(w, 'helpdesk.team.update');
-    assert.equal(JSON.parse(renamed.before).nameEn, 'HR Services');
-    assert.equal(JSON.parse(renamed.after).nameEn, 'People Services');
-    const [removed] = audit(w, 'helpdesk.member.remove');
-    assert.equal(removed.after, null);
-    assert.equal(JSON.parse(removed.before).role, 'Lead');
 
     // The new targets and hours apply to the next ticket: 09:00–18:00, P1 30 minutes.
     const next = await w.raise(w.agent, { requesterId: w.gen.user.id, priority: 'P1' });
@@ -1384,7 +1379,7 @@ describe('helpdesk configuration', () => {
   test('a new holiday moves the due date of tickets raised after it', async () => {
     const w = await world();
     w.at('2026-10-15', '16:00'); // Thursday
-    const res = await w.ha.post('/api/admin/helpdesk/holidays', {
+    const res = await w.lead.post(`${base}/holidays`, {
       date: '2026-10-18',
       nameEn: 'Extra day',
       nameAr: 'يوم إضافي',
@@ -1395,72 +1390,101 @@ describe('helpdesk configuration', () => {
     assert.equal(iso(t.sla.resolveDueAt), iso(cairo('2026-10-19', '11:00')));
   });
 
-  test('a team lead manages the team’s categories and canned replies, audited, and nothing else', async () => {
+  test('the HoldingAdmin decides who is on the IT team, audited, and sees nothing else of it', async () => {
     const w = await world();
     const before = w.repo.auditLogs.length;
+    const ok = (res, status = 200) => {
+      assert.equal(res.status, status, JSON.stringify(res.body));
+      return res.body;
+    };
 
-    const reply = await w.lead.post(`${base}/canned-replies`, {
-      teamId: w.team.id,
-      titleEn: 'Toner ordered',
-      titleAr: 'تم طلب الحبر',
-      bodyEn: 'Toner is on order.',
-      bodyAr: 'تم طلب الحبر.',
-    });
-    assert.equal(reply.status, 201, JSON.stringify(reply.body));
-    const edited = await w.lead.patch(`${base}/canned-replies/${reply.body.id}`, {
-      isActive: false,
-    });
-    assert.equal(edited.status, 200);
-    const category = await w.lead.post(`${base}/categories`, {
-      teamId: w.team.id,
-      nameEn: 'Meeting room AV',
-      nameAr: 'أجهزة قاعات الاجتماعات',
-    });
-    assert.equal(category.status, 201);
-    assert.equal((await w.lead.get(`${base}/categories`)).body.items.length, 10);
-    assert.equal((await w.lead.get(`${base}/canned-replies`)).body.items.length, 5);
-    assert.equal((await w.lead.get(`${base}/teams`)).body.items.length, 1);
+    // The list: who is on each team, and nothing of its settings or tickets.
+    const [team] = ok(await w.ha.get(membership)).items;
+    assert.deepEqual(Object.keys(team).sort(), [
+      'code',
+      'id',
+      'isActive',
+      'members',
+      'nameAr',
+      'nameEn',
+    ]);
+    assert.deepEqual(team.members.map((m) => [m.displayNameEn, m.role]).sort(), [
+      ['Omar Fahmy', 'Lead'],
+      ['Sherif Awad', 'Agent'],
+      ['Tamer Gad', 'Agent'],
+    ]);
 
-    const rows = w.repo.auditLogs.slice(before);
+    const path = (user) => `${membership}/${w.team.id}/members/${user.id}`;
+    ok(await w.ha.put(path(w.gen2.user), { role: 'Agent' }));
+    ok(await w.ha.put(path(w.gen2.user), { role: 'Lead' }));
+    const after = ok(await w.ha.del(path(w.gen2.user)));
+    assert.equal(after.members.length, 3);
+    assert.equal((await w.ha.del(path(w.gen2.user))).status, 404);
+    const stranger = await w.ha.put(`${membership}/${w.team.id}/members/${w.team.id}`, {
+      role: 'Agent',
+    });
+    assert.equal(stranger.body.error.code, 'unknown_user');
+
     assert.deepEqual(
-      rows.map((r) => [r.action, r.actorId]),
+      w.repo.auditLogs.slice(before).map((row) => [row.action, row.actorId]),
       [
-        ['helpdesk.canned.create', w.lead.user.id],
-        ['helpdesk.canned.update', w.lead.user.id],
-        ['helpdesk.category.create', w.lead.user.id],
+        ['helpdesk.member.add', w.ha.user.id],
+        ['helpdesk.member.update', w.ha.user.id],
+        ['helpdesk.member.remove', w.ha.user.id],
       ]
     );
+    const [removed] = audit(w, 'helpdesk.member.remove');
+    assert.equal(JSON.parse(removed.before).role, 'Lead');
 
-    // The rest is the HoldingAdmin's.
-    const refusals = [
-      w.lead.post(`${base}/teams`, { code: 'FM', nameEn: 'Facilities', nameAr: 'المرافق' }),
-      w.lead.patch(`${base}/teams/${w.team.id}`, { nameEn: 'Mine' }),
-      w.lead.put(`${base}/teams/${w.team.id}/members/${w.gen.user.id}`, { role: 'Lead' }),
-      w.lead.del(`${base}/teams/${w.team.id}/members/${w.agent.user.id}`),
-      w.lead.put(`${base}/teams/${w.team.id}/sla`, { policies: [] }),
-      w.lead.get(`${base}/locations`),
-      w.lead.post(`${base}/locations`, { nameEn: 'x', nameAr: 'y' }),
-      w.lead.get(`${base}/holidays`),
-      w.lead.post(`${base}/holidays`, { date: '2026-11-01', nameEn: 'x', nameAr: 'y' }),
-    ];
-    for (const res of await Promise.all(refusals)) {
-      assert.ok([400, 403].includes(res.status), `${res.status}`);
+    // None of the settings, and no tickets.
+    for (const res of await Promise.all([
+      w.ha.get(`${base}/teams`),
+      w.ha.get(`${base}/categories`),
+      w.ha.get(`${base}/locations`),
+      w.ha.post(`${base}/holidays`, { date: '2026-11-02', nameEn: 'x', nameAr: 'y' }),
+      w.ha.put(`${base}/teams/${w.team.id}/sla`, { policies: [] }),
+      w.ha.get('/api/helpdesk/reports'),
+      w.ha.get('/api/tickets/queue'),
+    ])) {
+      assert.equal(res.status, 403);
     }
-    const slaTry = await w.lead.put(`${base}/teams/${w.team.id}/calendar`, {
-      timeZone: 'Africa/Cairo',
-      workingDays: [0],
-      startMin: 0,
-      endMin: 60,
-    });
-    assert.equal(slaTry.status, 403);
-    assert.equal(w.repo.auditLogs.length, before + 3);
   });
 
-  test('agents, CompanyAdmins and users cannot touch the configuration', async () => {
+  test('the IT team always keeps an active lead', async () => {
+    const w = await world();
+    const path = (user) => `${membership}/${w.team.id}/members/${user.id}`;
+    const answer = async (pending) => {
+      const res = await pending;
+      return [res.status, res.body.error?.code];
+    };
+
+    // Omar is the only lead: he can be neither demoted nor removed.
+    assert.deepEqual(await answer(w.ha.put(path(w.lead.user), { role: 'Agent' })), [
+      409,
+      'last_lead',
+    ]);
+    assert.deepEqual(await answer(w.ha.del(path(w.lead.user))), [409, 'last_lead']);
+
+    // A second lead who has left the company does not count.
+    assert.equal((await w.ha.put(path(w.agent.user), { role: 'Lead' })).status, 200);
+    w.repo.users.find((u) => u.id === w.agent.user.id).isActive = false;
+    assert.deepEqual(await answer(w.ha.del(path(w.lead.user))), [409, 'last_lead']);
+
+    // An active second lead does: then Omar may step down.
+    w.repo.users.find((u) => u.id === w.agent.user.id).isActive = true;
+    const res = await w.ha.put(path(w.lead.user), { role: 'Agent' });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.deepEqual(
+      res.body.members.filter((m) => m.role === 'Lead').map((m) => m.displayNameEn),
+      ['Sherif Awad']
+    );
+  });
+
+  test('only IT leads touch IT settings, and only the HoldingAdmin changes the team', async () => {
     const w = await world();
     const before = w.repo.auditLogs.length;
     const reply = w.repo.helpdesk.canned[0];
-    for (const who of [w.agent, w.caGen, w.gen]) {
+    for (const who of [w.agent, w.caGen, w.gen, w.ha]) {
       const tries = await Promise.all([
         who.get(`${base}/teams`),
         who.get(`${base}/categories`),
@@ -1470,7 +1494,14 @@ describe('helpdesk configuration', () => {
         who.patch(`${base}/canned-replies/${reply.id}`, { titleEn: 'Hacked' }),
         who.patch(`${base}/categories/${w.category('Phone').id}`, { isActive: false }),
         who.post(`${base}/holidays`, { date: '2026-11-02', nameEn: 'x', nameAr: 'y' }),
-        who.put(`${base}/teams/${w.team.id}/members/${who.user.id}`, { role: 'Lead' }),
+      ]);
+      for (const res of tries) assert.equal(res.status, 403);
+    }
+    for (const who of [w.agent, w.lead, w.caGen, w.gen]) {
+      const tries = await Promise.all([
+        who.get(membership),
+        who.put(`${membership}/${w.team.id}/members/${who.user.id}`, { role: 'Lead' }),
+        who.del(`${membership}/${w.team.id}/members/${w.agent2.user.id}`),
       ]);
       for (const res of tries) assert.equal(res.status, 403);
     }

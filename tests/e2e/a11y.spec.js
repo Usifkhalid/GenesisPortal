@@ -36,8 +36,6 @@ const ROUTES = [
   '#rooms/mine',
   '#tickets',
   '#tickets/new',
-  '#tickets/queue',
-  '#tickets/settings',
   '#directory',
   '#admin/companies',
   '#admin/departments',
@@ -46,11 +44,22 @@ const ROUTES = [
   '#admin/sync',
   '#admin/rooms',
   '#admin/bookings',
-  '#admin/helpdesk',
+  '#admin/it-team',
   '#audit-log',
   '#notifications',
   '#notifications/preferences',
   '#help',
+];
+
+/** The IT Helpdesk's pages (D135), as an IT Lead sees them. */
+const HELPDESK_ROUTES = [
+  '#queue',
+  '#assigned',
+  '#reports',
+  '#settings',
+  '#tickets',
+  '#tickets/new',
+  '#notifications',
 ];
 
 const STANDARDS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
@@ -141,6 +150,22 @@ for (const lang of LANGUAGES) {
       }
 
       if (advice.length) console.log(`axe advice (${lang}):\n  ${advice.join('\n  ')}`);
+      expect(failures, 'serious or critical accessibility findings').toEqual([]);
+    });
+
+    test('axe finds nothing serious in the IT Helpdesk', async ({ page }) => {
+      test.setTimeout(180_000);
+      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      await expectLanguage(page, lang);
+
+      const failures = [];
+      for (const hash of HELPDESK_ROUTES) {
+        await page.goto(`/helpdesk${hash}`);
+        await settled(page);
+        const { violations } = await new AxeBuilder({ page }).withTags(STANDARDS).analyze();
+        failures.push(...violations.filter(isSerious).map((v) => `${hash}: ${describe(v)}`));
+        await expectNoSidewaysScroll(page);
+      }
       expect(failures, 'serious or critical accessibility findings').toEqual([]);
     });
 

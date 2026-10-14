@@ -3,7 +3,10 @@
  * across companies. Quick filters, a filter bar, a dense table with the SLA
  * clock, bulk assign, and "Log a ticket for someone".
  *
- *   #tickets/queue?f=unassigned&company=&location=&category=&priority=&status=&q=&page=
+ *   #queue?f=unassigned&company=&location=&category=&priority=&status=&q=&page=
+ *   #assigned?…          the same table, fixed to the tickets assigned to the reader
+ *
+ * Both are IT Helpdesk addresses (helpdesk.html, D135).
  *
  * Only IT sees this page (tickets.js hides it and the API refuses anyone
  * else). The words here are IT's: P1..P4, the SLA clock, "breached".
@@ -53,14 +56,17 @@ const STATUS_CHOICES = [
 
 /**
  * @param {HTMLElement} root
- * @param {{ route: object, who: object, user: object }} ctx
+ * @param {{ route: object, who: object, user: object, view?: 'queue' | 'assigned' }} ctx
  */
 export async function render(root, ctx) {
   const options = ctx.who.queueOptions;
   const asked = ctx.route.query;
   const known = (list, value) => (list.some((x) => x.id === value) ? value : '');
+  // "My assigned tickets" is the queue with its quick filter fixed on "mine".
+  const view = ctx.view === 'assigned' ? 'assigned' : 'queue';
+  const fixed = view === 'assigned';
   const state = {
-    quick: QUICK_KEYS.includes(asked.get('f')) ? asked.get('f') : 'all',
+    quick: fixed ? 'mine' : QUICK_KEYS.includes(asked.get('f')) ? asked.get('f') : 'all',
     company: known(options.companies, asked.get('company')),
     location: known(options.locations, asked.get('location')),
     category: known(options.categories, asked.get('category')),
@@ -71,8 +77,8 @@ export async function render(root, ctx) {
   };
   let result = { items: [], total: 0 };
   let counts = ctx.who.counts ?? null;
-  // Only a Lead or a HoldingAdmin assigns (D118); an agent reads the queue.
-  const canAssign = Boolean(counts?.canAssign);
+  // Only a Lead assigns (D118, D135); an agent reads the queue.
+  const canAssign = Boolean(ctx.who.isLead);
   let turn = 0;
   let timer = null;
   const selected = new Set();
@@ -84,7 +90,9 @@ export async function render(root, ctx) {
   root.innerHTML = `<section class="stack tk-queue" aria-labelledby="tkQueueTitle">
     <div class="tk-queue__head">
       <h2 class="u-visually-hidden" id="tkQueueTitle">${esc(t('tk.queue.title'))}</h2>
-      <div class="segmented tk-quick" role="group" aria-label="${esc(t('tk.queue.quickLabel'))}" id="tkQuick">
+      <div class="segmented tk-quick" role="group" aria-label="${esc(t('tk.queue.quickLabel'))}" id="tkQuick" ${
+        fixed ? 'hidden' : ''
+      }>
         ${QUICK_KEYS.map(
           (key) =>
             `<button type="button" class="segmented__option" data-quick="${key}">
@@ -97,6 +105,9 @@ export async function render(root, ctx) {
         <button type="button" class="btn btn--ghost btn--sm" id="tkRefresh">
           ${icon('refresh', 'btn__icon')}<span class="btn__label">${esc(t('tk.queue.refresh'))}</span>
         </button>
+        <a class="btn btn--secondary btn--sm" href="#tickets/new">
+          ${icon('plus', 'btn__icon')}<span class="btn__label">${esc(t('hd.newForMe'))}</span>
+        </a>
         <button type="button" class="btn btn--primary btn--sm" id="tkLog">
           ${icon('phone', 'btn__icon')}<span class="btn__label">${esc(t('tk.queue.log'))}</span>
         </button>
@@ -209,14 +220,14 @@ export async function render(root, ctx) {
   /* ---------------------------------------------------------------- address */
   function setAddress() {
     const params = new URLSearchParams();
-    if (state.quick !== 'all') params.set('f', state.quick);
+    if (!fixed && state.quick !== 'all') params.set('f', state.quick);
     for (const key of ['company', 'location', 'category', 'priority', 'q']) {
       if (state[key]) params.set(key, state[key]);
     }
     if (state.status !== 'active') params.set('status', state.status);
     if (state.page > 1) params.set('page', String(state.page));
     const query = params.toString();
-    history.replaceState(null, '', `#tickets/queue${query ? `?${query}` : ''}`);
+    history.replaceState(null, '', `#${view}${query ? `?${query}` : ''}`);
   }
 
   function drawQuick() {
@@ -250,7 +261,7 @@ export async function render(root, ctx) {
           : ''
       }
       <td role="cell" data-label="${esc(t('ticket.one'))}">
-        <a class="tk-table__subject" href="#tickets/${esc(ticket.id)}?from=queue"><bdi>${esc(
+        <a class="tk-table__subject" href="#tickets/${esc(ticket.id)}?from=${view}"><bdi>${esc(
           ticket.subject
         )}</bdi></a>
         <span class="tk-table__meta"><span class="table__num">${numberHtml(ticket.number)}</span>

@@ -71,8 +71,8 @@ describe('tickets against SQL Server', async () => {
           displayNameAr: `${name} ${tag}`,
         },
       });
-    const [admin, agent, requester, other] = await Promise.all(
-      ['admin', 'agent', 'requester', 'other'].map(personOf)
+    const [admin, lead, agent, requester, other] = await Promise.all(
+      ['admin', 'lead', 'agent', 'requester', 'other'].map(personOf)
     );
     const store = createPrismaTicketStore();
     const storage = createMemoryStorage();
@@ -80,16 +80,23 @@ describe('tickets against SQL Server', async () => {
     const helpdesk = createHelpdeskAdminService({ store });
     const adminReq = reqOf(admin, [{ role: 'HoldingAdmin', scopeCompanyId: null }]);
 
-    // Through the admin service, so its writes and audit rows run on SQL Server too.
-    const team = await helpdesk.createTeam(adminReq, {
-      code,
-      nameEn: `Team ${tag}`,
-      nameAr: `فريق ${tag}`,
-      servesAllCompanies: false,
-      companyIds: [company.id],
+    const leadReq = reqOf(lead);
+
+    // A team is made by a migration or a seed, not a screen (D135).
+    const team = await prisma.supportTeam.create({
+      data: {
+        code,
+        nameEn: `Team ${tag}`,
+        nameAr: `فريق ${tag}`,
+        servesAllCompanies: false,
+        companies: { create: [{ companyId: company.id }] },
+      },
     });
+    // The rest through the services, so their writes and audit rows run on
+    // SQL Server too: the HoldingAdmin staffs the team, its lead configures it.
+    await helpdesk.setMember(adminReq, team.id, lead.id, { role: 'Lead' });
     await helpdesk.setMember(adminReq, team.id, agent.id, { role: 'Agent' });
-    const category = await helpdesk.createCategory(adminReq, {
+    const category = await helpdesk.createCategory(leadReq, {
       teamId: team.id,
       nameEn: `Laptop ${tag}`,
       nameAr: `حاسوب ${tag}`,
@@ -104,6 +111,7 @@ describe('tickets against SQL Server', async () => {
       helpdesk,
       storage,
       adminReq,
+      leadReq,
       agentReq: reqOf(agent),
       requesterReq: reqOf(requester),
       otherReq: reqOf(other),
@@ -146,12 +154,16 @@ describe('tickets against SQL Server', async () => {
 
     // The audit rows of the set-up are on the table, holding-wide.
     const audit = await prisma.auditLog.findMany({
-      where: { actorId: w.adminReq.user.id },
+      where: { actorId: { in: [w.adminReq.user.id, w.leadReq.user.id] } },
       orderBy: { at: 'asc' },
     });
     assert.deepEqual(
-      audit.map((a) => a.action),
-      ['helpdesk.team.create', 'helpdesk.member.add', 'helpdesk.category.create']
+      audit.map((a) => [a.action, a.actorId]),
+      [
+        ['helpdesk.member.add', w.adminReq.user.id],
+        ['helpdesk.member.add', w.adminReq.user.id],
+        ['helpdesk.category.create', w.leadReq.user.id],
+      ]
     );
     assert.ok(audit.every((a) => a.companyId === null));
   });
@@ -200,10 +212,10 @@ describe('tickets against SQL Server', async () => {
       assert.equal(queue.total, 41);
       assert.equal(queue.items[0].id, urgent.ticket.id);
 
-      // Paused: last in the queue, out of the SLA filters. (A HoldingAdmin works it:
+      // Paused: last in the queue, out of the SLA filters. (The lead works it:
       // an agent works only the tickets given to them, D122.)
       clock.now = cairo('2026-10-11', '11:30');
-      await w.tickets.update(w.adminReq, urgent.ticket.id, { status: 'WaitingOnRequester' });
+      await w.tickets.update(w.leadReq, urgent.ticket.id, { status: 'WaitingOnRequester' });
       clock.now = cairo('2026-10-11', '13:00');
       const paused = await w.tickets.queue(w.agentReq, { ...page, sla: 'breached' });
       assert.ok(!paused.items.some((t) => t.id === urgent.ticket.id));
@@ -238,7 +250,7 @@ describe('tickets against SQL Server', async () => {
       clock.now = cairo('2026-10-11', '13:30');
       const late = await w.tickets.counts(w.agentReq);
       assert.equal(late.queue.breachingSoon, 1, 'due at 13:30 after the 90-minute pause');
-      await w.tickets.update(w.adminReq, urgent.ticket.id, { status: 'Resolved' });
+      await w.tickets.update(w.leadReq, urgent.ticket.id, { status: 'Resolved' });
       assert.equal(await w.tickets.closeResolved(), 0);
       clock.now = cairo('2026-10-14', '13:30');
       assert.equal(await w.tickets.closeResolved(), 1);

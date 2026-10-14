@@ -56,9 +56,9 @@ function decode(part) {
 }
 
 /** "#tickets/new?team=it" → { name: 'tickets', params: ['new'], query } */
-function parseHash(hash) {
+function parseHash(hash, defaultRoute = DEFAULT_ROUTE) {
   const [path, search = ''] = hash.replace(/^#\/?/, '').split('?');
-  const [name = DEFAULT_ROUTE, ...params] = path.split('/').filter(Boolean).map(decode);
+  const [name = defaultRoute, ...params] = path.split('/').filter(Boolean).map(decode);
   return { name, params, query: new URLSearchParams(search) };
 }
 
@@ -80,16 +80,26 @@ function parseHash(hash) {
  * @param {(navKey: string) => boolean} options.canAccess
  * @param {() => object} options.context  what every page is handed, read fresh on each render
  * @param {(match: Match) => void} [options.onNavigate]  the shell's chance to mark where we are
+ * @param {Record<string, object>} [options.routes]  the addresses, shaped as ROUTES
+ *   above; the portal's by default (the IT Helpdesk passes its own)
+ * @param {string} [options.defaultRoute]  what an empty address means
  */
-export function createRouter({ root, canAccess, context, onNavigate }) {
+export function createRouter({
+  root,
+  canAccess,
+  context,
+  onNavigate,
+  routes = ROUTES,
+  defaultRoute = DEFAULT_ROUTE,
+}) {
   /** Counts renders, so a slow page that lands late cannot overwrite a newer one. */
   let turn = 0;
   let cleanup = null;
 
   /** @returns {Match} */
   function resolve() {
-    const asked = parseHash(location.hash);
-    const route = Object.hasOwn(ROUTES, asked.name) ? ROUTES[asked.name] : null;
+    const asked = parseHash(location.hash, defaultRoute);
+    const route = Object.hasOwn(routes, asked.name) ? routes[asked.name] : null;
     const status = !route
       ? 'notFound'
       : route.nav && !canAccess(route.nav)

@@ -6,10 +6,9 @@
  * company rule of lib/scope.js. A ticket is read by:
  *   - its requester (the person it is for, whoever logged it);
  *   - the members of its support team, for every company that team serves,
- *     whatever company the member belongs to;
- *   - a HoldingAdmin.
- * Nobody else: a CompanyAdmin who is not on the team sees no tickets, not
- * even their own company's. This is the one documented exception to
+ *     whatever company the member belongs to.
+ * Nobody else: a HoldingAdmin or CompanyAdmin who is not on the team sees no
+ * tickets but their own (D135). This is the one documented exception to
  * CLAUDE.md rule 1 (docs/DECISIONS.md D99). Anyone without access gets 404.
  */
 
@@ -63,14 +62,13 @@ export function serves(team, servedCompanyIds, companyId) {
 }
 
 /**
- * The role a viewer acts in on one ticket: 'Admin' (HoldingAdmin), 'Lead',
- * 'Agent', or null when they are not staff for it.
+ * The role a viewer acts in on one ticket: 'Lead', 'Agent', or null when they
+ * are not staff for it.
  *
- * @param {{ holdingAdmin: boolean, memberships: { teamId: string, role: string, companyIds: string[] | null }[] }} viewer
+ * @param {{ memberships: { teamId: string, role: string, companyIds: string[] | null }[] }} viewer
  * @param {{ teamId: string, companyId: string }} ticket
  */
 export function staffRoleOn(viewer, ticket) {
-  if (viewer.holdingAdmin) return 'Admin';
   const member = viewer.memberships.find(
     (m) =>
       m.teamId === ticket.teamId &&
@@ -79,8 +77,8 @@ export function staffRoleOn(viewer, ticket) {
   return member?.role ?? null;
 }
 
-/** A Lead's powers: also a HoldingAdmin's. */
-export const isLead = (role) => role === 'Lead' || role === 'Admin';
+/** A Lead's powers: assigning, and working any ticket of the team. */
+export const isLead = (role) => role === 'Lead';
 
 const words = (text) =>
   normalizeText(text)

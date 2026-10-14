@@ -24,15 +24,16 @@ const ADMIN = [
   'admin/companies',
   'admin/bookings',
   'admin/sync',
-  'admin/helpdesk',
+  'admin/it-team',
   'audit-log',
   'announcements/new',
 ];
-const IT = ['tickets/queue'];
+/** The IT Helpdesk's pages (D135), under /helpdesk. */
+const IT = ['queue', 'assigned', 'reports', 'settings'];
 
-async function visit(page, lang, scheme, who, routes) {
+async function visit(page, lang, scheme, who, routes, base = '/') {
   for (const route of routes) {
-    await page.goto(`/#${route}`);
+    await page.goto(`${base}#${route}`);
     await expect(page.locator('#page h1, #page h2').first()).toBeVisible();
     await expect(page.locator('#page .skeleton')).toHaveCount(0);
     await page.waitForLoadState('networkidle');
@@ -54,7 +55,7 @@ for (const lang of LANGUAGES) {
       await visit(page, lang, scheme, 'adm', ADMIN);
       await signOut(page);
       await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
-      await visit(page, lang, scheme, 'it', IT);
+      await visit(page, lang, scheme, 'it', IT, '/helpdesk');
     });
   }
 }

@@ -70,13 +70,13 @@ for (const lang of LANGUAGES) {
       await shot(page, `tickets-home-${lang}`);
       await expectNoSidewaysScroll(page);
 
-      // The IT Lead sees it among the unassigned, and that is the nav's number.
+      // The IT Lead, in the IT Helpdesk (D135), sees it among the unassigned.
       await signOut(page);
       await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+      await expect(page).toHaveURL(/\/helpdesk/);
       const leadCounts = await (await page.request.get('/api/tickets/counts')).json();
       expect(leadCounts.queue.canAssign).toBe(true);
       expect(leadCounts.queue.unassigned).toBeGreaterThanOrEqual(1);
-      await expect(page.locator('[data-ticket-count]').first()).toHaveText(/^([1-9]\d?|99\+)$/);
 
       // An IT agent reads the queue, but their own number is the tickets
       // assigned to them (D118): this one is not.
@@ -85,10 +85,9 @@ for (const lang of LANGUAGES) {
       const counts = await (await page.request.get('/api/tickets/counts')).json();
       expect(counts.queue.canAssign).toBe(false);
       expect(counts.queue.unassigned).toBeGreaterThanOrEqual(1);
-      // None of it is the agent's own, so Home's cards stay empty for this run.
-      await expect(
-        page.locator('[data-card="tickets"] .record', { hasText: subject })
-      ).toHaveCount(0);
+      // The agent has no portal Home: they work in the Helpdesk.
+      await expect(page).toHaveURL(/\/helpdesk/);
+      await expect(page.locator('[data-card="tickets"]')).toHaveCount(0);
 
       // The Lead gives it to this agent (D122): only the assignee answers.
       await signOut(page);

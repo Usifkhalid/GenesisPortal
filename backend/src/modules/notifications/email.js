@@ -33,8 +33,11 @@ export function renderEmail({ templateKey, payload, language, company, baseUrl }
   const tr = translator(lang);
   const { title, detail } = describe(templateKey, payload, lang, tr);
   const companyName = lang === 'ar' ? company.nameAr || company.nameEn : company.nameEn;
-  const link = payload?.link ? `${baseUrl}/${payload.link}` : baseUrl;
-  const settings = `${baseUrl}/#notifications/preferences`;
+  // "#tickets/<id>" is the portal's; "/helpdesk#tickets/<id>" the IT Helpdesk's (D135).
+  const path = String(payload?.link ?? '').replace(/^\//, '');
+  const link = path ? `${baseUrl}/${path}` : baseUrl;
+  const page = path.startsWith('helpdesk') ? 'helpdesk' : '';
+  const settings = `${baseUrl}/${page}#notifications/preferences`;
 
   let brand;
   try {

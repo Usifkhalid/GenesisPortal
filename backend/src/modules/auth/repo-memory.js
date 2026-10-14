@@ -16,7 +16,7 @@ import {
   USERS,
   fakeEntraObjectId,
 } from '../../../prisma/seed-data.js';
-import { ROLES } from '../../lib/roles.js';
+import { ROLES, itRoleOf } from '../../lib/roles.js';
 import { searchKeyOf } from '../../lib/text-search.js';
 
 /** A stable id for the nth row of a table, shaped like the UUIDs Prisma makes. */
@@ -197,7 +197,13 @@ export function createMemoryUserRepo() {
     },
 
     async getSessionUser(id) {
-      return users.find((u) => u.id === id) ?? null;
+      const user = users.find((u) => u.id === id);
+      if (!user) return null;
+      const activeTeams = new Set(helpdesk.team.filter((t) => t.isActive).map((t) => t.id));
+      const memberships = helpdesk.member.filter(
+        (m) => m.userId === id && activeTeams.has(m.teamId)
+      );
+      return { ...user, itRole: itRoleOf(memberships) };
     },
 
     async findByEntraObjectId(entraObjectId) {

@@ -71,7 +71,8 @@ export function publicAuthRoutes({ config, repo, msalClient, accounts }) {
 
     const token = await startSession(req, person.id);
     req.log?.info({ userId: person.id }, 'mock sign-in');
-    res.json({ redirectTo: '/', csrfToken: token });
+    // IT team members land in the Helpdesk (D135).
+    res.json({ redirectTo: person.itRole ? '/helpdesk' : '/', csrfToken: token });
   });
 
   /** Ends the session here and says where the browser should go next. */

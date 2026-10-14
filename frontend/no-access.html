@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f8f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d1611" media="(prefers-color-scheme: dark)" />
+    <title data-i18n="hd.noAccess.pageTitle">No access · IT Helpdesk</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icons/favicon-32.png" />
+    <link rel="stylesheet" href="assets/fonts/fonts.css" />
+    <link rel="stylesheet" href="assets/css/tokens.css" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+    <link rel="stylesheet" href="assets/css/pages/login.css" />
+  </head>
+
+  <!-- Shown with a 403 to anyone signed in who is not on the IT team and asks
+       for /helpdesk (backend/src/modules/helpdesk/pages.js, D135). -->
+  <body class="login">
+    <a class="u-skip-link" href="#main" data-i18n="app.skipToContent">Skip to main content</a>
+
+    <header class="login__bar">
+      <p class="login__brand" data-i18n="hd.name">IT Helpdesk</p>
+    </header>
+
+    <main class="page login__main" id="main" tabindex="-1">
+      <div class="login__intro">
+        <h1 class="login__title" data-i18n="hd.noAccess.title">
+          The IT Helpdesk is for the IT team
+        </h1>
+        <p class="login__lead" data-i18n="hd.noAccess.text">
+          Only IT agents and leads can open it. To ask IT for help, raise a ticket in the
+          portal.
+        </p>
+      </div>
+
+      <div class="offline__actions">
+        <a class="btn btn--primary" href="/" data-i18n="hd.noAccess.home">Go to the portal</a>
+      </div>
+    </main>
+
+    <script type="module" src="assets/js/no-access.js"></script>
+  </body>
+</html>

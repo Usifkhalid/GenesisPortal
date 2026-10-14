@@ -32,8 +32,18 @@ const LIMIT = 6;
  * @param {string} [options.help]  translated
  * @param {number} [options.max]  most people that may be chosen
  * @param {boolean} [options.required]  say "required" in place of "optional"
+ * @param {string} [options.source]  the search address: the directory's, or the
+ *   IT Helpdesk's own (/api/helpdesk/people), which IT team members use (D135)
  */
-export function createPeoplePicker({ host, id, label, help = '', max = 50, required = false }) {
+export function createPeoplePicker({
+  host,
+  id,
+  label,
+  help = '',
+  max = 50,
+  required = false,
+  source = '/api/directory/people',
+}) {
   /** @type {Map<string, object>} */
   const chosen = new Map();
   let found = [];
@@ -190,7 +200,7 @@ export function createPeoplePicker({ host, id, label, help = '', max = 50, requi
         pageSize: String(LIMIT + chosen.size),
         lang: getLocale(),
       });
-      const result = await api(`/api/directory/people?${params}`, { quiet: true });
+      const result = await api(`${source}?${params}`, { quiet: true });
       if (mine !== turn) return;
       found = result.items;
       drawResults(query);

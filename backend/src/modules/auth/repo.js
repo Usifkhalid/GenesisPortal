@@ -11,6 +11,7 @@
  */
 
 import { getPrisma } from '../../lib/prisma.js';
+import { itRoleOf } from '../../lib/roles.js';
 
 const COMPANY = {
   id: true,
@@ -23,6 +24,9 @@ const COMPANY = {
 };
 
 const ROLES = { select: { role: true, scopeCompanyId: true } };
+
+/** Memberships of active support teams: what makes someone IT staff (D135). */
+const IT_MEMBERSHIPS = { where: { team: { isActive: true } }, select: { role: true } };
 
 /** @param {() => Promise<import('@prisma/client').PrismaClient>} [getDb] */
 export function createPrismaUserRepo(getDb = getPrisma) {
@@ -55,7 +59,10 @@ export function createPrismaUserRepo(getDb = getPrisma) {
       }));
     },
 
-    /** The signed-in person with their company, department and roles. */
+    /**
+     * The signed-in person with their company, department and roles, and
+     * `itRole` ('Lead' | 'Agent' | null) from their support-team memberships.
+     */
     async getSessionUser(id) {
       const db = await getDb();
       const row = await db.userProfile.findUnique({
@@ -72,11 +79,12 @@ export function createPrismaUserRepo(getDb = getPrisma) {
           company: { select: COMPANY },
           department: { select: { nameEn: true, nameAr: true } },
           roleAssignments: ROLES,
+          teamMemberships: IT_MEMBERSHIPS,
         },
       });
       if (!row) return null;
-      const { roleAssignments, ...user } = row;
-      return { ...user, roles: roleAssignments };
+      const { roleAssignments, teamMemberships, ...user } = row;
+      return { ...user, roles: roleAssignments, itRole: itRoleOf(teamMemberships) };
     },
 
     async findByEntraObjectId(entraObjectId) {

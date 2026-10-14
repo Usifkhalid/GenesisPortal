@@ -9,7 +9,7 @@
  *   #admin/admins                  roles         (holding admin)
  *   #admin/rooms[/new|/<id>]       meeting rooms (holding admin)
  *   #admin/bookings                every booking, with cancel (both)
- *   #admin/helpdesk                the IT helpdesk's configuration (holding admin)
+ *   #admin/it-team                 who is on the IT team (holding admin; D135)
  *
  * What a person may open follows GET /api/admin/scope; the routes behind it
  * enforce the same thing themselves. Work pages run compact (DESIGN.md).
@@ -28,7 +28,7 @@ const SECTIONS = [
   { key: 'sync', label: 'admin.nav.sync', holdingOnly: true },
   { key: 'rooms', label: 'admin.nav.rooms', holdingOnly: true },
   { key: 'bookings', label: 'admin.nav.bookings', holdingOnly: false },
-  { key: 'helpdesk', label: 'admin.nav.helpdesk', holdingOnly: true },
+  { key: 'it-team', label: 'admin.nav.itTeam', holdingOnly: true },
 ];
 
 /**

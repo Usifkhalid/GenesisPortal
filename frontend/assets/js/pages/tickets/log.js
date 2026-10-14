@@ -130,6 +130,8 @@ export async function openLogDialog() {
     help: t('tk.log.whoHelp'),
     max: 1,
     required: true,
+    // The IT team searches through the Helpdesk (D135).
+    source: '/api/helpdesk/people',
   });
   picker.onChange = () => {
     const error = form.querySelector('#tkLogWho-error');
