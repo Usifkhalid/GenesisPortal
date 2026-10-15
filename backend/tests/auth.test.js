@@ -535,7 +535,11 @@ describe('Entra sign-in (stand-in MSAL client)', () => {
             errorCode: 'invalid_client',
             errorMessage: 'AADSTS7000222: The provided client secret keys are expired.',
           });
-        return { idTokenClaims: { tid: TENANT, nonce: calls.url.nonce, ...this.claims } };
+        const idTokenClaims = { tid: TENANT, nonce: calls.url.nonce, ...this.claims };
+        // As msal-node 7: an ID token nonce must match the nonce it is given.
+        if (req.nonce !== idTokenClaims.nonce)
+          throw Object.assign(new Error('x'), { errorCode: 'nonce_mismatch' });
+        return { idTokenClaims };
       },
       clearCache() {
         calls.cleared += 1;

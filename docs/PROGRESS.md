@@ -446,3 +446,11 @@ Files: backend/src/{config/env.js,modules/auth/{entra,provision,repo,repo-memory
 Verified: `npm test` 547 pass (new: JIT, other domain, inactive company, unknown domain, bootstrap once/only-real/deactivated, refusal mapping, env list; `auth-store` on SQL Server); new e2e spec 20 pass; lint clean. Full e2e: 1 failure in `pwa.spec` "no signal", which fails the same ways on the previous commit (2 of 5 runs there).
 Open issues: NOT YET TRIED AGAINST THE REAL TENANT in this session (the user does that by hand, see the chat's .env lines). JIT profiles have no Arabic name until sync. Bootstrap check is not locked against two simultaneous listed sign-ins. Arabic copy not native-reviewed. The `pwa.spec` offline test is flaky.
 Next: manual Entra sign-in on localhost; then real Graph (session 19, second part).
+
+## Session 30 — Real Entra sign-in fix: the nonce (2026-10-15)
+
+Done: the first real attempt after admin consent ended on "Sign-in did not finish". The redirect to Entra and the session cookie were fine; msal-node 7 refused the token at code redemption (`nonce_mismatch`) because we checked the nonce ourselves but never handed it to MSAL. `acquireTokenByCode` now receives `nonce` (D137). The test stand-in for MSAL enforces the same rule.
+Files: backend/src/modules/auth/entra.js, backend/tests/auth.test.js, docs/{DECISIONS,PROGRESS}.md.
+Verified: `npm test` 547 pass (without the fix 8 auth tests fail); lint clean. e2e not run (no frontend change).
+Open issues: still not yet confirmed against the real tenant (user retries by hand); the dev log goes only to the terminal, so a past attempt can't be read afterwards.
+Next: user retries Entra sign-in on localhost; then real Graph.

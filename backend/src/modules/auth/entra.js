@@ -152,6 +152,8 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
         scopes: SCOPES,
         redirectUri,
         codeVerifier: pending.verifier,
+        // msal-node 7 refuses an ID token whose nonce it was not given.
+        nonce: pending.nonce,
       });
       claims = result?.idTokenClaims ?? {};
       // Nothing here calls an API as the user, so no token is worth keeping.
