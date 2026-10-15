@@ -22,6 +22,17 @@ export const FRONTEND_DIR = fileURLToPath(new URL('../../../frontend/', import.m
 // Node reads .env itself (>=21). Absent in hosted environments, where the
 // platform supplies real variables, so its absence is not an error.
 const envFile = new URL('../../../.env', import.meta.url);
+// Under `npm test` (its pretest database step too) and `node --test` the mocks
+// are used whatever .env says for trying the real tenant (loadEnvFile never
+// overrides a variable already set). A test that wants Entra or real Graph
+// passes its own config to createApp.
+const underTest =
+  Boolean(process.env.NODE_TEST_CONTEXT) ||
+  ['test', 'pretest'].includes(process.env.npm_lifecycle_event ?? '');
+if (underTest) {
+  process.env.AUTH_MODE ??= 'mock';
+  process.env.GRAPH_MODE ??= 'mock';
+}
 if (existsSync(envFile)) process.loadEnvFile(fileURLToPath(envFile));
 
 // `node --test` marks its child processes; treating them as NODE_ENV=test keeps

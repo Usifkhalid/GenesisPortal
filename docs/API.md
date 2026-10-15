@@ -139,7 +139,10 @@ starts the session and redirects to `/`. Someone with no profile gets one from t
 (object id, name, email; role User) in the company owning their email domain
 (`Company.domain` or `CompanyDomain`), audited `user.jit_create`; an address in
 `INITIAL_HOLDING_ADMINS` also becomes HoldingAdmin while no active HoldingAdmin with a
-real Entra account exists, audited `role.bootstrap` (D136). On failure it redirects to
+real Entra account exists, audited `role.bootstrap` (D136). Every sign-in also refreshes
+the person's own profile from Graph `/me` (and `/me/manager` when allowed) with the
+delegated User.Read token, audited `user.graph_refresh` only when a field changed (D138).
+On failure it redirects to
 `/login.html?error=<reason>`: `company_not_set_up` (domain owned by no company; nothing is
 created), `not_provisioned` (profile or company inactive), `consent_required`,
 `not_assigned`, `app_setup` (Microsoft refused the app: AADSTS code or OAuth error),

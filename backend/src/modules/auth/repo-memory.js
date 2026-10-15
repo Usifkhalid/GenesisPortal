@@ -275,6 +275,29 @@ export function createMemoryUserRepo() {
       return created;
     },
 
+    async loadProfileRefresh(id) {
+      const person = users.find((u) => u.id === id) ?? null;
+      return {
+        person: person && { ...person },
+        companies: companies.map((c) => ({
+          ...c,
+          domains: [c.domain, ...c.domains].map((d) => d.toLowerCase()),
+        })),
+        departments,
+      };
+    },
+
+    async updateProfileFromGraph(id, data, audit) {
+      const user = users.find((u) => u.id === id);
+      Object.assign(user, data);
+      if ('companyId' in data) user.company = companies.find((c) => c.id === data.companyId);
+      if ('departmentId' in data) {
+        const d = departments.find((x) => x.id === data.departmentId);
+        user.department = d ? { nameEn: d.nameEn, nameAr: d.nameAr } : null;
+      }
+      await audit(auditTx);
+    },
+
     async hasRealHoldingAdmin(standInPrefix) {
       return users.some(
         (u) =>

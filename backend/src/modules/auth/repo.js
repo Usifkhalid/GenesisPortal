@@ -28,6 +28,23 @@ const COMPANY = {
 
 const ROLES = { select: { role: true, scopeCompanyId: true } };
 
+/** A profile's fields that the sign-in refresh reads (refresh.js). */
+const REFRESH_PERSON = {
+  id: true,
+  email: true,
+  companyId: true,
+  departmentId: true,
+  managerId: true,
+  displayNameEn: true,
+  displayNameAr: true,
+  jobTitle: true,
+  officeLocation: true,
+  phone: true,
+  mobilePhone: true,
+  graphDepartment: true,
+  graphCompanyName: true,
+};
+
 /** Memberships of active support teams: what makes someone IT staff (D135). */
 const IT_MEMBERSHIPS = { where: { team: { isActive: true } }, select: { role: true } };
 
@@ -147,6 +164,47 @@ export function createPrismaUserRepo(getDb = getPrisma) {
         });
         await audit(tx, created);
         return created;
+      });
+    },
+
+    /**
+     * What the sign-in profile refresh needs (refresh.js): the person's
+     * Graph-owned fields, every company with its domains, every department.
+     */
+    async loadProfileRefresh(id) {
+      const db = await getDb();
+      const [person, companies, departments] = await Promise.all([
+        db.userProfile.findUnique({ where: { id }, select: REFRESH_PERSON }),
+        db.company.findMany({
+          select: {
+            id: true,
+            code: true,
+            nameEn: true,
+            nameAr: true,
+            domain: true,
+            domains: { select: { domain: true } },
+          },
+        }),
+        db.department.findMany({
+          select: { id: true, companyId: true, nameEn: true, nameAr: true },
+        }),
+      ]);
+      return {
+        person,
+        companies: companies.map(({ domain, domains, ...c }) => ({
+          ...c,
+          domains: [domain, ...domains.map((d) => d.domain)].map((d) => d.toLowerCase()),
+        })),
+        departments,
+      };
+    },
+
+    /** Writes the refreshed fields; `audit(tx)` in the same transaction. */
+    async updateProfileFromGraph(id, data, audit) {
+      const db = await getDb();
+      await db.$transaction(async (tx) => {
+        await tx.userProfile.update({ where: { id }, data });
+        await audit(tx);
       });
     },
 

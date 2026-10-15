@@ -454,3 +454,11 @@ Files: backend/src/modules/auth/entra.js, backend/tests/auth.test.js, docs/{DECI
 Verified: `npm test` 547 pass (without the fix 8 auth tests fail); lint clean. e2e not run (no frontend change).
 Open issues: still not yet confirmed against the real tenant (user retries by hand); the dev log goes only to the terminal, so a past attempt can't be read afterwards.
 Next: user retries Entra sign-in on localhost; then real Graph.
+
+## Session 31 — Profile refresh from Graph at Entra sign-in (2026-10-15)
+
+Done: the Entra callback asks for `User.Read` and reads the person's own `/me` and `/me/manager` with that token (`integrations/graph/delegated.js`), then updates their UserProfile via `modules/auth/refresh.js` (sync's rules; Arabic name kept; changed fields only, audited `user.graph_refresh`). Runs in GRAPH_MODE=mock too; a refused `/me/manager` is skipped and logged once; Graph failures never block sign-in. Tests now default to mock AUTH/GRAPH modes whatever `.env` says (D138).
+Files: backend/src/{app.js,config/env.js,integrations/graph/delegated.js,modules/auth/{entra,refresh,repo,repo-memory,routes}.js}; backend/tests/entra-profile.test.js (new, 15); docs/{API,DECISIONS,PROGRESS}.md.
+Verified: `npm test` 562 pass; lint clean. e2e not run (no frontend change).
+Open issues: not yet tried against the real tenant; `/me/manager` will likely be refused until User.Read.All (or sync) is in place; a company move does not move role scopes (same as sync). The local `.env` has GRAPH_MODE=real with a placeholder NOREPLY_MAILBOX, so `npm run dev` refuses to boot until it is set or GRAPH_MODE=mock.
+Next: user signs in with Entra and checks their profile; then real Graph.

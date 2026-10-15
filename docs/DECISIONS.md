@@ -1434,3 +1434,11 @@ work is given out by a Lead, and the ticket says whose it is.
 
 - **What:** `acquireTokenByCode` is given `nonce` from the session beside the PKCE verifier. Our own nonce and tenant checks stay.
 - **Why:** msal-node 7 (msal-common 16) rejects an ID token that carries a nonce when the redemption request did not say which nonce to expect (`nonce_mismatch`). Every real sign-in failed with "Sign-in did not finish". The test stand-in for MSAL now behaves the same way, so the old call fails 8 tests.
+
+### D138. Each Entra sign-in refreshes the person's own profile from Graph
+
+- **What:** the callback asks for `User.Read` beside `openid profile email` and, with the access token from that sign-in, reads `/me` (job title, department, company name, office, business and mobile phone, display name) and `/me/manager` (`integrations/graph/delegated.js`), then updates the `UserProfile` (`modules/auth/refresh.js`). Same rules as the nightly sync: company from `companyName` when it names a portal company, else the email domain, else unchanged; department by name within that company; Arabic name, language and roles never touched. Only changed fields are written, in one transaction with one `user.graph_refresh` audit row (actor = the person; before/after hold just those fields). The token is used in that request and dropped: never stored, logged or audited.
+- **Independent of GRAPH_MODE:** the token is real whatever the app-wide Graph mode, so the refresh runs in mock mode too. It is not the GRAPH_MODE client; it lives in `integrations/graph/` all the same.
+- **Never blocks sign-in:** any Graph failure (5 s timeout) is a warning and the person signs in with the profile they had. A `403` on `/me/manager` (User.Read alone usually does not cover it) keeps the current manager and is logged once per process. A manager not in the portal becomes no manager, as in sync.
+- **Tests start in mock modes:** under `npm test`/`node --test`, `AUTH_MODE` and `GRAPH_MODE` default to `mock` before `.env` is read, so a `.env` set up for the real tenant cannot stop the suite loading (it did: `GRAPH_MODE=real` with a placeholder `NOREPLY_MAILBOX`).
+- **Cost:** a company move from Graph changes `companyId` but not role scopes, as the nightly sync already does.

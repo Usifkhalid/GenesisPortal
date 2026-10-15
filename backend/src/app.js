@@ -118,6 +118,7 @@ import { createPrismaTicketStore } from './modules/tickets/store-prisma.js';
  * @param {() => Date} [options.now]  the clock the announcements, rooms, tickets and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
+ * @param {object} [options.profileGraph]  a stand-in for integrations/graph/delegated.js, for tests
  */
 export function createApp(options = {}) {
   const app = express();
@@ -410,6 +411,7 @@ export function createApp(options = {}) {
       config,
       repo,
       msalClient: options.msalClient,
+      profileGraph: options.profileGraph,
       accounts: accountLimiter(options.authRateLimit, config),
     })
   );

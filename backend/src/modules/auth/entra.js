@@ -8,8 +8,10 @@
  *                         check nonce and tenant, find the UserProfile, start
  *                         the session
  *
- * The tokens Entra returns are read once for their claims and dropped. The
- * browser never sees one, and none is kept in the session.
+ * The tokens Entra returns are used during the callback and dropped: the ID
+ * token for its claims, the access token (User.Read) to refresh the person's
+ * own profile from Graph (refresh.js, D138). The browser never sees one, and
+ * none is kept in the session.
  *
  * A person the portal does not know yet gets a profile from the ID token
  * (provision.js). When Microsoft refuses, the login page is told why in terms
@@ -20,11 +22,14 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { createDelegatedGraph } from '../../integrations/graph/delegated.js';
 import { bootstrapHoldingAdmin, createProfileFromToken } from './provision.js';
+import { createProfileRefresher } from './refresh.js';
 import { entraCallbackQuery } from './schema.js';
 import { startSession } from './service.js';
 
-const SCOPES = ['openid', 'profile', 'email'];
+// User.Read: the profile refresh at sign-in reads /me with this token (refresh.js).
+const SCOPES = ['openid', 'profile', 'email', 'User.Read'];
 const GUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 const random = () => randomBytes(32).toString('base64url');
@@ -93,8 +98,13 @@ async function createMsalClient(config) {
  * @param {object} deps.repo  see repo.js
  * @param {object} [deps.msalClient]  a stand-in, for tests
  * @param {{ hit: (account: string) => void }} [deps.accounts]  per-account sign-in cap
+ * @param {object} [deps.profileGraph]  a stand-in for integrations/graph/delegated.js, for tests
  */
-export function createEntraHandlers({ config, repo, msalClient, accounts }) {
+export function createEntraHandlers({ config, repo, msalClient, accounts, profileGraph }) {
+  const refreshProfile = createProfileRefresher({
+    repo,
+    graph: profileGraph ?? createDelegatedGraph(),
+  });
   const redirectUri = `${config.APP_BASE_URL}/auth/callback`;
 
   let client = msalClient;
@@ -145,6 +155,7 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
     }
 
     let claims;
+    let accessToken;
     try {
       const msal = await getClient();
       const result = await msal.acquireTokenByCode({
@@ -156,7 +167,8 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
         nonce: pending.nonce,
       });
       claims = result?.idTokenClaims ?? {};
-      // Nothing here calls an API as the user, so no token is worth keeping.
+      accessToken = result?.accessToken;
+      // The access token is used once below, then dropped with this request.
       msal.clearCache?.();
     } catch (err) {
       const reason = reasonForEntraError(err?.errorCode, err?.errorMessage ?? err?.message);
@@ -207,6 +219,10 @@ export function createEntraHandlers({ config, repo, msalClient, accounts }) {
     if (!person?.isActive || person.company?.isActive === false) {
       return fail(req, res, 'not_provisioned', { oid });
     }
+
+    // Job title, department, phones, manager: from Graph now, not tomorrow night.
+    await refreshProfile(req, person.id, accessToken);
+    accessToken = undefined;
 
     await bootstrapHoldingAdmin(req, repo, config, person, email);
 
