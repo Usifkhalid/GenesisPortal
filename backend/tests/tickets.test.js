@@ -3,7 +3,6 @@ import { describe, test } from 'node:test';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
-import { startTicketAutoClose } from '../src/jobs/closeResolvedTickets.js';
 import { zoneWallToUtc } from '../src/lib/sla.js';
 import { createMemoryStorage } from '../src/lib/storage.js';
 import { createMemoryUserRepo } from '../src/modules/auth/repo-memory.js';
@@ -161,6 +160,10 @@ describe('raising a ticket', () => {
       internalNote: false,
       attach: true,
       reopen: false,
+      confirm: false,
+      needsRating: false,
+      notSolved: false,
+      closeWithoutConfirmation: false,
       manage: false,
       work: false,
       reassign: false,
@@ -643,10 +646,7 @@ describe('who works a ticket (D122)', () => {
     assert.deepEqual(refusal(no), [403, 'not_assignee']);
     await w.change(w.lead, t.id, { status: 'Open' });
     await w.say(w.lead, t.id, 'Checked.');
-    assert.equal(
-      (await w.change(w.lead, t.id, { status: 'WaitingOnRequester' })).status,
-      'WaitingOnRequester'
-    );
+    assert.equal((await w.change(w.lead, t.id, { status: 'Pending' })).status, 'Pending');
 
     // Once reassigned, the first agent has lost the controls.
     await w.change(w.lead, t.id, { assigneeId: w.agent2.user.id });
@@ -699,14 +699,14 @@ describe('the life of a ticket', () => {
     await w.say(w.agent, t.id, 'Which model is it?');
 
     w.at(SUNDAY, '12:00');
-    const waiting = await w.change(w.agent, t.id, { status: 'WaitingOnRequester' });
-    assert.equal(waiting.status, 'WaitingOnRequester');
+    const waiting = await w.change(w.agent, t.id, { status: 'Pending' });
+    assert.equal(waiting.status, 'Pending');
     assert.equal(waiting.sla.state, 'paused');
     assert.equal(w.row(t.id).slaActive, false);
 
     // An agent's note does not resume it.
     await w.say(w.agent, t.id, 'Chased by phone.', true);
-    assert.equal(w.row(t.id).status, 'WaitingOnRequester');
+    assert.equal(w.row(t.id).status, 'Pending');
 
     // She answers on Monday at 10:00: Sunday 12:00–17:00 and Monday
     // 08:00–10:00 did not count, seven business hours in all.
@@ -723,11 +723,11 @@ describe('the life of a ticket', () => {
     assert.notEqual(iso(back.ticket.sla.resolveDueAt), iso(resolveDue));
     assert.deepEqual(types(back).slice(-2), ['comment', 'status']);
     const resumed = back.timeline.at(-1);
-    assert.deepEqual([resumed.from, resumed.to], ['WaitingOnRequester', 'Open']);
+    assert.deepEqual([resumed.from, resumed.to], ['Pending', 'Open']);
     assert.equal(resumed.actor.id, w.gen.user.id);
 
     // A second pause adds to the first.
-    await w.change(w.agent, t.id, { status: 'WaitingOnRequester' });
+    await w.change(w.agent, t.id, { status: 'Pending' });
     w.at('2026-10-12', '11:30');
     const once = await w.change(w.agent, t.id, { status: 'Open' });
     assert.equal(once.sla.pausedMinutes, 510);
@@ -834,80 +834,282 @@ describe('the life of a ticket', () => {
     assert.equal((await w.agent.patch(`/api/tickets/${t.id}`, { status: 'New' })).status, 400);
   });
 
-  test('a resolved ticket closes itself after three working days without a reply', async () => {
+  test('a resolved ticket stays open with its clock running, and nothing closes it (D143)', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     w.give(t.id, w.agent);
-    const other = await w.raise(w.msr);
     await w.say(w.agent, t.id, 'Replaced the battery.');
 
-    // Resolved on Wednesday 14 October at 12:00: Thursday, Sunday, Monday.
+    // Resolved on Wednesday 14 October at 12:00, after its Tuesday 17:00 target.
     w.at('2026-10-14', '12:00');
     const resolved = await w.change(w.agent, t.id, { status: 'Resolved' });
     assert.equal(resolved.status, 'Resolved');
     assert.equal(iso(resolved.resolvedAt), iso(cairo('2026-10-14', '12:00')));
-    assert.equal(resolved.sla.state, 'missed', 'resolved after Tuesday 17:00');
-    assert.equal(iso(w.row(t.id).autoCloseAt), iso(cairo('2026-10-19', '12:00')));
+    assert.equal(resolved.closedAt, null);
+    assert.equal(resolved.sla.state, 'breached', 'the clock is still running');
+    assert.equal(w.row(t.id).slaActive, true);
+    assert.equal(w.row(t.id).slaPausedAt, null);
+    assert.equal(w.row(t.id).slaPausedMinutes, 0);
 
-    const tickets = w.app.locals.tickets;
-    // The weekend does not count: on Sunday it is still open to a reply.
-    w.at('2026-10-18', '16:00');
-    assert.equal(await tickets.closeResolved(), 0);
-    w.at('2026-10-19', '11:59');
-    assert.equal(await tickets.closeResolved(), 0);
-    assert.equal(w.row(t.id).status, 'Resolved');
+    // Still an open ticket: in "My tickets", in the count and in the queue.
+    assert.equal((await w.gen.get('/api/tickets/mine')).body.total, 1);
+    assert.equal((await w.gen.get('/api/tickets/counts')).body.mine, 1);
+    assert.equal((await w.agent.get('/api/tickets/queue')).body.total, 1);
 
-    w.at('2026-10-19', '12:00');
-    assert.equal(await tickets.closeResolved(), 1);
-    assert.equal(await tickets.closeResolved(), 0, 'once');
-    const closed = await w.ticket(w.gen, t.id);
-    assert.equal(closed.ticket.status, 'Closed');
-    assert.equal(iso(closed.ticket.closedAt), iso(cairo('2026-10-19', '12:00')));
-    assert.equal(closed.ticket.sla.state, 'missed', 'closing does not rewrite the result');
-    const last = closed.timeline.at(-1);
-    assert.deepEqual(
-      [last.type, last.actor, last.from, last.to],
-      ['autoClosed', null, 'Resolved', 'Closed']
-    );
-    // The other ticket was never resolved and is untouched.
-    assert.equal(w.row(other.id).status, 'New');
-
-    // Closed: no more public replies.
-    const late = await w.gen.post(`/api/tickets/${t.id}/comments`, { body: 'Thanks' });
-    assert.equal(late.status, 409);
-    assert.equal(late.body.error.code, 'ticket_closed');
-    const file = await w.gen.upload(`/api/tickets/${t.id}/attachments?name=a.png`, PNG);
-    assert.equal(file.body.error.code, 'ticket_closed');
-    assert.equal(closed.ticket.can.comment, false);
+    // The auto-close rule is gone: months later nothing has happened to it.
+    assert.equal(w.app.locals.tickets.closeResolved, undefined);
+    w.at('2027-03-01', '09:00');
+    await w.app.locals.tickets.remindResolved();
+    const later = await w.ticket(w.gen, t.id);
+    assert.equal(later.ticket.status, 'Resolved');
+    assert.equal(later.ticket.closedAt, null);
+    assert.equal(later.ticket.can.confirm, true);
   });
 
-  test('the job runs the closing rule at startup and reports failures quietly', async () => {
+  test('only the requester confirms or says it is not solved; IT cannot answer for them', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     w.give(t.id, w.agent);
     await w.change(w.agent, t.id, { status: 'Resolved' });
-    w.at('2026-10-20', '09:00');
+    const before = JSON.stringify(w.row(t.id));
 
-    const seen = [];
-    const log = { info: (data) => seen.push(data), warn: (data) => seen.push(data) };
-    const job = startTicketAutoClose(w.app.locals.tickets, log, { intervalMs: 60_000 });
-    await job.ready;
-    job.stop();
-    assert.deepEqual(seen, [{ count: 1 }]);
-    assert.equal(w.row(t.id).status, 'Closed');
+    const outsiders = [
+      [w.agent, 403],
+      [w.agent2, 403],
+      [w.lead, 403],
+      [w.gen2, 404],
+      [w.msr, 404],
+      [w.caGen, 404],
+      [w.ha, 404],
+    ];
+    for (const [who, status] of outsiders) {
+      const yes = await who.post(`/api/tickets/${t.id}/solved`, { rating: 5 });
+      const no = await who.post(`/api/tickets/${t.id}/not-solved`, { reason: 'Still black.' });
+      assert.equal(yes.status, status, `solved by ${who.user.email}`);
+      assert.equal(no.status, status, `not solved by ${who.user.email}`);
+    }
+    assert.equal(JSON.stringify(w.row(t.id)), before, 'nothing changed');
 
-    const failing = startTicketAutoClose(
-      { closeResolved: () => Promise.reject(new Error('down')) },
-      log,
-      { intervalMs: 60_000 }
-    );
-    await failing.ready;
-    failing.stop();
-    assert.equal(seen.length, 2);
-    await startTicketAutoClose(null, log).ready;
+    const own = (await w.ticket(w.gen, t.id)).ticket.can;
+    assert.deepEqual([own.confirm, own.needsRating, own.notSolved], [true, true, true]);
+    for (const who of [w.agent, w.lead]) {
+      const can = (await w.ticket(who, t.id)).ticket.can;
+      assert.deepEqual([can.confirm, can.notSolved], [false, false]);
+    }
   });
 
-  test('a reply from the requester reopens a resolved ticket, so it does not close', async () => {
+  test('IT cannot rate their own work', async () => {
+    const w = await world();
+    const mine = await w.raise(w.agent, { subject: 'My own laptop' });
+    await w.change(w.lead, mine.id, { assigneeId: w.agent.user.id });
+    await w.change(w.agent, mine.id, { status: 'Resolved' });
+    assert.equal((await w.ticket(w.agent, mine.id)).ticket.can.confirm, false);
+    const yes = await w.agent.post(`/api/tickets/${mine.id}/solved`, { rating: 5 });
+    assert.deepEqual([yes.status, yes.body.error.code], [403, 'own_work']);
+    const no = await w.agent.post(`/api/tickets/${mine.id}/not-solved`, { reason: 'Meh.' });
+    assert.deepEqual([no.status, no.body.error.code], [403, 'own_work']);
+    assert.equal(w.row(mine.id).rating, null);
+
+    // The same agent, asking for something another agent fixed, answers as anyone would.
+    const other = await w.raise(w.agent, { subject: 'Second screen' });
+    await w.change(w.lead, other.id, { assigneeId: w.agent2.user.id });
+    await w.change(w.agent2, other.id, { status: 'Resolved' });
+    assert.equal(
+      (await w.agent.post(`/api/tickets/${other.id}/solved`, { rating: 4 })).status,
+      200
+    );
+  });
+
+  test('"Yes, solved" needs a rating from 1 to 5, closes the ticket, and the rating never changes', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
+    await w.say(w.agent, t.id, 'Replaced the battery.');
+    w.at(SUNDAY, '13:00');
+    await w.change(w.agent, t.id, { status: 'Resolved' });
+    const yes = (body) => w.gen.post(`/api/tickets/${t.id}/solved`, body);
+
+    // The rating is required, whole, from 1 to 5; the words are 1000 characters at most.
+    const none = await yes({});
+    assert.deepEqual([none.status, none.body.error.code], [400, 'rating_required']);
+    for (const bad of [{ rating: 0 }, { rating: 6 }, { rating: 3.5 }, { rating: '5' }]) {
+      assert.equal((await yes(bad)).status, 400, JSON.stringify(bad));
+    }
+    assert.equal((await yes({ rating: 5, feedback: 'x'.repeat(1001) })).status, 400);
+    assert.equal((await yes({ rating: 5, note: 'x' })).status, 400, 'unknown field');
+    assert.equal(w.row(t.id).status, 'Resolved', 'nothing closed yet');
+
+    w.at(SUNDAY, '15:00');
+    const done = await yes({ rating: 4, feedback: '  Quick and kind.  ' });
+    assert.equal(done.status, 200, JSON.stringify(done.body));
+    const closed = done.body.ticket;
+    assert.equal(closed.status, 'Closed');
+    assert.equal(closed.closeMode, 'confirmed');
+    assert.equal(iso(closed.closedAt), iso(cairo(SUNDAY, '15:00')));
+    assert.equal(closed.rating.stars, 4);
+    assert.equal(closed.rating.feedback, 'Quick and kind.');
+    assert.equal(closed.sla.state, 'met');
+    assert.equal(w.row(t.id).slaActive, false, 'the clock has stopped');
+    assert.equal(closed.can.confirm, false);
+    const last = done.body.timeline.at(-1);
+    assert.deepEqual(
+      [last.type, last.actor.id, last.from, last.to],
+      ['confirmed', w.gen.user.id, 'Resolved', 'Closed']
+    );
+    // The team sees what was said; asking again is refused.
+    assert.equal((await w.ticket(w.agent, t.id)).ticket.rating.feedback, 'Quick and kind.');
+    assert.equal((await yes({ rating: 5 })).body.error.code, 'not_resolved');
+
+    // Reopened and resolved again, the ticket keeps its rating: it cannot be rated twice.
+    const reopened = await w.change(w.lead, t.id, { status: 'Open' });
+    assert.equal(reopened.closeMode, null);
+    assert.equal(reopened.rating.stars, 4);
+    await w.change(w.agent, t.id, { status: 'Resolved' });
+    assert.equal((await w.ticket(w.gen, t.id)).ticket.can.needsRating, false);
+    const again = await yes({ rating: 1 });
+    assert.deepEqual([again.status, again.body.error.code], [409, 'already_rated']);
+    const second = await yes({});
+    assert.equal(second.status, 200);
+    assert.equal(second.body.ticket.rating.stars, 4);
+    assert.equal(second.body.ticket.status, 'Closed');
+
+    // 1000 characters is the limit, not a character less.
+    const long = await w.raise(w.gen, { subject: 'Printer' });
+    w.give(long.id, w.agent);
+    await w.change(w.agent, long.id, { status: 'Resolved' });
+    const big = await w.gen.post(`/api/tickets/${long.id}/solved`, {
+      rating: 5,
+      feedback: 'x'.repeat(1000),
+    });
+    assert.equal(big.status, 200);
+  });
+
+  test('the resolution clock keeps running until the requester confirms', async () => {
+    const w = await world();
+    const early = await w.raise(w.gen);
+    const late = await w.raise(w.gen, { subject: 'A second fault' });
+    // Both are due on Tuesday 13 October at 17:00.
+    for (const t of [early, late]) {
+      w.give(t.id, w.agent);
+      await w.say(w.agent, t.id, 'On it.');
+    }
+    w.at('2026-10-12', '10:00');
+    for (const t of [early, late]) await w.change(w.agent, t.id, { status: 'Resolved' });
+
+    w.at('2026-10-12', '14:00');
+    const inTime = await w.gen.post(`/api/tickets/${early.id}/solved`, { rating: 5 });
+    assert.equal(inTime.body.ticket.sla.state, 'met');
+
+    // IT resolved the other one in time too, but nobody confirmed it until Wednesday.
+    w.at('2026-10-14', '09:00');
+    assert.equal((await w.ticket(w.gen, late.id)).ticket.sla.state, 'breached');
+    const slow = await w.gen.post(`/api/tickets/${late.id}/solved`, { rating: 5 });
+    assert.equal(slow.body.ticket.sla.state, 'missed');
+  });
+
+  test('"No, still a problem" needs a reason, reopens the ticket and keeps the clock running', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
+    await w.say(w.agent, t.id, 'Replaced the battery.');
+    w.at('2026-10-12', '10:00');
+    await w.change(w.agent, t.id, { status: 'Resolved' });
+    const no = (body) => w.gen.post(`/api/tickets/${t.id}/not-solved`, body);
+
+    for (const bad of [{}, { reason: '' }, { reason: '   ' }, { reason: 'x'.repeat(1001) }]) {
+      assert.equal((await no(bad)).status, 400, JSON.stringify(bad).slice(0, 40));
+    }
+    assert.equal(w.row(t.id).status, 'Resolved');
+
+    w.at('2026-10-12', '11:00');
+    const res = await no({ reason: 'It still shows a black screen.' });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    const reopened = res.body.ticket;
+    assert.equal(reopened.status, 'Open');
+    assert.equal(reopened.resolvedAt, null);
+    assert.equal(reopened.sla.pausedMinutes, 0, 'the clock never stopped');
+    assert.notEqual(reopened.sla.state, 'paused');
+    assert.deepEqual(types(res.body).slice(-2), ['comment', 'notSolved']);
+    const said = res.body.timeline.at(-2);
+    assert.equal(said.comment.body, 'It still shows a black screen.');
+    assert.equal(said.actor.id, w.gen.user.id);
+    assert.equal(res.body.timeline.at(-1).to, 'Open');
+
+    // Answering twice is refused: it is no longer waiting.
+    assert.equal((await no({ reason: 'Again.' })).body.error.code, 'not_resolved');
+    assert.equal((await w.gen.post(`/api/tickets/${t.id}/solved`, { rating: 5 })).status, 409);
+  });
+
+  test('a lead closes without confirmation: a reason, audited, shown to the team, counted apart; an agent cannot', async () => {
+    const w = await world();
+    const t = await w.raise(w.gen);
+    w.give(t.id, w.agent);
+    const close = (as, body) => as.post(`/api/tickets/${t.id}/close`, body);
+
+    // Not resolved or pending: there is nothing to close this way yet.
+    const early = await close(w.lead, { reason: 'No reply.' });
+    assert.deepEqual([early.status, early.body.error.code], [409, 'not_resolved']);
+
+    await w.change(w.agent, t.id, { status: 'Resolved' });
+    const byAgent = await close(w.agent, { reason: 'No reply.' });
+    assert.deepEqual([byAgent.status, byAgent.body.error.code], [403, 'lead_only']);
+    assert.equal(
+      (await close(w.gen, { reason: 'No reply.' })).status,
+      403,
+      'not the requester'
+    );
+    assert.equal(
+      (await close(w.ha, { reason: 'No reply.' })).status,
+      403,
+      'not an administrator'
+    );
+    assert.equal((await close(w.lead, {})).status, 400, 'a reason is required');
+    assert.equal((await close(w.lead, { reason: '  ' })).status, 400);
+    assert.equal(w.row(t.id).status, 'Resolved');
+
+    w.at('2026-10-14', '10:00');
+    const res = await close(w.lead, { reason: 'The requester is not responding.' });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.ticket.status, 'Closed');
+    assert.equal(res.body.ticket.closeMode, 'lead');
+    assert.equal(res.body.ticket.closeReason, 'The requester is not responding.');
+    assert.equal(res.body.ticket.rating, null);
+    assert.equal(w.row(t.id).slaActive, false);
+    const last = res.body.timeline.at(-1);
+    assert.deepEqual([last.type, last.actor.id], ['closedByLead', w.lead.user.id]);
+
+    // The requester sees that IT closed it, not the lead's note.
+    const mine = (await w.ticket(w.gen, t.id)).ticket;
+    assert.equal(mine.closeMode, 'lead');
+    assert.equal(mine.closeReason, null);
+    assert.equal(
+      (await w.ticket(w.agent, t.id)).ticket.closeReason,
+      'The requester is not responding.'
+    );
+
+    const audit = w.repo.auditLogs.filter(
+      (a) => a.action === 'ticket.close_without_confirmation'
+    );
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].actorId, w.lead.user.id);
+    assert.equal(audit[0].entity, 'Ticket');
+    assert.equal(audit[0].entityId, t.id);
+    assert.equal(audit[0].companyId, w.company('GEN').id);
+    assert.match(audit[0].after, /The requester is not responding\./);
+
+    assert.equal((await close(w.lead, { reason: 'Again.' })).body.error.code, 'ticket_closed');
+
+    // A ticket waiting on its requester can be closed this way too.
+    const quiet = await w.raise(w.gen, { subject: 'Printer' });
+    w.give(quiet.id, w.agent);
+    await w.change(w.agent, quiet.id, { status: 'Pending' });
+    const pending = await w.lead.post(`/api/tickets/${quiet.id}/close`, {
+      reason: 'No answer.',
+    });
+    assert.equal(pending.body.ticket.closeMode, 'lead');
+  });
+
+  test('a reply from the requester reopens a resolved ticket without stopping the clock', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     w.give(t.id, w.agent);
@@ -919,17 +1121,13 @@ describe('the life of a ticket', () => {
     const reply = await w.say(w.gen, t.id, 'It happened again this morning.');
     assert.equal(reply.ticket.status, 'Open');
     assert.equal(reply.ticket.resolvedAt, null);
-    assert.equal(w.row(t.id).autoCloseAt, null);
-    // Sunday 13:00–17:00 and Monday 08:00–09:00 did not count.
-    assert.equal(reply.ticket.sla.pausedMinutes, 300);
+    // A resolved ticket is open and counts: no minutes were set aside.
+    assert.equal(reply.ticket.sla.pausedMinutes, 0);
     assert.equal(reply.ticket.sla.state, 'on_track');
     assert.deepEqual(types(reply).slice(-2), ['comment', 'reopened']);
-
-    w.at('2026-10-25', '09:00');
-    assert.equal(await w.app.locals.tickets.closeResolved(), 0);
   });
 
-  test('the requester may reopen for seven days after it was resolved, and no longer', async () => {
+  test('the requester may reopen a closed ticket for seven days after it was resolved, and no longer', async () => {
     const w = await world();
     const t = await w.raise(w.gen);
     w.give(t.id, w.agent);
@@ -937,9 +1135,10 @@ describe('the life of a ticket', () => {
     assert.equal(cannot.status, 409);
     assert.equal(cannot.body.error.code, 'not_resolved');
 
+    // Resolved on Sunday 11 October, confirmed on Monday the 12th at 09:00.
     await w.change(w.agent, t.id, { status: 'Resolved' });
-    w.at('2026-10-15', '09:00');
-    await w.app.locals.tickets.closeResolved();
+    w.at('2026-10-12', '09:00');
+    assert.equal((await w.gen.post(`/api/tickets/${t.id}/solved`, { rating: 3 })).status, 200);
     assert.equal(w.row(t.id).status, 'Closed');
 
     // Day six: still inside the window, though it has closed.
@@ -949,22 +1148,28 @@ describe('the life of a ticket', () => {
     assert.equal(reopened.status, 200, JSON.stringify(reopened.body));
     assert.equal(reopened.body.ticket.status, 'Open');
     assert.equal(reopened.body.ticket.closedAt, null);
-    assert.equal(reopened.body.ticket.sla.state, 'on_track');
+    assert.notEqual(
+      reopened.body.ticket.sla.state,
+      'breached',
+      'the closed days were set aside'
+    );
     assert.equal(reopened.body.timeline.at(-1).type, 'reopened');
-    // The clock stood still from Sunday 11:00 to Thursday 17:00: 6 + 9 × 4 hours.
-    assert.equal(reopened.body.ticket.sla.pausedMinutes, 2520);
+    // The clock stood still while it was closed: Monday 09:00 to 17:00, then Tuesday to Thursday.
+    assert.equal(reopened.body.ticket.sla.pausedMinutes, 480 + 3 * 540);
+    assert.equal(reopened.body.ticket.rating.stars, 3, 'the rating stays');
 
-    // Resolved again, and this time left for eight days.
+    // Resolved again, and this time left for eight days: past the window the requester
+    // can still answer "no" but not reopen by hand; the team is not bound by it.
     await w.change(w.agent, t.id, { status: 'Resolved' });
     w.at('2026-10-25', '11:01');
     const detail = await w.ticket(w.gen, t.id);
     assert.equal(detail.ticket.can.reopen, false);
+    assert.equal(detail.ticket.can.notSolved, true);
     const tooLate = await w.gen.post(`/api/tickets/${t.id}/reopen`);
     assert.equal(tooLate.status, 409);
     assert.equal(tooLate.body.error.code, 'reopen_window_closed');
     assert.equal(w.row(t.id).status, 'Resolved');
 
-    // The team is not bound by the window.
     assert.equal((await w.ticket(w.agent, t.id)).ticket.can.reopen, true);
     const byAgent = await w.change(w.agent, t.id, { status: 'Open' });
     assert.equal(byAgent.status, 'Open');
@@ -1114,7 +1319,7 @@ describe('the agent queue', () => {
 
     // Paused and finished tickets go below the running ones.
     for (const p of [w.p1, w.p2]) w.give(p.id, w.agent);
-    await w.change(w.agent, w.p1.id, { status: 'WaitingOnRequester' });
+    await w.change(w.agent, w.p1.id, { status: 'Pending' });
     assert.deepEqual(await w.queue(), [
       'Mailbox full',
       'Slow laptop',
@@ -1122,12 +1327,18 @@ describe('the agent queue', () => {
       'Site network down',
     ]);
     await w.change(w.agent, w.p2.id, { status: 'Resolved' });
-    assert.deepEqual(await w.queue(), ['Slow laptop', 'Second monitor', 'Site network down']);
+    // A resolved ticket is still open, with its clock running: it keeps its place.
+    assert.deepEqual(await w.queue(), [
+      'Mailbox full',
+      'Slow laptop',
+      'Second monitor',
+      'Site network down',
+    ]);
     assert.deepEqual(await w.queue('?status=Resolved'), ['Mailbox full']);
     assert.equal((await w.queue('?status=all')).length, 4);
 
     const paged = (await w.agent.get('/api/tickets/queue?pageSize=2&page=2')).body;
-    assert.deepEqual([paged.total, paged.items.length, paged.page], [3, 1, 2]);
+    assert.deepEqual([paged.total, paged.items.length, paged.page], [4, 2, 2]);
   });
 
   test('filters: priority, assignee, company, location, category, search', async () => {
@@ -1197,16 +1408,25 @@ describe('the agent queue', () => {
     assert.deepEqual(await w.queue('?sla=at_risk'), ['Site network down', 'Mailbox full']);
 
     // A paused ticket is in none of the three.
-    await w.change(w.agent, w.p2.id, { status: 'WaitingOnRequester' });
+    await w.change(w.agent, w.p2.id, { status: 'Pending' });
     assert.deepEqual(await w.queue('?sla=at_risk'), ['Site network down']);
     assert.equal((await w.agent.get('/api/tickets/counts')).body.queue.breachingSoon, 1);
 
-    // The requester's own count is only what is still open for them.
+    // The requester's own count is what is still open for them: a resolved ticket
+    // is open until they confirm it.
     assert.equal((await w.gen.get('/api/tickets/counts')).body.mine, 1);
     await w.change(w.agent, w.p3.id, { status: 'Resolved' });
+    assert.deepEqual((await w.gen.get('/api/tickets/counts')).body, { mine: 1, queue: null });
+    assert.equal((await w.gen.get('/api/tickets/mine')).body.total, 1);
+    assert.equal((await w.gen.get('/api/tickets/mine?status=attention')).body.total, 1);
+    assert.equal((await w.gen.get('/api/tickets/mine?status=Resolved')).body.total, 1);
+    assert.equal(
+      (await w.gen.post(`/api/tickets/${w.p3.id}/solved`, { rating: 5 })).status,
+      200
+    );
     assert.deepEqual((await w.gen.get('/api/tickets/counts')).body, { mine: 0, queue: null });
     assert.equal((await w.gen.get('/api/tickets/mine')).body.total, 0);
-    assert.equal((await w.gen.get('/api/tickets/mine?status=Resolved')).body.total, 1);
+    assert.equal((await w.gen.get('/api/tickets/mine?status=Closed')).body.total, 1);
   });
 
   test('canned replies: the team’s active ones, for the team', async () => {

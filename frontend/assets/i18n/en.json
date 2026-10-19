@@ -161,9 +161,10 @@
     "status": {
       "New": "New",
       "Open": "Open",
-      "WaitingOnRequester": "Waiting on you",
+      "WaitingOnRequester": "Pending",
       "Resolved": "Resolved",
-      "Closed": "Closed"
+      "Closed": "Closed",
+      "Pending": "Pending"
     },
     "priority": {
       "P1": "Urgent",
@@ -245,6 +246,22 @@
         "slaBreached": {
           "title": "{number} has passed its {phase} deadline",
           "detail": "{subject}"
+        },
+        "resolved": {
+          "title": "{number}: is your problem solved?",
+          "detail": "{subject}. IT marked it as resolved. Tell us if it is fixed."
+        },
+        "confirmReminder": {
+          "title": "Reminder: is {number} solved?",
+          "detail": "{subject}. IT is waiting for your answer."
+        },
+        "notSolved": {
+          "title": "{actor}: {number} is still a problem",
+          "detail": "{excerpt}"
+        },
+        "confirmed": {
+          "title": "{actor} confirmed {number} is solved",
+          "detail": "Rating: {stars} of 5. {subject}"
         }
       },
       "booking": {
@@ -319,7 +336,7 @@
     "waiting": {
       "title": "Waiting on you",
       "emptyTitle": "Nothing is waiting on you",
-      "emptyText": "Tickets that need your reply will appear here."
+      "emptyText": "Tickets that need your reply, or your word that they are solved, will appear here."
     },
     "news": {
       "title": "Latest news",
@@ -1179,6 +1196,9 @@
           "create": "Canned reply added",
           "update": "Canned reply changed"
         }
+      },
+      "ticket": {
+        "close_without_confirmation": "Ticket closed without the requester’s confirmation"
       }
     },
     "entity": {
@@ -1200,7 +1220,8 @@
       "SlaPolicy": "SLA targets",
       "BusinessCalendar": "Support hours",
       "Holiday": "Public holiday",
-      "CannedReply": "Canned reply"
+      "CannedReply": "Canned reply",
+      "Ticket": "Ticket"
     },
     "field": {
       "code": "Code",
@@ -1275,7 +1296,11 @@
       "P1": "Urgent (P1)",
       "P2": "High (P2)",
       "P3": "Normal (P3)",
-      "P4": "Low (P4)"
+      "P4": "Low (P4)",
+      "closeMode": "How it was closed",
+      "closeReason": "Reason for closing",
+      "closedAt": "Closed at",
+      "resolvedAt": "Resolved at"
     }
   },
   "ann": {
@@ -1746,14 +1771,12 @@
       "phone": "Phone call",
       "walkIn": "Walk-in"
     },
-    "status": {
-      "waitingStaff": "Waiting on requester"
-    },
     "expect": {
       "reply": "Reply expected by",
       "update": "Update expected by",
       "waitingOnYou": "Waiting for your reply",
-      "resolvedOn": "Resolved on"
+      "resolvedOn": "Resolved on",
+      "closedOn": "Closed on"
     },
     "sla": {
       "on_track": "On track",
@@ -1856,7 +1879,10 @@
       "attachment": "{name} added a file",
       "reopened": "{name} reopened the ticket",
       "autoClosed": "Closed automatically after no reply",
-      "unassignedPlain": "Unassigned"
+      "unassignedPlain": "Unassigned",
+      "confirmed": "{name} confirmed that it is solved",
+      "notSolved": "{name} said it is still a problem",
+      "closedByLead": "{name} closed it without the requester’s confirmation"
     },
     "entry": {
       "internal": "Internal note",
@@ -1865,7 +1891,7 @@
     },
     "reopen": {
       "title": {
-        "Resolved": "This ticket is marked as solved",
+        "Resolved": "Waiting for the requester’s answer",
         "Closed": "This ticket is closed"
       },
       "text": "If it is not fixed, you can reopen it until {until} ({days} days after it was solved).",
@@ -1876,7 +1902,8 @@
       "new": "Open a new ticket",
       "done": "Ticket reopened",
       "failed": "The ticket could not be reopened",
-      "notYoursText": "Only the agent this ticket is assigned to, or a Lead, can reopen it."
+      "notYoursText": "Only the agent this ticket is assigned to, or a Lead, can reopen it.",
+      "staffResolvedText": "The requester has been asked whether it is solved. The ticket stays open and its SLA clock keeps running. Reopen it if the problem came back."
     },
     "reply": {
       "title": "Add a reply",
@@ -1918,7 +1945,7 @@
     "error": {
       "closed": "This ticket is closed.",
       "reopenWindow": "The time to reopen this ticket has passed.",
-      "notResolved": "This ticket is not solved yet.",
+      "notResolved": "This ticket is not resolved, so there is nothing to do here.",
       "tooMany": "A message can carry up to 5 files.",
       "unsupportedFile": "This kind of file is not accepted. Photos, PDF, Office files and text are.",
       "tooLarge": "The file is too large.",
@@ -1934,7 +1961,10 @@
       "dateTaken": "There is already a holiday on that date.",
       "unknownCompany": "That company does not exist.",
       "unknownUser": "That person is not in the directory.",
-      "lastLead": "The IT team needs at least one active lead. Make someone else a lead first."
+      "lastLead": "The IT team needs at least one active lead. Make someone else a lead first.",
+      "ratingRequired": "Choose a rating from 1 to 5 stars.",
+      "alreadyRated": "This ticket has already been rated, and a rating cannot change.",
+      "ownWork": "You cannot confirm or rate a ticket you worked on yourself."
     },
     "queue": {
       "title": "Queue",
@@ -2073,6 +2103,59 @@
     "scan": {
       "pending": "Being checked",
       "infected": "Blocked"
+    },
+    "confirm": {
+      "title": "Is your problem solved?",
+      "text": "IT marked this ticket as resolved on {when}. Tell us whether it is really fixed. The ticket stays open until you answer.",
+      "yes": "Yes, solved",
+      "no": "No, still a problem",
+      "rateTitle": "How was the support?",
+      "rateLegend": "Your rating (required)",
+      "rateHelp": "1 star is poor, 5 stars is excellent.",
+      "ratingError": "Choose a rating from 1 to 5 stars.",
+      "feedback": "Anything to add? (optional)",
+      "feedbackHelp": "Up to {max} characters.",
+      "submitYes": "Close the ticket",
+      "back": "Back",
+      "reasonTitle": "What is still wrong?",
+      "reasonLabel": "What is still wrong?",
+      "reasonHelp": "A short reason. The ticket goes back to IT.",
+      "reasonError": "Tell IT what is still wrong.",
+      "submitNo": "Reopen the ticket",
+      "doneYes": "Thank you. The ticket is closed.",
+      "doneNo": "The ticket is back with IT.",
+      "failed": "Your answer was not sent"
+    },
+    "rating": {
+      "title": "Rating",
+      "none": "Not rated",
+      "value": "{n} of 5 stars",
+      "option": "{n} of 5 stars",
+      "feedback": "Requester’s words",
+      "word": {
+        "1": "Poor",
+        "2": "Fair",
+        "3": "Good",
+        "4": "Very good",
+        "5": "Excellent"
+      }
+    },
+    "closed": {
+      "confirmedYou": "You confirmed that this ticket is solved.",
+      "confirmedStaff": "Closed with the requester’s confirmation.",
+      "leadYou": "IT closed this ticket without your confirmation.",
+      "leadStaff": "Closed without the requester’s confirmation. Reason: {reason}"
+    },
+    "close": {
+      "action": "Close without confirmation",
+      "title": "Close without the requester’s confirmation?",
+      "text": "Use this when the requester does not answer. The reason stays on the ticket and in the audit log, and the reports count the ticket apart.",
+      "reasonLabel": "Reason",
+      "reasonHelp": "For example: the requester is not responding.",
+      "reasonError": "Write the reason for closing it.",
+      "submit": "Close the ticket",
+      "done": "Ticket closed",
+      "failed": "The ticket was not closed"
     }
   },
   "email": {
@@ -2160,7 +2243,23 @@
       "byLocation": "Location",
       "tickets": "Tickets",
       "none": "No tickets in these dates.",
-      "noneSet": "Not given"
+      "noneSet": "Not given",
+      "satisfaction": "Satisfaction",
+      "satisfactionNote": "Tickets closed {from} to {to}. Only tickets the requester confirmed carry a rating.",
+      "satisfied": "Satisfied (4–5 stars)",
+      "avgRating": "Average rating",
+      "rated": "Rated",
+      "confirmed": "Confirmed by the requester",
+      "closedByLead": "Closed by a lead without confirmation",
+      "byAgent": "By agent",
+      "bySatisfactionCategory": "By category",
+      "agent": "Agent",
+      "colConfirmed": "Confirmed",
+      "colLead": "By a lead",
+      "colSatisfied": "Satisfied",
+      "colAverage": "Average",
+      "unassignedAgent": "No agent",
+      "noClosed": "No ticket was closed in these dates."
     }
   }
 }

@@ -12,12 +12,19 @@
  *
  * The life of a ticket:
  *   New → Open              an agent takes it, is assigned it, or answers
- *   Open ⇄ WaitingOnRequester   the clock stops while the requester is asked
+ *   Open ⇄ Pending          the clock stops while the requester is asked
  *                           something; their reply sets it running again
- *   → Resolved              closes itself three working days later unless the
- *                           requester replies (which reopens it)
- *   → Closed                the requester may still reopen for seven days
- *                           after it was resolved
+ *   → Resolved              IT says it is fixed and asks the requester. The
+ *                           ticket stays open and its clock keeps running; the
+ *                           requester is reminded every 24 hours. Nothing
+ *                           closes it on a timer (D143)
+ *   Resolved → Closed       the requester confirms and rates it ("solved"), or
+ *                           a Lead closes it without confirmation, with a
+ *                           reason. Only now does the resolution clock stop
+ *   Resolved → Open         the requester says it is not solved (a reason is
+ *                           required); the assignee is told
+ *   Closed → Open           the requester may still reopen for seven days
+ *                           after it was resolved; a rating, once given, stays
  *
  * The SLA clock (lib/sla.js) counts the team's business minutes. Both due
  * dates are "target plus paused minutes, from creation", worked out again
@@ -30,13 +37,14 @@
  *
  * People are told through lib/notify.js after a change is saved, never before
  * and never in a way that can fail it: the new ticket, a first assignment, a
- * public reply, a new status, and the SLA alerts of `watchSla`. An internal
+ * public reply, a new status, "is your problem solved?" and its reminders, a
+ * "not solved", a confirmation, and the SLA alerts of `watchSla`. An internal
  * note tells nobody. The person who did the thing is not told of it.
  *
  * Errors a screen can act on carry a stable code (docs/API.md):
  *   unknown_category, unknown_location, unknown_requester, unknown_assignee,
- *   ticket_closed, not_resolved, reopen_window_closed, lead_only,
- *   unsupported_file, empty_upload, file_too_large, too_many_attachments.
+ *   ticket_closed, not_resolved, reopen_window_closed, lead_only, own_work,
+ *   rating_required, already_rated, unsupported_file, empty_upload, file_too_large, too_many_attachments.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -45,6 +53,7 @@ import { ATTACHMENT_EXTENSIONS, detectAttachment } from '../../lib/file-type.js'
 import { logger } from '../../lib/logger.js';
 import { bothLanguages } from '../../lib/messages.js';
 import { silentNotify } from '../../lib/notify.js';
+import { writeAudit } from '../../lib/audit.js';
 import { requireUser } from '../../lib/scope.js';
 import {
   DEFAULT_CALENDAR,
@@ -56,11 +65,11 @@ import {
 import { HttpError } from '../../middleware/errors.js';
 import {
   ACTIVE_STATUSES,
-  AUTO_CLOSE_WORKING_DAYS,
   DEFAULT_SLA,
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
   PRIORITIES,
+  REMINDER_HOURS,
   REOPEN_DAYS,
   RUNNING_STATUSES,
   SOURCES,
@@ -79,6 +88,7 @@ const refuse = (status, code, message, details) =>
   new HttpError(status, code, message, details);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const REMINDER_MS = REMINDER_HOURS * 60 * 60 * 1000;
 const unique = (list) => [...new Set(list.filter(Boolean))];
 
 const person = (p) =>
@@ -88,8 +98,15 @@ const named = (row) => (row ? { id: row.id, nameEn: row.nameEn, nameAr: row.name
 /** Where a notification about a ticket leads: the Helpdesk for IT, the portal otherwise. */
 const ticketLink = (id, inHelpdesk) => `${inHelpdesk ? '/helpdesk' : ''}#tickets/${id}`;
 
+/** `attention` is what waits on the requester: Pending, and Resolved awaiting their word. */
 const statusesOf = (filter) =>
-  filter === 'all' ? undefined : filter === 'active' ? ACTIVE_STATUSES : [filter];
+  filter === 'all'
+    ? undefined
+    : filter === 'active'
+      ? ACTIVE_STATUSES
+      : filter === 'attention'
+        ? ['Pending', 'Resolved']
+        : [filter];
 
 /**
  * @param {object} deps
@@ -189,27 +206,31 @@ export function createTicketService({
    * @param {string} key  a template in notification-text.js
    * @param {object} ticket
    * @param {{ actorId?: string | null, extra?: object }} [options]
+   * @returns {Promise<number>} how many deliveries were made (in-app rows and emails)
    */
   async function tell(userIds, key, ticket, { actorId = null, extra = {} } = {}) {
+    let delivered = 0;
     try {
       const to = unique(userIds).filter((id) => id !== actorId);
-      if (to.length === 0) return;
+      if (to.length === 0) return 0;
       // IT team members open the ticket in the Helpdesk, everyone else in the
       // portal (D135).
       const it = await itMemberIds(to);
       for (const inHelpdesk of [false, true]) {
         const group = to.filter((id) => it.has(id) === inHelpdesk);
         if (group.length === 0) continue;
-        await notify(group, key, {
+        const sent = await notify(group, key, {
           link: ticketLink(ticket.id, inHelpdesk),
           number: ticket.number,
           subject: ticket.subject,
           ...extra,
         });
+        delivered += (sent?.inApp ?? 0) + (sent?.email ?? 0);
       }
     } catch (err) {
       log.warn({ err, ticketId: ticket.id, key }, 'ticket notification failed');
     }
+    return delivered;
   }
 
   /** The requester is told of a new status, unless they set it themselves. */
@@ -218,6 +239,15 @@ export function createTicketService({
       actorId,
       extra: { status: bothLanguages(`ticket.status.${status}`) },
     });
+
+  /** "Is your problem solved?": IT has set the ticket to Resolved. */
+  const tellResolved = (ticket, actorId) =>
+    tell([ticket.requesterId], 'ticket.resolved', ticket, { actorId });
+
+  /** Who has the ticket: its assignee, or the team's leads while nobody does. */
+  async function holdersOf(ticket) {
+    return ticket.assigneeId ? [ticket.assigneeId] : leadIds(ticket.teamId);
+  }
 
   /* ---------------------------------------------------------------- the SLA */
 
@@ -255,30 +285,34 @@ export function createTicketService({
 
   /**
    * What moving to another status does to the clock and the closing dates.
-   * A pause runs from the moment the ticket stops being New or Open; its
-   * business minutes are added when the ticket moves on. Closing an already
-   * resolved ticket touches nothing: its result against the target is settled.
+   * A pause runs from the moment the ticket becomes Pending or Closed; its
+   * business minutes are added when the ticket moves on. A Resolved ticket is
+   * still open and its clock runs.
    */
   function transition(ticket, to, at, schedule) {
-    const out = { status: to };
-    if (!(ticket.status === 'Resolved' && to === 'Closed')) {
-      const waited = ticket.slaPausedAt ? schedule.between(ticket.slaPausedAt, at) : 0;
-      out.slaPausedMinutes = ticket.slaPausedMinutes + waited;
-      out.slaPausedAt = to === 'Open' ? null : at;
-    }
-    if (to === 'Open' || to === 'WaitingOnRequester') {
-      Object.assign(out, { resolvedAt: null, closedAt: null, autoCloseAt: null });
-    } else if (to === 'Resolved') {
+    const waited = ticket.slaPausedAt ? schedule.between(ticket.slaPausedAt, at) : 0;
+    const out = {
+      status: to,
+      slaPausedMinutes: ticket.slaPausedMinutes + waited,
+      // The clock stands still while Pending and once the ticket is closed.
+      slaPausedAt: RUNNING_STATUSES.includes(to) ? null : at,
+    };
+    if (to === 'Resolved') {
       Object.assign(out, {
         resolvedAt: at,
         closedAt: null,
-        autoCloseAt: schedule.add(at, AUTO_CLOSE_WORKING_DAYS * schedule.dayMinutes),
+        closeMode: null,
+        closeReason: null,
       });
     } else if (to === 'Closed') {
+      Object.assign(out, { resolvedAt: ticket.resolvedAt ?? at, closedAt: at });
+    } else {
+      // Open, Pending or New: the ticket is not done. Whatever rating it has stays.
       Object.assign(out, {
-        resolvedAt: ticket.resolvedAt ?? at,
-        closedAt: at,
-        autoCloseAt: null,
+        resolvedAt: null,
+        closedAt: null,
+        closeMode: null,
+        closeReason: null,
       });
     }
     return out;
@@ -298,7 +332,7 @@ export function createTicketService({
       Object.assign(patch, transition(ticket, changes.status, at, schedule));
     }
     const next = { ...ticket, ...patch };
-    // A resolved ticket that only closes keeps the dates it was judged by.
+    // A resolved ticket that only closes keeps the dates it is judged by.
     if (!(ticket.status === 'Resolved' && next.status === 'Closed')) {
       const policy = await policyFor(ticket.teamId, next.priority);
       Object.assign(patch, slaFields(next, policy, schedule));
@@ -358,6 +392,7 @@ export function createTicketService({
       assignee: person(refs.people.get(t.assigneeId)),
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
+      closeMode: t.closeMode ?? null,
       firstRespondedAt: t.firstRespondedAt,
       resolvedAt: t.resolvedAt,
       closedAt: t.closedAt,
@@ -391,9 +426,20 @@ export function createTicketService({
   function ticketView({ viewer, staffRole, isRequester }, t, refs, at) {
     const closed = t.status === 'Closed';
     const done = closed || t.status === 'Resolved';
+    // The requester decides when it is solved; the agent who worked it cannot
+    // answer for them or rate themselves (D143).
+    const ownWork = Boolean(staffRole) && t.assigneeId === viewer.user.id;
+    const asked = isRequester && t.status === 'Resolved' && !ownWork;
     return {
       ...summaryView(viewer, t, refs, at),
       description: t.description,
+      /** The requester's stars and words, once given; never changed. */
+      rating:
+        t.rating == null
+          ? null
+          : { stars: t.rating, feedback: t.ratingFeedback ?? null, at: t.ratedAt ?? null },
+      /** A Lead's reason for closing without confirmation: for the team only. */
+      closeReason: staffRole ? (t.closeReason ?? null) : null,
       assetTag: t.assetTag,
       createdBy: person(refs.people.get(t.createdById)),
       /** For the team only: the language a canned reply is written in. */
@@ -405,10 +451,19 @@ export function createTicketService({
         comment: !closed && (!staffRole || isRequester || works(staffRole, t, viewer)),
         internalNote: Boolean(staffRole),
         attach: !closed,
+        // A requester answers a Resolved ticket with "solved" or "not solved";
+        // reopening is for a Closed one (inside the window) and for the team.
         reopen:
           done &&
           ((Boolean(staffRole) && works(staffRole, t, viewer)) ||
-            (isRequester && withinReopenWindow(t, at))),
+            (isRequester && closed && withinReopenWindow(t, at))),
+        /** "Yes, solved" (with a rating the first time) and "No, still a problem". */
+        confirm: asked,
+        needsRating: asked && t.rating == null,
+        notSolved: asked,
+        /** A Lead closes a ticket whose requester does not answer. */
+        closeWithoutConfirmation:
+          isLead(staffRole) && (t.status === 'Resolved' || t.status === 'Pending'),
         /** The staff view of the ticket (SLA, codes, the team's panels). */
         manage: Boolean(staffRole),
         /** Status, priority and category: the assignee or a Lead (D122). */
@@ -508,13 +563,13 @@ export function createTicketService({
       const row = Object.keys(patch).length
         ? await tx.update('ticket', ticket.id, patch)
         : ticket;
-      for (const [i, event] of events.entries()) {
+      for (const [i, { withComment, ...event }] of events.entries()) {
         await tx.insert('event', {
           ticketId: ticket.id,
           actorId,
           fromValue: null,
           toValue: null,
-          commentId: event.type === 'comment' ? commentId : null,
+          commentId: event.type === 'comment' || withComment ? commentId : null,
           isInternal: false,
           ...event,
           // Kept in the order they happened, even within one request.
@@ -626,7 +681,11 @@ export function createTicketService({
       closedAt: null,
       slaPausedMinutes: 0,
       slaPausedAt: null,
-      autoCloseAt: null,
+      closeMode: null,
+      closeReason: null,
+      rating: null,
+      ratingFeedback: null,
+      ratedAt: null,
       assetTag: body.assetTag || null,
       createdAt: at,
     };
@@ -744,6 +803,174 @@ export function createTicketService({
     return detail(ctx, row);
   }
 
+  /* ---------------------------------- the requester decides when it is solved */
+
+  /**
+   * The requester's own action on a Resolved ticket. Anyone else who may read
+   * the ticket is refused (403), and the agent who worked it cannot answer for
+   * the requester when they happen to be both (D143).
+   */
+  async function requesterContext(req, id) {
+    const ctx = await loadTicket(req, id);
+    const { ticket, viewer, staffRole, isRequester } = ctx;
+    if (!isRequester) throw forbidden();
+    if (staffRole && ticket.assigneeId === viewer.user.id) {
+      throw refuse(
+        403,
+        'own_work',
+        'You cannot confirm or rate a ticket you worked on yourself.'
+      );
+    }
+    if (ticket.status !== 'Resolved') {
+      throw refuse(409, 'not_resolved', 'IT has not marked this ticket as solved.');
+    }
+    return ctx;
+  }
+
+  /** Aborts the transaction when the ticket is no longer Resolved (a double click). */
+  const stillResolved = (ticketId) => async (tx) => {
+    const fresh = await tx.get('ticket', ticketId);
+    if (fresh?.status !== 'Resolved') {
+      throw refuse(409, 'not_resolved', 'IT has not marked this ticket as solved.');
+    }
+    return null;
+  };
+
+  /** "Yes, solved": a rating (the first time), then Closed. The resolution clock stops. */
+  async function confirm(req, id, { rating, feedback }) {
+    const ctx = await requesterContext(req, id);
+    const { ticket, viewer } = ctx;
+    const at = now();
+    const rated = ticket.rating != null;
+    if (rated && rating !== undefined) {
+      throw refuse(
+        409,
+        'already_rated',
+        'This ticket has been rated and the rating cannot change.'
+      );
+    }
+    if (!rated && rating === undefined) {
+      throw refuse(400, 'rating_required', 'Rate the support from 1 to 5 stars.');
+    }
+    const patch = {
+      ...(await recalculate(ticket, { status: 'Closed' }, at)),
+      closeMode: 'confirmed',
+      closeReason: null,
+      ...(rated ? {} : { rating, ratingFeedback: feedback || null, ratedAt: at }),
+    };
+    const row = await save(
+      ticket,
+      patch,
+      [{ type: 'confirmed', fromValue: 'Resolved', toValue: 'Closed' }],
+      viewer.user.id,
+      at,
+      stillResolved(ticket.id)
+    );
+    await tell(await holdersOf(row), 'ticket.confirmed', row, {
+      actorId: viewer.user.id,
+      extra: {
+        actor: await nameOf(viewer.user.id),
+        stars: String(row.rating ?? ''),
+      },
+    });
+    return detail(ctx, row);
+  }
+
+  /** "No, still a problem": the reason joins the conversation and the ticket reopens. */
+  async function notSolved(req, id, { reason }) {
+    const ctx = await requesterContext(req, id);
+    const { ticket, viewer } = ctx;
+    const at = now();
+    const patch = await recalculate(ticket, { status: 'Open' }, at);
+    const row = await save(
+      ticket,
+      patch,
+      [
+        { type: 'comment', isInternal: false },
+        { type: 'notSolved', fromValue: 'Resolved', toValue: 'Open', withComment: true },
+      ],
+      viewer.user.id,
+      at,
+      async (tx) => {
+        await stillResolved(ticket.id)(tx);
+        const made = await tx.insert('comment', {
+          ticketId: ticket.id,
+          authorId: viewer.user.id,
+          body: reason,
+          isInternal: false,
+          createdAt: at,
+        });
+        return made.id;
+      }
+    );
+    await tell(await holdersOf(row), 'ticket.notSolved', row, {
+      actorId: viewer.user.id,
+      extra: {
+        actor: await nameOf(viewer.user.id),
+        excerpt: reason.length > 200 ? `${reason.slice(0, 197)}…` : reason,
+      },
+    });
+    return detail(ctx, row);
+  }
+
+  /**
+   * A Lead closes a ticket the requester does not answer, with a reason. It is
+   * kept on the ticket, written to the audit log, and counted apart from the
+   * confirmed ones in the reports. An agent cannot (D143).
+   */
+  async function closeWithoutConfirmation(req, id, { reason }) {
+    const ctx = await loadTicket(req, id);
+    const { ticket, staffRole, viewer } = ctx;
+    if (!staffRole) throw forbidden();
+    if (!isLead(staffRole)) {
+      throw refuse(
+        403,
+        'lead_only',
+        'Only a team lead can close a ticket without confirmation.'
+      );
+    }
+    if (ticket.status !== 'Resolved' && ticket.status !== 'Pending') {
+      throw refuse(
+        409,
+        ticket.status === 'Closed' ? 'ticket_closed' : 'not_resolved',
+        'Only a resolved or pending ticket can be closed without confirmation.'
+      );
+    }
+    const at = now();
+    const patch = {
+      ...(await recalculate(ticket, { status: 'Closed' }, at)),
+      closeMode: 'lead',
+      closeReason: reason,
+    };
+    const row = await save(
+      ticket,
+      patch,
+      [{ type: 'closedByLead', fromValue: ticket.status, toValue: 'Closed' }],
+      viewer.user.id,
+      at,
+      async (tx) => {
+        const fresh = await tx.get('ticket', ticket.id);
+        if (fresh?.status !== 'Resolved' && fresh?.status !== 'Pending') {
+          throw refuse(409, 'not_resolved', 'This ticket changed. Reload it.');
+        }
+        await writeAudit(
+          req,
+          'ticket.close_without_confirmation',
+          'Ticket',
+          ticket,
+          { ...ticket, ...patch },
+          {
+            tx,
+            companyId: ticket.companyId,
+          }
+        );
+        return null;
+      }
+    );
+    await tellStatus(row, 'Closed', viewer.user.id);
+    return detail(ctx, row);
+  }
+
   async function comment(req, id, { body, isInternal }) {
     const ctx = await loadTicket(req, id);
     const { ticket, staffRole, isRequester, viewer } = ctx;
@@ -763,7 +990,7 @@ export function createTicketService({
     if (!isInternal && isRequester) {
       // The requester has answered: the clock runs again, and a resolved
       // ticket is not resolved after all.
-      if (ticket.status === 'WaitingOnRequester') {
+      if (ticket.status === 'Pending') {
         patch = await recalculate(ticket, { status: 'Open' }, at);
         events.push(statusEvent(ticket.status, 'Open'));
       } else if (ticket.status === 'Resolved') {
@@ -1078,7 +1305,8 @@ export function createTicketService({
         extra: { actor: await nameOf(viewer.user.id) },
       });
     }
-    if (changes.status) await tellStatus(row, changes.status, viewer.user.id);
+    if (changes.status === 'Resolved') await tellResolved(row, viewer.user.id);
+    else if (changes.status) await tellStatus(row, changes.status, viewer.user.id);
     return detail(ctx, row);
   }
 
@@ -1110,53 +1338,35 @@ export function createTicketService({
   /* ---------------------------------------------------------------- the job */
 
   /**
-   * Closes every resolved ticket whose three working days are up. Nobody is
-   * acting, so the event has no actor. Returns how many it closed.
+   * Reminds the requester of every Resolved ticket that is still waiting for
+   * their word, once for each 24 hours it has waited (bell and email). The key
+   * carries the ticket, the moment it was resolved and the count, so a run
+   * that overlaps another, or one that repeats, tells nobody twice; a ticket
+   * resolved again after a reopen starts counting afresh. Nothing is ever
+   * closed here. Returns how many reminders were delivered.
    */
-  async function closeResolved() {
+  async function remindResolved() {
     const at = now();
+    let reminded = 0;
     const { items } = await store.listTickets({
       statuses: ['Resolved'],
-      autoCloseBy: at,
+      resolvedBefore: new Date(at.getTime() - REMINDER_MS),
       order: 'recent',
       take: 500,
     });
-    let closed = 0;
-    for (const item of items) {
+    for (const ticket of items) {
       try {
-        const done = await store.transaction(async (tx) => {
-          // Read again inside the transaction: the requester may just have replied.
-          const ticket = await tx.get('ticket', item.id);
-          if (ticket?.status !== 'Resolved' || !ticket.autoCloseAt || ticket.autoCloseAt > at) {
-            return false;
-          }
-          await tx.update('ticket', ticket.id, {
-            status: 'Closed',
-            closedAt: at,
-            autoCloseAt: null,
-            slaActive: false,
-          });
-          await tx.insert('event', {
-            ticketId: ticket.id,
-            actorId: null,
-            type: 'autoClosed',
-            fromValue: 'Resolved',
-            toValue: 'Closed',
-            commentId: null,
-            isInternal: false,
-            createdAt: at,
-          });
-          return true;
+        const waits = Math.floor((at.getTime() - ticket.resolvedAt.getTime()) / REMINDER_MS);
+        if (waits < 1) continue;
+        const sent = await tell([ticket.requesterId], 'ticket.confirmReminder', ticket, {
+          extra: { dedupeKey: `confirm:${ticket.id}:${ticket.resolvedAt.getTime()}:${waits}` },
         });
-        if (done) {
-          closed += 1;
-          await tellStatus(item, 'Closed', null);
-        }
+        if (sent > 0) reminded += 1;
       } catch (err) {
-        log.warn({ err, ticketId: item.id }, 'ticket auto-close failed');
+        log.warn({ err, ticketId: ticket.id }, 'resolved-ticket reminder failed');
       }
     }
-    return closed;
+    return reminded;
   }
 
   /* -------------------------------------------------------- the SLA watch */
@@ -1218,7 +1428,10 @@ export function createTicketService({
     queueOptions,
     update,
     cannedReplies,
-    closeResolved,
+    confirm,
+    notSolved,
+    closeWithoutConfirmation,
+    remindResolved,
     watchSla,
     /** For the Helpdesk's reports (reports.js): the reader's team scopes, or 403. */
     staffScopes: async (req) => scopesOf(await staffViewer(req)),

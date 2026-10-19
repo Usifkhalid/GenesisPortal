@@ -14,6 +14,7 @@
 import {
   LANGUAGES,
   assignTicket,
+  closeTicketAsLead,
   csrfHeaders,
   expect as strictExpect,
   expectLanguage,
@@ -104,7 +105,7 @@ for (const lang of LANGUAGES) {
       expect(asked.ok()).toBeTruthy();
       const paused = await page.request.patch(`/api/tickets/${ticket.id}`, {
         headers,
-        data: { status: 'WaitingOnRequester' },
+        data: { status: 'Pending' },
       });
       expect(paused.ok(), 'the agent sets it to waiting').toBeTruthy();
 
@@ -113,18 +114,12 @@ for (const lang of LANGUAGES) {
       await signIn(page, { company: 'MSR', role: 'User', lang });
       const mine = page.locator('[data-card="waiting"] .record', { hasText: subject });
       await expect(mine).toBeVisible();
-      await expect(mine).toContainText(t(lang, 'ticket.status.WaitingOnRequester'));
+      await expect(mine).toContainText(t(lang, 'ticket.status.Pending'));
       await shot(page, `tickets-home-waiting-${lang}`);
       await expectNoSidewaysScroll(page);
 
       // Closed again, so the next run's Home is not crowded by this one.
-      await signOut(page);
-      await signIn(page, { company: 'HLD', name: 'Sherif Awad', lang });
-      const closed = await page.request.patch(`/api/tickets/${ticket.id}`, {
-        headers: await csrfHeaders(page),
-        data: { status: 'Closed' },
-      });
-      expect(closed.ok()).toBeTruthy();
+      await closeTicketAsLead(page, ticket.id, lang);
     });
   });
 }

@@ -63,7 +63,9 @@ function ticketMatches(t, f) {
       (t.slaActive && at(t.nextRiskAt) <= at(f.now) && at(t.nextDueAt) > at(f.now))) &&
     (f.sla !== 'breached' || (t.slaActive && at(t.nextDueAt) <= at(f.now))) &&
     (!f.riskBy || (t.slaActive && at(t.nextRiskAt) <= at(f.riskBy))) &&
-    (!f.autoCloseBy || (t.autoCloseAt != null && at(t.autoCloseAt) <= at(f.autoCloseBy))) &&
+    (!f.resolvedBefore || (t.resolvedAt != null && at(t.resolvedAt) <= at(f.resolvedBefore))) &&
+    (!f.closedFrom || (t.closedAt != null && at(t.closedAt) >= at(f.closedFrom))) &&
+    (!f.closedBefore || (t.closedAt != null && at(t.closedAt) < at(f.closedBefore))) &&
     (!f.createdFrom || at(t.createdAt) >= at(f.createdFrom)) &&
     (!f.createdBefore || at(t.createdAt) < at(f.createdBefore))
   );

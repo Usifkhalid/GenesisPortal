@@ -9,7 +9,9 @@
  * have it reads it and writes internal notes only, D122); the agent works the
  * queue in the Helpdesk, leaves an internal note and answers with a canned
  * reply; the requester sees the answer in the portal but not the note; the
- * agent resolves it and the requester reopens it.
+ * agent resolves it and the requester says it is not solved (a reason is
+ * required, the ticket reopens); it is resolved again and the requester says
+ * yes with a keyboard-operated star rating, which closes it (D143).
  *
  * Then the split itself (D135): the IT team has the Helpdesk and no portal;
  * the Lead keeps the IT settings; a CompanyAdmin and Nadia (HoldingAdmin)
@@ -246,36 +248,84 @@ for (const lang of LANGUAGES) {
       expect((await refused.json()).error.code).toBe('not_assignee');
       await expectNoSidewaysScroll(page);
 
-      /* ---------------------------------- IT resolves it; the requester reopens */
-      await signOut(page);
-      await signIn(page, { ...AGENT, lang });
-      await openHd(page, `#tickets/${ticketId}`);
-      await page.locator('#tkStatus').selectOption('Resolved');
-      await expect(page.locator('#tkHead .labelstrip')).toContainText(
-        t(lang, 'ticket.status.Resolved')
-      );
+      /* ------------- IT resolves it; the requester answers "is it solved?" */
+      const resolve = async () => {
+        await signOut(page);
+        await signIn(page, { ...AGENT, lang });
+        await openHd(page, `#tickets/${ticketId}`);
+        await page.locator('#tkStatus').selectOption('Resolved');
+        await expect(page.locator('#tkHead .labelstrip')).toContainText(
+          t(lang, 'ticket.status.Resolved')
+        );
+        await signOut(page);
+        await signIn(page, { ...GEN_USER, lang });
+        await open(page, `#tickets/${ticketId}`);
+        await expect(page.locator('#tkConfirm')).toContainText(t(lang, 'tk.confirm.title'));
+      };
 
-      await signOut(page);
-      await signIn(page, { ...GEN_USER, lang });
-      await open(page, `#tickets/${ticketId}`);
-      await expect(page.locator('#tkNotice')).toContainText(
-        t(lang, 'tk.reopen.title.Resolved')
+      // "No, still a problem": a reason is required, then the ticket reopens.
+      await resolve();
+      await shot(page, `tickets-confirm-${lang}`);
+      await expectNoSidewaysScroll(page);
+      await page.locator('[data-confirm="no"]').click();
+      await page.locator('#tkNotSolvedSend').click();
+      await expect(page.locator('#tkReason-error')).toContainText(
+        t(lang, 'tk.confirm.reasonError')
       );
-      await page.locator('[data-reopen]').click();
+      await page.locator('#tkReason').fill('It still shows the black screen.');
+      await page.locator('#tkNotSolvedSend').click();
       await expect(page.locator('#tkHead .labelstrip')).toContainText(
         t(lang, 'ticket.status.Open')
       );
-      await expect(page.locator('#tkNotice')).toBeEmpty();
-      await expect(page.locator('.tk-event', { hasText: /./ }).last()).toBeVisible();
+      await expect(page.locator('#tkConfirm')).toHaveCount(0);
+      await expect(
+        page.locator('.tk-entry--requester', { hasText: 'It still shows the black screen.' })
+      ).toBeVisible();
 
-      // Closed again, so the next run's queue is not crowded by this one.
+      // Resolved again: "Yes, solved" needs stars, chosen with the keyboard or a tap.
+      await resolve();
+      await page.locator('[data-confirm="yes"]').click();
+      await expectNoSidewaysScroll(page);
+      await page.locator('#tkSolvedSend').click();
+      await expect(page.locator('#tkRating-error')).toContainText(
+        t(lang, 'tk.confirm.ratingError')
+      );
+      await expect(page.locator('#tkSolvedForm')).toBeVisible();
+      // Each star has a visible number and a name; arrow keys walk the group.
+      const stars = page.locator('input[name="tkRating"]');
+      await expect(stars).toHaveCount(5);
+      await expect(page.locator('.star-rating__number')).toHaveText(['1', '2', '3', '4', '5']);
+      await stars.first().focus();
+      await page.keyboard.press('Space');
+      await expect(page.locator('.star-rating__option.is-on')).toHaveCount(1);
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await expect(page.locator('.star-rating__option.is-on')).toHaveCount(4);
+      await expect(page.locator('.star-rating__word')).toHaveText(t(lang, 'tk.rating.word.4'));
+      await page.locator('.star-rating__option').nth(4).click();
+      await expect(page.locator('.star-rating__option.is-on')).toHaveCount(5);
+      await shot(page, `tickets-rating-${lang}`);
+      await page.locator('#tkFeedback').fill('Quick and kind.');
+      await page.locator('#tkSolvedSend').click();
+      await expect(page.locator('#tkHead .labelstrip')).toContainText(
+        t(lang, 'ticket.status.Closed')
+      );
+      await expect(page.locator('#tkNotice')).toContainText(t(lang, 'tk.closed.confirmedYou'));
+      await expect(page.locator('#tkNotice .star-rating--static')).toBeVisible();
+      await expect(page.locator('#tkNotice')).toContainText('Quick and kind.');
+      await expect(page.locator('#tkConfirm')).toHaveCount(0);
+      await expectNoSidewaysScroll(page);
+
+      // IT sees the same rating and words, and cannot change them.
       await signOut(page);
       await signIn(page, { ...AGENT, lang });
-      const closed = await page.request.patch(`/api/tickets/${ticketId}`, {
-        headers: await csrfHeaders(page),
-        data: { status: 'Closed' },
-      });
-      expect(closed.ok()).toBeTruthy();
+      await openHd(page, `#tickets/${ticketId}`);
+      await expect(page.locator('#tkFacts')).toContainText('Quick and kind.');
+      await expect(page.locator('#tkNotice')).toContainText(
+        t(lang, 'tk.closed.confirmedStaff')
+      );
+      await expect(page.locator('input[name="tkRating"]')).toHaveCount(0);
     });
 
     test('the IT team works in the Helpdesk only; the Lead keeps the IT settings', async ({

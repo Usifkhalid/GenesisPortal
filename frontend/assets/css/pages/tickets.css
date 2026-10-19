@@ -721,3 +721,142 @@
     transition: none;
   }
 }
+
+/* --- The requester says whether it is solved (D143) ----------------------- */
+
+.tk-confirm {
+  border: var(--border-2) solid var(--brand-accent-edge);
+  background: var(--brand-accent-wash);
+}
+
+.tk-confirm__text {
+  margin: 0;
+}
+
+.tk-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.tk-confirm__form {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: 36rem;
+}
+
+/* What a finished ticket says about how it closed and how it was rated. */
+.tk-rated {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tk-rated__words {
+  margin: 0;
+  color: var(--text-body);
+}
+
+/* --- Star rating: radio buttons drawn as stars (components/star-rating.js) --- */
+
+.star-rating {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.star-rating__options {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.star-rating__option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+/* The real radio sits invisibly over its star, so a tap anywhere on it chooses it. */
+.star-rating__input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.star-rating__input:focus-visible {
+  outline: none;
+}
+
+.star-rating__face {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  min-inline-size: var(--tap-min);
+  min-block-size: var(--tap-min);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.star-rating__input:focus-visible + .star-rating__face {
+  outline: var(--border-2) solid var(--brand-accent-ink);
+  outline-offset: var(--border-2);
+}
+
+.star-rating__option:hover .star-rating__face {
+  background: var(--surface-hover);
+}
+
+.star-rating__icon {
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+}
+
+.star-rating__number {
+  color: var(--text-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Chosen: this star and every one before it, in a colour and a fill. */
+.star-rating__option.is-on .star-rating__face,
+.star-rating__face.is-on {
+  color: var(--warning-ink);
+}
+
+.star-rating__option.is-on .star-rating__icon,
+.star-rating__face.is-on .star-rating__icon {
+  fill: currentColor;
+}
+
+.star-rating__word {
+  min-block-size: 1.5em;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* The finished rating, small, beside its words. */
+.star-rating--static {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.star-rating--static .star-rating__face {
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: 0;
+}
+
+.star-rating--static .star-rating__icon {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+}

@@ -324,13 +324,17 @@ describe('reports (D135)', () => {
       (await w.lead.patch(`/api/tickets/${a.id}`, { status: 'Resolved' })).status,
       200
     );
+    // The requester confirms it half an hour later: the resolution clock stops there.
+    w.clock.now = cairo(SUNDAY, '11:30');
+    assert.equal((await w.gen.post(`/api/tickets/${a.id}/solved`, { rating: 5 })).status, 200);
     // Monday at noon: b and c have had no answer for more than eight business hours.
     w.clock.now = cairo('2026-10-12', '12:00');
 
     const report = (await w.agent.get(`/api/helpdesk/reports?from=${SUNDAY}&to=${SUNDAY}`))
       .body;
     assert.equal(report.total, 3);
-    assert.deepEqual(report.byStatus.find((s) => s.status === 'Resolved').count, 1);
+    assert.deepEqual(report.byStatus.find((s) => s.status === 'Closed').count, 1);
+    assert.deepEqual(report.byStatus.find((s) => s.status === 'Resolved').count, 0);
     assert.deepEqual(report.byStatus.find((s) => s.status === 'New').count, 2);
     assert.deepEqual(
       report.byPriority.map((p) => [p.priority, p.count]),
@@ -356,7 +360,7 @@ describe('reports (D135)', () => {
     assert.deepEqual(report.sla.firstResponse, { met: 1, breached: 2, pending: 0 });
     assert.deepEqual(report.sla.resolution, { met: 1, breached: 0, pending: 2 });
     assert.equal(report.averages.firstResponseMinutes, 30);
-    assert.equal(report.averages.resolveMinutes, 120);
+    assert.equal(report.averages.resolveMinutes, 150, 'to the confirmation, not to Resolved');
 
     // A range with nothing in it.
     const empty = (await w.lead.get('/api/helpdesk/reports?from=2026-09-01&to=2026-09-30'))

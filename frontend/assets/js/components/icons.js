@@ -59,6 +59,8 @@ const PATHS = {
   sun:
     '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>',
+  // The rating star: drawn open, filled in with CSS when it is chosen.
+  star: '<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8Z"/>',
 
   // --- Status. Each state has its own shape as well as its own colour. ----
   statusOpen: '<circle cx="12" cy="12" r="7.5"/>',

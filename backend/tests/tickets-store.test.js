@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { after, describe, test } from 'node:test';
 
 import { env } from '../src/config/env.js';
@@ -215,7 +216,7 @@ describe('tickets against SQL Server', async () => {
       // Paused: last in the queue, out of the SLA filters. (The lead works it:
       // an agent works only the tickets given to them, D122.)
       clock.now = cairo('2026-10-11', '11:30');
-      await w.tickets.update(w.leadReq, urgent.ticket.id, { status: 'WaitingOnRequester' });
+      await w.tickets.update(w.leadReq, urgent.ticket.id, { status: 'Pending' });
       clock.now = cairo('2026-10-11', '13:00');
       const paused = await w.tickets.queue(w.agentReq, { ...page, sla: 'breached' });
       assert.ok(!paused.items.some((t) => t.id === urgent.ticket.id));
@@ -251,13 +252,131 @@ describe('tickets against SQL Server', async () => {
       const late = await w.tickets.counts(w.agentReq);
       assert.equal(late.queue.breachingSoon, 1, 'due at 13:30 after the 90-minute pause');
       await w.tickets.update(w.leadReq, urgent.ticket.id, { status: 'Resolved' });
-      assert.equal(await w.tickets.closeResolved(), 0);
-      clock.now = cairo('2026-10-14', '13:30');
-      assert.equal(await w.tickets.closeResolved(), 1);
-      const closed = await w.tickets.get(w.requesterReq, urgent.ticket.id);
+
+      // Resolved stays open however long it waits; only the requester closes it (D143).
+      clock.now = cairo('2026-10-25', '13:30');
+      await w.tickets.remindResolved();
+      const waiting = await w.tickets.get(w.requesterReq, urgent.ticket.id);
+      assert.equal(waiting.ticket.status, 'Resolved');
+      assert.equal(waiting.ticket.can.confirm, true);
+      const row = await prisma.ticket.findUnique({ where: { id: urgent.ticket.id } });
+      assert.equal(row.slaActive, true, 'the clock runs while it waits');
+      assert.equal(row.slaPausedAt, null);
+
+      // The agent cannot answer for the requester; the requester confirms and rates.
+      await assert.rejects(w.tickets.confirm(w.agentReq, urgent.ticket.id, { rating: 5 }), {
+        status: 403,
+      });
+      await assert.rejects(w.tickets.confirm(w.otherReq, urgent.ticket.id, { rating: 5 }), {
+        status: 404,
+      });
+      const closed = await w.tickets.confirm(w.requesterReq, urgent.ticket.id, {
+        rating: 4,
+        feedback: 'Fixed quickly.',
+      });
       assert.equal(closed.ticket.status, 'Closed');
-      assert.equal(closed.timeline.at(-1).type, 'autoClosed');
-      assert.equal(closed.timeline.at(-1).actor, null);
+      assert.equal(closed.timeline.at(-1).type, 'confirmed');
+      const saved = await prisma.ticket.findUnique({ where: { id: urgent.ticket.id } });
+      assert.deepEqual(
+        [saved.closeMode, saved.rating, saved.ratingFeedback, saved.slaActive],
+        ['confirmed', 4, 'Fixed quickly.', false]
+      );
+      assert.ok(saved.ratedAt && saved.closedAt);
+    }
+  );
+
+  test(
+    'the migration renames the status, keeps old history readable and restarts a resolved ticket’s clock',
+    { skip: reason },
+    async () => {
+      if (!w.team) await setUp();
+      clock.now = cairo('2026-10-11', '11:00');
+      const [waiting, resolved, closed] = (
+        await Promise.all(
+          ['Legacy waiting', 'Legacy resolved', 'Legacy closed'].map((subject) =>
+            raise(w.requesterReq, { subject })
+          )
+        )
+      ).map((made) => made.ticket);
+      const sunday = cairo('2026-10-11', '11:00');
+      const thursday = cairo('2026-10-15', '11:00');
+      // How the three looked before D143: waiting on the requester, resolved with the
+      // clock stopped, and closed by the old auto-close.
+      await prisma.ticket.update({
+        where: { id: waiting.id },
+        data: { status: 'WaitingOnRequester', slaActive: false, slaPausedAt: sunday },
+      });
+      await prisma.ticket.update({
+        where: { id: resolved.id },
+        data: { status: 'Resolved', resolvedAt: sunday, slaActive: false, slaPausedAt: sunday },
+      });
+      await prisma.ticket.update({
+        where: { id: closed.id },
+        data: { status: 'Closed', resolvedAt: sunday, closedAt: thursday, slaActive: false },
+      });
+      const event = (ticketId, type, fromValue, toValue) =>
+        prisma.ticketEvent.create({
+          data: { ticketId, actorId: w.agent.id, type, fromValue, toValue },
+        });
+      await event(waiting.id, 'status', 'Open', 'WaitingOnRequester');
+      await event(waiting.id, 'status', 'WaitingOnRequester', 'Open');
+      await event(closed.id, 'autoClosed', 'Resolved', 'Closed');
+      await prisma.notification.create({
+        data: {
+          userId: w.requester.id,
+          companyId: w.company.id,
+          channel: 'inApp',
+          templateKey: 'ticket.status',
+          payload: JSON.stringify({
+            link: '#tickets/x',
+            vars: { status: { en: 'Waiting on you', ar: 'بانتظار ردّك' } },
+          }),
+        },
+      });
+
+      // The data part of the migration, run twice: the second run changes nothing.
+      const sql = readFileSync(
+        new URL(
+          '../prisma/migrations/20261019010000_ticket_confirmation/migration.sql',
+          import.meta.url
+        ),
+        'utf8'
+      );
+      const data = sql.slice(sql.indexOf('-- Existing rows.'));
+      await prisma.$executeRawUnsafe(data);
+      await prisma.$executeRawUnsafe(data);
+
+      const after = await w.tickets.get(w.requesterReq, waiting.id);
+      assert.equal(after.ticket.status, 'Pending');
+      assert.equal(after.ticket.sla.state, 'paused', 'still paused');
+      const history = after.timeline.filter((e) => e.type === 'status');
+      assert.deepEqual(
+        history.map((e) => [e.from, e.to]),
+        [
+          ['Open', 'Pending'],
+          ['Pending', 'Open'],
+        ]
+      );
+      assert.equal(await prisma.ticket.count({ where: { status: 'WaitingOnRequester' } }), 0);
+
+      const note = await prisma.notification.findFirst({
+        where: { userId: w.requester.id, templateKey: 'ticket.status' },
+      });
+      assert.match(note.payload, /"en":"Pending"/);
+      assert.match(note.payload, /"ar":"معلّق"/);
+
+      // Resolved: open again, its clock running, and the requester can answer it.
+      const row = await prisma.ticket.findUnique({ where: { id: resolved.id } });
+      assert.deepEqual([row.status, row.slaActive, row.slaPausedAt], ['Resolved', true, null]);
+      const answered = await w.tickets.confirm(w.requesterReq, resolved.id, { rating: 5 });
+      assert.equal(answered.ticket.status, 'Closed');
+
+      // A ticket the old rule closed keeps its history and its result.
+      const old = await w.tickets.get(w.requesterReq, closed.id);
+      assert.equal(old.ticket.status, 'Closed');
+      assert.equal(old.ticket.closeMode, null);
+      assert.equal(old.ticket.sla.state, 'met', 'judged by the day it was resolved');
+      assert.equal(old.timeline.at(-1).type, 'autoClosed');
     }
   );
 });

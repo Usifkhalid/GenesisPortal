@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { after, describe, test } from 'node:test';
 
 import { env } from '../src/config/env.js';
-import { startTicketAutoClose } from '../src/jobs/closeResolvedTickets.js';
+import { startConfirmationReminders } from '../src/jobs/remindResolvedTickets.js';
 import { startSessionPruning } from '../src/jobs/prune-sessions.js';
 import { startFileScanSweep } from '../src/jobs/scanFiles.js';
 import { startSlaWatch } from '../src/jobs/slaWatch.js';
@@ -191,10 +191,10 @@ describe('every job, started on two instances, works once per round', () => {
       1
     );
   });
-  test('ticket auto-close', async () => {
+  test('ticket confirmation reminders', async () => {
     assert.equal(
       await race((work, lease) =>
-        startTicketAutoClose({ closeResolved: work }, quiet, options(lease))
+        startConfirmationReminders({ remindResolved: work }, quiet, options(lease))
       ),
       1
     );

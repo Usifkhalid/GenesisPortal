@@ -5,8 +5,8 @@
  *   #tickets?view=closed&q=printer
  *
  * "Open" is one request (GET /api/tickets/mine, status=active) that grows by
- * "Show more". "Closed" is Resolved and Closed read together and put in time
- * order, because the API filters by one status at a time; a person has far
+ * "Show more"; a ticket IT has resolved is still open here until the person
+ * confirms it. "Closed" is the Closed ones, newest first; a person has far
  * fewer of these than a page's worth.
  */
 
@@ -156,15 +156,10 @@ export function render(root, ctx) {
       );
       return { list: page.items, total: page.total, append: state.page > 1 };
     }
-    const [resolved, closed] = await Promise.all(
-      ['Resolved', 'Closed'].map((s) =>
-        api(`/api/tickets/mine?status=${s}&pageSize=50${q}`, { quiet: true })
-      )
-    );
-    const list = [...resolved.items, ...closed.items].sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-    );
-    return { list, total: list.length, append: false };
+    const closed = await api(`/api/tickets/mine?status=Closed&pageSize=50${q}`, {
+      quiet: true,
+    });
+    return { list: closed.items, total: closed.items.length, append: false };
   }
 
   async function load({ keepList = false } = {}) {

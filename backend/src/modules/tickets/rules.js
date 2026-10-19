@@ -17,16 +17,36 @@ import { normalizeText } from '../../lib/text-search.js';
 /** Most urgent first. */
 export const PRIORITIES = ['P1', 'P2', 'P3', 'P4'];
 
-export const STATUSES = ['New', 'Open', 'WaitingOnRequester', 'Resolved', 'Closed'];
+export const STATUSES = ['New', 'Open', 'Pending', 'Resolved', 'Closed'];
 
-/** Still somebody's job. */
-export const ACTIVE_STATUSES = ['New', 'Open', 'WaitingOnRequester'];
+/**
+ * Still somebody's job. Resolved is here: IT has said it is fixed, but the
+ * ticket stays open until its requester confirms (D143).
+ */
+export const ACTIVE_STATUSES = ['New', 'Open', 'Pending', 'Resolved'];
 
-/** The statuses in which the SLA clock runs. */
-export const RUNNING_STATUSES = ['New', 'Open'];
+/**
+ * The statuses in which the SLA clock runs. Only Pending (waiting on the
+ * requester) and Closed stop it; Resolved keeps it running until the
+ * requester confirms.
+ */
+export const RUNNING_STATUSES = ['New', 'Open', 'Resolved'];
 
-/** What an agent may set by hand. A ticket is New only until it is touched. */
-export const SETTABLE_STATUSES = ['Open', 'WaitingOnRequester', 'Resolved', 'Closed'];
+/**
+ * What an agent may set by hand. A ticket is New only until it is touched, and
+ * it is Closed only by its requester's confirmation or by a Lead's
+ * "close without confirmation" (D143).
+ */
+export const SETTABLE_STATUSES = ['Open', 'Pending', 'Resolved'];
+
+/** How a ticket was closed: the requester said it is solved, or a Lead closed it. */
+export const CLOSE_MODES = ['confirmed', 'lead'];
+
+export const RATINGS = [1, 2, 3, 4, 5];
+export const MAX_FEEDBACK = 1000;
+export const MAX_REASON = 1000;
+/** While a ticket waits for its requester's confirmation they are reminded this often. */
+export const REMINDER_HOURS = 24;
 
 export const SOURCES = ['portal', 'phone', 'walkIn'];
 
@@ -40,8 +60,6 @@ export const MAX_ATTACHMENTS = 5;
 
 /** A requester may reopen for this many days after the ticket was resolved. */
 export const REOPEN_DAYS = 7;
-/** Resolved tickets close themselves after this many working days. */
-export const AUTO_CLOSE_WORKING_DAYS = 3;
 
 /** Targets for a team that has no policy row for a priority, in business minutes. */
 export const DEFAULT_SLA = {

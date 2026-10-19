@@ -4,6 +4,12 @@
  * status, reply expected by), what was asked, then the conversation and a
  * reply box.
  *
+ * When IT sets a ticket to Resolved the requester is asked "Is your problem
+ * solved?" right here: "Yes, solved" (a 1 to 5 star rating, then the ticket
+ * closes) or "No, still a problem" (a reason, then it reopens). The ticket
+ * stays open until they answer (D143). A Lead can close it without their
+ * answer, with a reason.
+ *
  * IT gets what the record's `can` allows and no more: a panel to assign and
  * to change status, priority and category (each change a history entry), the
  * requester's contact card with a Teams chat link, canned replies inserted
@@ -13,7 +19,8 @@
  */
 
 import { ApiError, api } from '../../api.js';
-import { field, setBusy } from '../../components/form.js';
+import { openModal } from '../../components/dialog.js';
+import { clearFieldErrors, field, setBusy, setFieldError } from '../../components/form.js';
 import { icon } from '../../components/icons.js';
 import { loadFailedNotice, notice } from '../../components/notice.js';
 import {
@@ -24,8 +31,15 @@ import {
   teamsUrl,
   telUrl,
 } from '../../components/person.js';
+import {
+  bindStarRating,
+  setStarError,
+  starRatingField,
+  starValue,
+  starsReadout,
+} from '../../components/star-rating.js';
 import { showToast } from '../../components/toast.js';
-import { formatDateTime } from '../../format.js';
+import { formatDateTime, formatNumber } from '../../format.js';
 import { esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
 import {
@@ -104,6 +118,9 @@ export async function render(root, ctx) {
   let canned = [];
   let contact = null;
   let leaving = false;
+  /** The requester's answer to "is it solved?", kept while the notice redraws. */
+  const answer = { step: null, feedback: '', reason: '' };
+  let noticeKey = '';
 
   // The IT team reads a ticket in the Helpdesk (D135): back to the list it
   // came from there. A requester goes back to their own tickets.
@@ -215,6 +232,12 @@ export async function render(root, ctx) {
         return t('tk.event.attachment', { name: actor });
       case 'reopened':
         return t('tk.event.reopened', { name: actor });
+      case 'confirmed':
+        return t('tk.event.confirmed', { name: actor });
+      case 'notSolved':
+        return t('tk.event.notSolved', { name: actor });
+      case 'closedByLead':
+        return t('tk.event.closedByLead', { name: actor });
       case 'autoClosed':
         return t('tk.event.autoClosed');
       default:
@@ -269,11 +292,117 @@ export async function render(root, ctx) {
       .join('');
   }
 
-  /* ---------------------------------------------------- notices and reopening */
+  /* ----------------------------------- the answer, notices and reopening */
+
+  /** The rating as stars, "4 of 5 stars" and the requester's words, if any. */
+  function ratingHtml(tk) {
+    if (!tk.rating) return '';
+    return `<div class="tk-rated">
+      ${starsReadout(tk.rating.stars)}
+      <p class="tk-rated__words"><strong>${esc(
+        t('tk.rating.value', { n: formatNumber(tk.rating.stars) })
+      )}</strong></p>
+      ${
+        tk.rating.feedback
+          ? `<p class="tk-rated__words"><bdi>${esc(tk.rating.feedback)}</bdi></p>`
+          : ''
+      }
+    </div>`;
+  }
+
+  /** "Is your problem solved?" — the requester's two buttons, and what each asks for. */
+  function drawConfirm(host) {
+    const tk = state.ticket;
+    const when = tk.resolvedAt ? dueDate(tk.resolvedAt) : '';
+    let inner;
+    if (answer.step === 'yes') {
+      inner = `<h2 class="card__title" id="tkNoticeTitle" tabindex="-1">${esc(t('tk.confirm.rateTitle'))}</h2>
+        <form id="tkSolvedForm" class="tk-confirm__form" novalidate>
+          ${starRatingField({
+            id: 'tkRating',
+            legend: t('tk.confirm.rateLegend'),
+            help: t('tk.confirm.rateHelp'),
+            required: true,
+          })}
+          ${field({
+            id: 'tkFeedback',
+            label: t('tk.confirm.feedback'),
+            help: t('tk.confirm.feedbackHelp', { max: formatNumber(1000) }),
+            control: `<textarea class="textarea" id="tkFeedback" name="feedback" rows="3"
+              maxlength="1000" aria-describedby="tkFeedback-help tkFeedback-error"></textarea>`,
+          })}
+          <div class="tk-confirm__actions">
+            <button type="submit" class="btn btn--primary" id="tkSolvedSend">
+              <span class="btn__label">${esc(t('tk.confirm.submitYes'))}</span>
+            </button>
+            <button type="button" class="btn btn--secondary" data-confirm-back>
+              <span class="btn__label">${esc(t('tk.confirm.back'))}</span>
+            </button>
+          </div>
+        </form>`;
+    } else if (answer.step === 'no') {
+      inner = `<h2 class="card__title" id="tkNoticeTitle" tabindex="-1">${esc(t('tk.confirm.reasonTitle'))}</h2>
+        <form id="tkNotSolvedForm" class="tk-confirm__form" novalidate>
+          ${field({
+            id: 'tkReason',
+            label: t('tk.confirm.reasonLabel'),
+            help: t('tk.confirm.reasonHelp'),
+            required: true,
+            control: `<textarea class="textarea" id="tkReason" name="reason" rows="4"
+              maxlength="1000" aria-describedby="tkReason-help tkReason-error"></textarea>`,
+          })}
+          <div class="tk-confirm__actions">
+            <button type="submit" class="btn btn--primary" id="tkNotSolvedSend">
+              <span class="btn__label">${esc(t('tk.confirm.submitNo'))}</span>
+            </button>
+            <button type="button" class="btn btn--secondary" data-confirm-back>
+              <span class="btn__label">${esc(t('tk.confirm.back'))}</span>
+            </button>
+          </div>
+        </form>`;
+    } else {
+      inner = `<h2 class="card__title" id="tkNoticeTitle" tabindex="-1">${esc(t('tk.confirm.title'))}</h2>
+        <p class="tk-confirm__text">${esc(t('tk.confirm.text', { when }))}</p>
+        <div class="tk-confirm__actions">
+          <button type="button" class="btn btn--primary" data-confirm="yes">
+            <span class="btn__label">${esc(t('tk.confirm.yes'))}</span>
+          </button>
+          <button type="button" class="btn btn--secondary" data-confirm="no">
+            <span class="btn__label">${esc(t('tk.confirm.no'))}</span>
+          </button>
+        </div>`;
+    }
+    host.innerHTML = `<section class="card tk-confirm stack" id="tkConfirm" aria-labelledby="tkNoticeTitle">${inner}</section>`;
+    const feedback = host.querySelector('#tkFeedback');
+    if (feedback) feedback.value = answer.feedback;
+    const reason = host.querySelector('#tkReason');
+    if (reason) reason.value = answer.reason;
+  }
+
   function drawNotice() {
     const tk = state.ticket;
-    const done = tk.status === 'Resolved' || tk.status === 'Closed';
     const host = $('#tkNotice');
+    // Redraw only when what it says has changed, so a typing hand keeps its place.
+    const key = JSON.stringify([
+      tk.status,
+      tk.can.confirm,
+      tk.can.needsRating,
+      tk.can.reopen,
+      tk.can.closeWithoutConfirmation,
+      tk.rating,
+      tk.closeMode,
+      tk.closeReason,
+      tk.resolvedAt,
+      answer.step,
+    ]);
+    if (key === noticeKey) return;
+    noticeKey = key;
+
+    if (tk.can.confirm) {
+      drawConfirm(host);
+      return;
+    }
+    const done = tk.status === 'Resolved' || tk.status === 'Closed';
     if (!done) {
       host.innerHTML = '';
       return;
@@ -283,7 +412,9 @@ export async function render(root, ctx) {
       ? dueDate(new Date(new Date(resolvedAt).getTime() + REOPEN_DAYS * DAY_MS))
       : '';
     let text;
-    if (tk.can.reopen) {
+    if (tk.status === 'Resolved') {
+      text = tk.can.reopen ? t('tk.reopen.staffResolvedText') : t('tk.reopen.notYoursText');
+    } else if (tk.can.reopen) {
       text = staff
         ? t('tk.reopen.staffText')
         : t('tk.reopen.text', { until, days: REOPEN_DAYS });
@@ -292,13 +423,24 @@ export async function render(root, ctx) {
     } else {
       text = t(tk.status === 'Closed' ? 'tk.reopen.closedText' : 'tk.reopen.lateText');
     }
-    host.innerHTML = `<div class="notice notice--${tk.status === 'Resolved' ? 'success' : 'info'}" role="status">
+    // How it was closed: confirmed by the requester, or by a Lead without them.
+    let how = '';
+    if (tk.status === 'Closed' && tk.closeMode === 'confirmed') {
+      how = t(staff ? 'tk.closed.confirmedStaff' : 'tk.closed.confirmedYou');
+    } else if (tk.status === 'Closed' && tk.closeMode === 'lead') {
+      how = staff
+        ? t('tk.closed.leadStaff', { reason: tk.closeReason ?? '' })
+        : t('tk.closed.leadYou');
+    }
+    host.innerHTML = `<div class="notice notice--${tk.status === 'Resolved' ? 'info' : 'success'}" role="status">
       ${icon('statusResolved', 'notice__icon')}
       <div class="notice__content stack">
         <div>
-          <p class="notice__title">${esc(t(`tk.reopen.title.${tk.status}`))}</p>
+          <p class="notice__title" id="tkNoticeTitle" tabindex="-1">${esc(t(`tk.reopen.title.${tk.status}`))}</p>
+          ${how ? `<p>${esc(how)}</p>` : ''}
           <p>${esc(text)}</p>
         </div>
+        ${tk.status === 'Closed' ? ratingHtml(tk) : ''}
         <div class="btn-row">
           ${
             tk.can.reopen
@@ -308,6 +450,12 @@ export async function render(root, ctx) {
                 ? ''
                 : `<a class="btn btn--secondary" href="#tickets/new">
                    <span class="btn__label">${esc(t('tk.reopen.new'))}</span></a>`
+          }
+          ${
+            tk.can.closeWithoutConfirmation
+              ? `<button type="button" class="btn btn--secondary" data-close-lead>
+                   <span class="btn__label">${esc(t('tk.close.action'))}</span></button>`
+              : ''
           }
         </div>
       </div>
@@ -331,6 +479,141 @@ export async function render(root, ctx) {
     showToast({ tone: 'success', titleKey: 'tk.reopen.done' });
     announceChange();
     $('#tkReplyText')?.focus();
+  }
+
+  /* ---------------------------- "yes, solved" / "no, still a problem" / a lead's close */
+
+  /** Opens one of the two answers, or goes back to the question. */
+  function chooseAnswer(step) {
+    if (step === 'yes' && !state.ticket.can.needsRating) {
+      // Already rated once: the rating does not change, so there is nothing to ask.
+      submitSolved(null);
+      return;
+    }
+    answer.step = step;
+    drawNotice();
+    const first =
+      step === 'yes'
+        ? $('#tkNotice input[name="tkRating"]')
+        : step === 'no'
+          ? $('#tkReason')
+          : $('#tkNotice [data-confirm]');
+    first?.focus();
+  }
+
+  /** What happens once the answer is in: the ticket is redrawn from the server. */
+  async function answered(titleKey) {
+    answer.step = null;
+    answer.feedback = '';
+    answer.reason = '';
+    await reload();
+    live(t(titleKey));
+    showToast({ tone: 'success', titleKey });
+    announceChange();
+    $('#tkNoticeTitle')?.focus();
+  }
+
+  async function submitSolved(form) {
+    const needsRating = state.ticket.can.needsRating;
+    const rating = form ? starValue(form, 'tkRating') : 0;
+    if (needsRating && !rating) {
+      setStarError(form, 'tkRating', t('tk.confirm.ratingError'));
+      form.querySelector('input[name="tkRating"]').focus();
+      return;
+    }
+    const feedback = (form?.elements.feedback?.value ?? '').trim();
+    const button = form?.querySelector('#tkSolvedSend') ?? $('[data-confirm="yes"]');
+    setBusy(button, true);
+    try {
+      await api(`/api/tickets/${encodeURIComponent(ticketId)}/solved`, {
+        method: 'POST',
+        quiet: true,
+        body: needsRating ? { rating, ...(feedback ? { feedback } : {}) } : {},
+      });
+    } catch (err) {
+      setBusy(button, false);
+      showToast({ tone: 'danger', titleKey: 'tk.confirm.failed', text: errorText(err) });
+      return;
+    }
+    await answered('tk.confirm.doneYes');
+  }
+
+  async function submitNotSolved(form) {
+    clearFieldErrors(form);
+    const reason = form.elements.reason.value.trim();
+    if (!reason) {
+      setFieldError(form, 'tkReason', t('tk.confirm.reasonError'));
+      form.elements.reason.focus();
+      return;
+    }
+    const button = form.querySelector('#tkNotSolvedSend');
+    setBusy(button, true);
+    try {
+      await api(`/api/tickets/${encodeURIComponent(ticketId)}/not-solved`, {
+        method: 'POST',
+        quiet: true,
+        body: { reason },
+      });
+    } catch (err) {
+      setBusy(button, false);
+      showToast({ tone: 'danger', titleKey: 'tk.confirm.failed', text: errorText(err) });
+      return;
+    }
+    await answered('tk.confirm.doneNo');
+  }
+
+  /** A Lead closes the ticket for a requester who does not answer: a reason is required. */
+  async function closeWithoutConfirmation() {
+    const { dialog, close } = openModal({
+      title: t('tk.close.title'),
+      bodyHtml: `<p>${esc(t('tk.close.text'))}</p>
+        <form id="tkCloseForm" class="stack" novalidate>
+          ${field({
+            id: 'tkCloseReason',
+            label: t('tk.close.reasonLabel'),
+            help: t('tk.close.reasonHelp'),
+            required: true,
+            control: `<textarea class="textarea" id="tkCloseReason" name="reason" rows="4"
+              maxlength="1000" aria-describedby="tkCloseReason-help tkCloseReason-error"></textarea>`,
+          })}
+        </form>`,
+      footerHtml: `<button type="button" class="btn btn--secondary" data-modal-close>
+          <span class="btn__label">${esc(t('action.cancel'))}</span></button>
+        <button type="submit" form="tkCloseForm" class="btn btn--primary" id="tkCloseSend">
+          <span class="btn__label">${esc(t('tk.close.submit'))}</span></button>`,
+    });
+    const form = dialog.querySelector('#tkCloseForm');
+    form.elements.reason.focus();
+    form.elements.reason.addEventListener('input', () =>
+      setFieldError(form, 'tkCloseReason', '')
+    );
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const reason = form.elements.reason.value.trim();
+      if (!reason) {
+        setFieldError(form, 'tkCloseReason', t('tk.close.reasonError'));
+        form.elements.reason.focus();
+        return;
+      }
+      const button = dialog.querySelector('#tkCloseSend');
+      setBusy(button, true);
+      try {
+        await api(`/api/tickets/${encodeURIComponent(ticketId)}/close`, {
+          method: 'POST',
+          quiet: true,
+          body: { reason },
+        });
+      } catch (err) {
+        setBusy(button, false);
+        showToast({ tone: 'danger', titleKey: 'tk.close.failed', text: errorText(err) });
+        return;
+      }
+      close(true);
+      await reload();
+      live(t('tk.close.done'));
+      showToast({ tone: 'success', titleKey: 'tk.close.done' });
+      announceChange();
+    });
   }
 
   /* --------------------------------------------------------------- reply box */
@@ -613,7 +896,13 @@ export async function render(root, ctx) {
         <select class="select" id="tkCategory" data-patch="categoryId">
           ${categories.map((c) => option(c.id, localized(c), tk.category?.id)).join('')}
         </select>
-      </div>`;
+      </div>
+      ${
+        tk.can.closeWithoutConfirmation
+          ? `<button type="button" class="btn btn--secondary btn--sm" data-close-lead>
+               <span class="btn__label">${esc(t('tk.close.action'))}</span></button>`
+          : ''
+      }`;
   }
 
   function drawContact() {
@@ -689,6 +978,7 @@ export async function render(root, ctx) {
         )}
         ${row(t('tk.field.resolveDue'), tk.sla.resolveDueAt ? esc(dueDate(tk.sla.resolveDueAt)) : '')}
         ${row(t('tk.field.priority'), priorityBadge(tk.priority, { staff: true }))}
+        ${row(t('tk.rating.title'), tk.rating ? ratingHtml(tk) : tk.status === 'Closed' ? esc(t('tk.rating.none')) : '')}
       </dl>`;
   }
 
@@ -714,6 +1004,7 @@ export async function render(root, ctx) {
   function drawAll() {
     drawHead();
     drawTimeline();
+    noticeKey = '';
     drawNotice();
     drawReply();
     drawHandle();
@@ -746,7 +1037,28 @@ export async function render(root, ctx) {
   root.addEventListener('click', (event) => {
     const reopenButton = event.target.closest('[data-reopen]');
     if (reopenButton) reopen(reopenButton);
+    const choice = event.target.closest('[data-confirm]');
+    if (choice) chooseAnswer(choice.dataset.confirm);
+    if (event.target.closest('[data-confirm-back]')) chooseAnswer(null);
+    if (event.target.closest('[data-close-lead]')) closeWithoutConfirmation();
   });
+  root.addEventListener('submit', (event) => {
+    if (event.target.id === 'tkSolvedForm') {
+      event.preventDefault();
+      submitSolved(event.target);
+    } else if (event.target.id === 'tkNotSolvedForm') {
+      event.preventDefault();
+      submitNotSolved(event.target);
+    }
+  });
+  root.addEventListener('input', (event) => {
+    if (event.target.id === 'tkFeedback') answer.feedback = event.target.value;
+    if (event.target.id === 'tkReason') {
+      answer.reason = event.target.value;
+      setFieldError(event.target.form, 'tkReason', '');
+    }
+  });
+  bindStarRating(root);
   root.addEventListener('change', (event) => {
     const control = event.target.closest('[data-patch]');
     if (!control) return;

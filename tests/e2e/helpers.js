@@ -221,3 +221,25 @@ export async function assignTicket(page, ticketId, agentName) {
   });
   expect(res.ok(), 'the Lead assigns the ticket').toBeTruthy();
 }
+
+/**
+ * Puts a finished spec's ticket away so the next run's queue is not crowded by
+ * it: signs in as the IT Lead, who alone may close a ticket without its
+ * requester's confirmation (D143), parks it as Pending and closes it with a
+ * reason.
+ */
+export async function closeTicketAsLead(page, ticketId, lang) {
+  await signOut(page);
+  await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
+  const headers = await csrfHeaders(page);
+  const parked = await page.request.patch(`/api/tickets/${ticketId}`, {
+    headers,
+    data: { status: 'Pending' },
+  });
+  expect(parked.ok(), 'the Lead parks the ticket').toBeTruthy();
+  const closed = await page.request.post(`/api/tickets/${ticketId}/close`, {
+    headers,
+    data: { reason: 'End of the test run.' },
+  });
+  expect(closed.ok(), 'the Lead closes it without confirmation').toBeTruthy();
+}

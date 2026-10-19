@@ -36,7 +36,7 @@ const MAX_ROWS = 4;
 const STATUS = {
   New: { tone: '', icon: 'statusOpen' },
   Open: { tone: 'badge--info', icon: 'statusProgress' },
-  WaitingOnRequester: { tone: 'badge--warning', icon: 'statusWaiting' },
+  Pending: { tone: 'badge--warning', icon: 'statusWaiting' },
   Resolved: { tone: 'badge--success', icon: 'statusResolved' },
   Closed: { tone: '', icon: 'statusResolved' },
 };
@@ -88,9 +88,11 @@ function greetingKey(hour) {
 
 /**
  * When a ticket is due: "14:30" today, "Thu, 15 Oct 16:00" on another day. A
- * ticket that is waiting on its requester, or done, has no clock running.
+ * ticket that is waiting on its requester, or done, has no clock running; a
+ * resolved one is waiting on the person reading, so it names no date.
  */
 function dueLabel(ticket) {
+  if (ticket.status === 'Resolved') return '—';
   if (!['on_track', 'at_risk', 'breached'].includes(ticket.sla.state)) return '—';
   const ymd = cairoYmd(ticket.sla.dueAt);
   const time = formatTime(ticket.sla.dueAt);
@@ -169,7 +171,8 @@ function recordList(rows, href, max = MAX_ROWS, total = rows.length) {
 
 /** One of my own tickets (GET /api/tickets/mine). Late ones say so. */
 function ticketRow(_ctx, ticket) {
-  const late = ticket.sla.state === 'breached';
+  // A ticket IT has resolved waits for its requester, so it is never "overdue" to them.
+  const late = ticket.sla.state === 'breached' && ticket.status !== 'Resolved';
   const status = late
     ? { tone: 'badge--danger', icon: 'statusOverdue' }
     : STATUS[ticket.status];
@@ -319,8 +322,9 @@ const CARDS = [
     tag: 'nav.tickets',
     title: 'home.waiting.title',
     more: '#tickets',
-    // My tickets that an agent has asked me something about.
-    load: () => api('/api/tickets/mine?status=WaitingOnRequester&pageSize=5', { quiet: true }),
+    // My tickets that wait on me: IT asked me something (Pending), or says it
+    // is solved and wants my word (Resolved).
+    load: () => api('/api/tickets/mine?status=attention&pageSize=5', { quiet: true }),
     row: ticketRow,
     skeletonRows: 1,
     empty: {
@@ -350,7 +354,7 @@ const CARDS = [
     count: 'home.tickets.count',
     href: '#tickets',
     openLabel: 'home.tickets.openAll',
-    // Mine and still open (new, open or waiting on me), newest first.
+    // Mine and still open (new, open, pending or resolved and unconfirmed), newest first.
     load: () => api('/api/tickets/mine?pageSize=5', { quiet: true }),
     row: ticketRow,
     empty: { title: 'home.tickets.emptyTitle', text: 'home.tickets.emptyText' },

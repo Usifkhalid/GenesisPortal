@@ -298,9 +298,16 @@ describe('tickets tell the right people', () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
     w.give(ticket.id, w.agent);
+    await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Pending' });
+    assert.match(w.say(w.rows(w.gen).at(-1)).title, /is now: Pending/);
+    assert.equal(
+      w.rows(w.gen).at(-1).payload.includes('Waiting'),
+      false,
+      'the old name is gone from the words'
+    );
     await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Resolved' });
     const last = w.say(w.rows(w.gen).at(-1));
-    assert.match(last.title, /is now: Resolved/);
+    assert.match(last.title, /is your problem solved\?/);
 
     // The requester reopening their own ticket is not news to them.
     const before = w.rows(w.gen).length;
@@ -308,16 +315,123 @@ describe('tickets tell the right people', () => {
     assert.equal(w.rows(w.gen).length, before);
   });
 
-  test('closing itself after three working days tells the requester', async () => {
+  test('Resolved asks the requester "Is your problem solved?": bell and email, in their language', async () => {
+    const w = await world();
+    const arabic = w.repo.users.find((u) => u.email === 'mahmoud.attia@genesismining-eg.com');
+    arabic.language = 'ar';
+    const english = await w.raise(w.gen);
+    const arabicTicket = await w.raise(w.gen2);
+    for (const t of [english, arabicTicket]) w.give(t.id, w.agent);
+    await w.agent.patch(`/api/tickets/${english.id}`, { status: 'Resolved' });
+    await w.agent.patch(`/api/tickets/${arabicTicket.id}`, { status: 'Resolved' });
+
+    const bell = w.rows(w.gen).at(-1);
+    assert.equal(bell.templateKey, 'ticket.resolved');
+    assert.match(w.say(bell).title, /is your problem solved\?/);
+    assert.equal(JSON.parse(bell.payload).link, `#tickets/${english.id}`);
+    const mail = (await w.mailTo(w.gen)).find((m) => /solved/.test(m.subject));
+    assert.match(mail.subject, /is your problem solved\?/);
+    assert.match(mail.html, /lang="en"/);
+
+    const bellAr = w.rows(w.gen2).at(-1);
+    assert.equal(bellAr.templateKey, 'ticket.resolved');
+    assert.match(w.say(bellAr, 'ar').title, /هل حُلّت مشكلتك/);
+    const mailAr = (await w.mailTo(w.gen2)).find((m) => /حُلّت/.test(m.subject));
+    assert.match(mailAr.subject, /هل حُلّت مشكلتك/);
+    assert.match(mailAr.html, /lang="ar" dir="rtl"/);
+    // Nobody else is told.
+    assert.equal(w.rows(w.msr).length, 0);
+  });
+
+  test('"No, still a problem" tells whoever has the ticket; "Yes, solved" tells them the rating', async () => {
+    const w = await world();
+    const mine = await w.raise(w.gen);
+    w.give(mine.id, w.agent);
+    await w.agent.patch(`/api/tickets/${mine.id}`, { status: 'Resolved' });
+    const base = {
+      requester: w.rows(w.gen).length,
+      agent: w.rows(w.agent).length,
+      lead: w.rows(w.lead).length,
+    };
+    const no = await w.gen.post(`/api/tickets/${mine.id}/not-solved`, {
+      reason: 'It still shows a black screen.',
+    });
+    assert.equal(no.status, 200);
+    assert.equal(no.body.ticket.status, 'Open');
+    assert.equal(w.rows(w.agent).length, base.agent + 1, 'the assigned agent');
+    assert.equal(w.rows(w.agent).at(-1).templateKey, 'ticket.notSolved');
+    assert.match(w.say(w.rows(w.agent).at(-1)).title, /still a problem/);
+    assert.equal(w.say(w.rows(w.agent).at(-1)).detail, 'It still shows a black screen.');
+    assert.equal(w.rows(w.lead).length, base.lead, 'not the lead, the ticket has an agent');
+    assert.equal(w.rows(w.gen).length, base.requester, 'not the person who said it');
+
+    // Resolved again and confirmed: the agent hears the rating.
+    await w.agent.patch(`/api/tickets/${mine.id}`, { status: 'Resolved' });
+    await w.gen.post(`/api/tickets/${mine.id}/solved`, { rating: 5 });
+    assert.equal(w.rows(w.agent).at(-1).templateKey, 'ticket.confirmed');
+    assert.match(w.say(w.rows(w.agent).at(-1)).detail, /Rating: 5 of 5/);
+
+    // An unassigned ticket: the lead is told instead.
+    const loose = await w.raise(w.gen2);
+    await w.lead.patch(`/api/tickets/${loose.id}`, { status: 'Resolved' });
+    const leadBase = w.rows(w.lead).length;
+    await w.gen2.post(`/api/tickets/${loose.id}/not-solved`, { reason: 'Not fixed.' });
+    assert.equal(w.rows(w.lead).length, leadBase + 1);
+    assert.equal(w.rows(w.lead).at(-1).templateKey, 'ticket.notSolved');
+  });
+
+  test('a resolved ticket reminds its requester every 24 hours, once each time, and never closes', async () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
+    const quiet = await w.raise(w.gen2, { subject: 'Not resolved' });
     w.give(ticket.id, w.agent);
     await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Resolved' });
-    const before = w.rows(w.gen).length;
-    w.clock.now = cairo('2026-10-20', '11:00');
-    assert.equal(await w.app.locals.tickets.closeResolved(), 1);
-    assert.equal(w.rows(w.gen).length, before + 1);
-    assert.match(w.say(w.rows(w.gen).at(-1)).title, /is now: Closed/);
+    const remind = () => w.app.locals.tickets.remindResolved();
+    const reminders = () =>
+      w.rows(w.gen).filter((n) => n.templateKey === 'ticket.confirmReminder');
+    const hours = (n) => new Date(START.getTime() + n * 3_600_000);
+
+    w.clock.now = hours(23.9);
+    assert.equal(await remind(), 0, 'not yet 24 hours');
+    assert.equal(reminders().length, 0);
+
+    w.clock.now = hours(24);
+    assert.equal(await remind(), 1);
+    assert.equal(reminders().length, 1);
+    assert.match(w.say(reminders()[0]).title, /Reminder: is .* solved\?/);
+    assert.equal(
+      (await w.mailTo(w.gen)).filter((m) => /Reminder/.test(m.subject)).length,
+      1,
+      'and the email'
+    );
+
+    // Run again, even twice at once: the same 24 hours reminds nobody twice.
+    assert.equal(await remind(), 0);
+    await Promise.all([remind(), remind()]);
+    assert.equal(reminders().length, 1);
+
+    w.clock.now = hours(47);
+    assert.equal(await remind(), 0);
+    w.clock.now = hours(48);
+    assert.equal(await remind(), 1);
+    assert.equal(reminders().length, 2);
+    assert.equal(
+      w.rows(w.gen2).filter((n) => n.templateKey === 'ticket.confirmReminder').length,
+      0
+    );
+
+    // Days on, it is still open and still asking.
+    w.clock.now = hours(24 * 30);
+    assert.equal(await remind(), 1);
+    assert.equal(w.repo.helpdesk.ticket.find((t) => t.id === ticket.id).status, 'Resolved');
+    assert.equal(w.repo.helpdesk.ticket.find((t) => t.id === quiet.id).status, 'New');
+
+    // Once answered, the reminders stop.
+    await w.gen.post(`/api/tickets/${ticket.id}/solved`, { rating: 4 });
+    const sent = reminders().length;
+    w.clock.now = hours(24 * 31);
+    assert.equal(await remind(), 0);
+    assert.equal(reminders().length, sent);
   });
 });
 
@@ -368,7 +482,7 @@ describe('the SLA watch', () => {
     const w = await world();
     const ticket = await w.raise(w.gen);
     w.give(ticket.id, w.agent);
-    await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'WaitingOnRequester' });
+    await w.agent.patch(`/api/tickets/${ticket.id}`, { status: 'Pending' });
     const row = w.repo.helpdesk.ticket.find((t) => t.id === ticket.id);
     w.clock.now = new Date(row.nextDueAt.getTime() + 24 * 3_600_000);
     assert.deepEqual(await w.app.locals.tickets.watchSla(), { atRisk: 0, breached: 0 });

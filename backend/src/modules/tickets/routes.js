@@ -11,6 +11,8 @@
  *   POST   /api/tickets/:id/attachments?name=&commentId=   the raw file, 10 MB
  *   GET    /api/tickets/:id/attachments/:attachmentId
  *   POST   /api/tickets/:id/reopen
+ *   POST   /api/tickets/:id/solved           the requester: { rating?, feedback? } → Closed
+ *   POST   /api/tickets/:id/not-solved       the requester: { reason } → back to Open
  *
  * For the IT team only (agents and leads; never an administrator who is not
  * on it, D135), used by the IT Helpdesk at /helpdesk:
@@ -18,6 +20,7 @@
  *   GET    /api/tickets/queue/options
  *   GET    /api/tickets/canned-replies?teamId=
  *   PATCH  /api/tickets/:id                  { assigneeId, status, priority, categoryId }
+ *   POST   /api/tickets/:id/close            leads only: { reason }, without the requester's confirmation
  *
  * IT settings and the reports are modules/helpdesk/routes.js. Which ticket a
  * person may read or change is the service's question (rules.js); the gate
@@ -32,10 +35,12 @@ import {
   attachmentParams,
   attachmentQuery,
   commentBody,
+  confirmBody,
   createBody,
   idParam,
   mineQuery,
   queueQuery,
+  reasonBody,
   teamQuery,
   updateBody,
 } from './schema.js';
@@ -97,6 +102,21 @@ export function ticketRoutes(service) {
   router.post('/:id/reopen', async (req, res) => {
     const { id } = idParam.parse(req.params);
     res.json(await service.reopen(req, id));
+  });
+
+  router.post('/:id/solved', async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    res.json(await service.confirm(req, id, confirmBody.parse(req.body)));
+  });
+
+  router.post('/:id/not-solved', async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    res.json(await service.notSolved(req, id, reasonBody.parse(req.body)));
+  });
+
+  router.post('/:id/close', it, async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    res.json(await service.closeWithoutConfirmation(req, id, reasonBody.parse(req.body)));
   });
 
   router.post(

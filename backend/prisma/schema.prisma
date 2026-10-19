@@ -685,15 +685,16 @@ model Ticket {
   description        String    @db.NVarChar(Max)
   /// P1 | P2 | P3 | P4.
   priority           String    @db.NVarChar(5)
-  /// New | Open | WaitingOnRequester | Resolved | Closed.
-  status             String    @default("New") @db.NVarChar(30)
+  /// New | Open | Pending | Resolved | Closed. Pending is waiting on the
+  /// requester (WaitingOnRequester before D143).
+  status            String    @default("New") @db.NVarChar(30)
   firstResponseDueAt DateTime
   resolveDueAt       DateTime
   firstRespondedAt   DateTime?
   resolvedAt         DateTime?
   closedAt           DateTime?
-  /// Business minutes the clock has stood still (waiting on the requester, or
-  /// resolved and later reopened). Both due dates already include them.
+  /// Business minutes the clock has stood still (Pending, or closed and later
+  /// reopened). Both due dates already include them.
   slaPausedMinutes   Int       @default(0)
   /// When the current pause began; NULL while the clock runs.
   slaPausedAt        DateTime?
@@ -703,8 +704,17 @@ model Ticket {
   nextDueAt          DateTime
   nextRiskAt         DateTime
   slaActive          Boolean   @default(true)
-  /// Set on Resolved: three working days later the job closes it.
-  autoCloseAt        DateTime?
+  /// How a Closed ticket was closed: confirmed (the requester said it is
+  /// solved) or lead (a Lead closed it without confirmation). NULL on tickets
+  /// closed before D143, which closed themselves after no reply.
+  closeMode          String?   @db.NVarChar(20)
+  /// A Lead's reason for closing without the requester's confirmation.
+  closeReason        String?   @db.NVarChar(1000)
+  /// The requester's rating, 1 to 5, and optional words. Set once, with the
+  /// confirmation, and never changed.
+  rating             Int?
+  ratingFeedback     String?   @db.NVarChar(1000)
+  ratedAt            DateTime?
   /// Free text for now; the IT asset module will link it.
   assetTag           String?   @db.NVarChar(100)
   createdAt          DateTime  @default(now())
@@ -726,7 +736,7 @@ model Ticket {
   @@index([teamId, status, slaActive, nextDueAt])
   @@index([assigneeId, status])
   @@index([companyId, createdAt])
-  @@index([status, autoCloseAt])
+  @@index([status, resolvedAt])
 }
 
 model TicketComment {
@@ -780,7 +790,7 @@ model TicketEvent {
   /// NULL for the system (the auto-close job).
   actorId    String?  @db.NVarChar(36)
   /// created | assigned | status | priority | category | comment | attachment
-  /// | reopened | autoClosed.
+  /// | reopened | confirmed | notSolved | closedByLead | autoClosed (before D143).
   type       String   @db.NVarChar(30)
   fromValue  String?  @db.NVarChar(200)
   toValue    String?  @db.NVarChar(200)

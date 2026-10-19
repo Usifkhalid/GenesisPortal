@@ -74,8 +74,9 @@ const PERSON = {
  *   assigneeId    an id, or null for unassigned
  *   sla           on_track | at_risk | breached, judged at `now`
  *   riskBy        the clock is running and 75% is used by this instant
- *   autoCloseBy   due to close itself by this instant
+ *   resolvedBefore   resolved at or before this instant
  *   createdFrom, createdBefore   raised in [from, before)
+ *   closedFrom, closedBefore     closed in [from, before)
  *   q             in the number or the subject
  */
 export function ticketWhere(f = {}) {
@@ -95,9 +96,11 @@ export function ticketWhere(f = {}) {
   }
   if (f.sla === 'breached') AND.push({ slaActive: true, nextDueAt: { lte: f.now } });
   if (f.riskBy) AND.push({ slaActive: true, nextRiskAt: { lte: f.riskBy } });
-  if (f.autoCloseBy) AND.push({ autoCloseAt: { lte: f.autoCloseBy } });
+  if (f.resolvedBefore) AND.push({ resolvedAt: { lte: f.resolvedBefore } });
   if (f.createdFrom) AND.push({ createdAt: { gte: f.createdFrom } });
   if (f.createdBefore) AND.push({ createdAt: { lt: f.createdBefore } });
+  if (f.closedFrom) AND.push({ closedAt: { gte: f.closedFrom } });
+  if (f.closedBefore) AND.push({ closedAt: { lt: f.closedBefore } });
 
   return {
     ...(f.requesterId ? { requesterId: f.requesterId } : {}),

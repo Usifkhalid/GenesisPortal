@@ -702,6 +702,27 @@ const MATRIX = {
     ['userGen', ...LEADS],
     async (a, f) => a.post(`/api/tickets/${(await f.ticket({ resolved: true })).id}/reopen`),
   ],
+  // The requester alone says whether it is solved; IT cannot answer for them (D143).
+  'POST /api/tickets/:id/solved': [
+    ['userGen'],
+    async (a, f) =>
+      a.post(`/api/tickets/${(await f.ticket({ resolved: true })).id}/solved`, { rating: 5 }),
+  ],
+  'POST /api/tickets/:id/not-solved': [
+    ['userGen'],
+    async (a, f) =>
+      a.post(`/api/tickets/${(await f.ticket({ resolved: true })).id}/not-solved`, {
+        reason: 'It still shows the black screen.',
+      }),
+  ],
+  // Closing without the requester's confirmation is a lead's decision.
+  'POST /api/tickets/:id/close': [
+    LEADS,
+    async (a, f) =>
+      a.post(`/api/tickets/${(await f.ticket({ resolved: true })).id}/close`, {
+        reason: 'The requester is not responding.',
+      }),
+  ],
   'POST /api/tickets/:id/attachments': [
     ['userGen', ...LEADS],
     async (a, f) =>

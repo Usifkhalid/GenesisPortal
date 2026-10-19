@@ -162,19 +162,49 @@ describe('SLA dates and state', () => {
     assert.equal(slaState(ticket, cairo('2026-10-11', '13:00')), 'breached');
     assert.equal(
       slaState(
-        { ...ticket, status: 'WaitingOnRequester', slaActive: false },
+        { ...ticket, status: 'Pending', slaActive: false },
         cairo('2026-10-12', '09:00')
       ),
       'paused'
     );
-    const resolved = { ...ticket, status: 'Resolved', slaActive: false };
+    // Resolved is still open: its clock keeps running until the requester confirms (D143).
     assert.equal(
-      slaState({ ...resolved, resolvedAt: cairo('2026-10-11', '16:00') }, new Date()),
+      slaState(
+        { ...ticket, status: 'Resolved', resolvedAt: cairo('2026-10-11', '10:00') },
+        cairo('2026-10-11', '13:00')
+      ),
+      'breached'
+    );
+    // Closed: judged by the day the requester confirmed (closeMode set) ...
+    const closed = { ...ticket, status: 'Closed', slaActive: false, closeMode: 'confirmed' };
+    assert.equal(
+      slaState({ ...closed, closedAt: cairo('2026-10-11', '16:00') }, new Date()),
       'met'
     );
     assert.equal(
-      slaState({ ...resolved, resolvedAt: cairo('2026-10-12', '09:00') }, new Date()),
-      'missed'
+      slaState(
+        {
+          ...closed,
+          resolvedAt: cairo('2026-10-11', '10:00'),
+          closedAt: cairo('2026-10-12', '09:00'),
+        },
+        new Date()
+      ),
+      'missed',
+      'resolved in time but confirmed late'
+    );
+    // ... and a ticket that closed itself under the old rule keeps its resolved date.
+    const legacy = { ...ticket, status: 'Closed', slaActive: false, closeMode: null };
+    assert.equal(
+      slaState(
+        {
+          ...legacy,
+          resolvedAt: cairo('2026-10-11', '16:00'),
+          closedAt: cairo('2026-10-16', '09:00'),
+        },
+        new Date()
+      ),
+      'met'
     );
   });
 });

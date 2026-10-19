@@ -7,8 +7,11 @@ import { z } from 'zod';
 
 import { isTimeZone } from '../../lib/sla.js';
 import {
+  MAX_FEEDBACK,
+  MAX_REASON,
   MEMBER_ROLES,
   PRIORITIES,
+  RATINGS,
   SETTABLE_STATUSES,
   SLA_FILTERS,
   SOURCES,
@@ -28,8 +31,12 @@ const paging = {
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 };
 
-/** `active` is New, Open and WaitingOnRequester together. */
-const statusFilter = z.enum([...STATUSES, 'active', 'all']).default('active');
+/**
+ * `active` is every open ticket (New, Open, Pending and Resolved: a resolved
+ * one stays open until its requester confirms); `attention` is Pending and
+ * Resolved, the ones waiting on the requester.
+ */
+const statusFilter = z.enum([...STATUSES, 'active', 'attention', 'all']).default('active');
 
 const search = z.string().trim().min(1).max(100).optional();
 
@@ -54,6 +61,19 @@ export const commentBody = z.strictObject({
   body: text(10_000),
   isInternal: z.boolean().default(false),
 });
+
+/** "Yes, solved". The rating is asked once: a ticket that already has one takes none. */
+export const confirmBody = z.strictObject({
+  rating: z
+    .number()
+    .int()
+    .refine((n) => RATINGS.includes(n), 'from 1 to 5')
+    .optional(),
+  feedback: z.string().trim().max(MAX_FEEDBACK).optional(),
+});
+
+/** "No, still a problem", and the same reason box for a Lead's close. */
+export const reasonBody = z.strictObject({ reason: text(MAX_REASON) });
 
 export const attachmentQuery = z.strictObject({
   /** The file's name; its extension must be on the allow-list. */

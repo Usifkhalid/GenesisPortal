@@ -17,7 +17,7 @@
  *   slaDates({ createdAt, policy, pausedMinutes }, schedule)
  *   slaState(ticket, now)               → on_track | at_risk | breached | …
  *
- * Pausing: time a ticket spends waiting on its requester does not count. The
+ * Pausing: time a ticket spends Pending (waiting on its requester) does not count. The
  * service adds those business minutes to the ticket's `slaPausedMinutes`, and
  * a due date is always "the target plus the paused minutes, from creation",
  * which is the same instant as stopping the clock and starting it again.
@@ -234,8 +234,11 @@ export function slaDates({ createdAt, policy, pausedMinutes = 0 }, schedule) {
 /**
  * Where a ticket stands against its target right now.
  *
- *   paused      waiting on the requester: the clock is stopped
- *   met/missed  resolved or closed, in or out of time
+ *   paused      Pending, waiting on the requester: the clock is stopped
+ *   met/missed  closed, in or out of time. The clock stops when the requester
+ *               confirms (or a Lead closes the ticket), not when IT sets it to
+ *               Resolved (D143); a ticket closed before then is judged by the
+ *               day it was resolved
  *   on_track    less than 75% of the target in force is used
  *   at_risk     75% or more is used
  *   breached    the due date has passed
@@ -244,12 +247,15 @@ export function slaDates({ createdAt, policy, pausedMinutes = 0 }, schedule) {
  * the resolution after that.
  *
  * @param {{ status: string, slaActive: boolean, nextDueAt: Date, nextRiskAt: Date,
- *   resolveDueAt: Date, resolvedAt?: Date | null, closedAt?: Date | null }} ticket
+ *   resolveDueAt: Date, resolvedAt?: Date | null, closedAt?: Date | null,
+ *   closeMode?: string | null }} ticket
  * @param {Date} now
  */
 export function slaState(ticket, now) {
-  const done = ticket.resolvedAt ?? ticket.closedAt;
-  if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
+  if (ticket.status === 'Closed') {
+    // Tickets closed since D143 carry a closeMode and stopped at closedAt; the
+    // older ones closed themselves days after IT resolved them.
+    const done = ticket.closeMode ? ticket.closedAt : (ticket.resolvedAt ?? ticket.closedAt);
     return done && done.getTime() > ticket.resolveDueAt.getTime() ? 'missed' : 'met';
   }
   if (!ticket.slaActive) return 'paused';

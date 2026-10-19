@@ -44,15 +44,7 @@ const QUICK = {
   all: {},
 };
 const QUICK_KEYS = Object.keys(QUICK);
-const STATUS_CHOICES = [
-  'active',
-  'New',
-  'Open',
-  'WaitingOnRequester',
-  'Resolved',
-  'Closed',
-  'all',
-];
+const STATUS_CHOICES = ['active', 'New', 'Open', 'Pending', 'Resolved', 'Closed', 'all'];
 
 /**
  * @param {HTMLElement} root
@@ -247,7 +239,7 @@ export async function render(root, ctx) {
     const checked = selected.has(ticket.id);
     const requester = ticket.requester ? displayName(ticket.requester) : '';
     const assignee = ticket.assignee ? displayName(ticket.assignee) : t('ticket.unassigned');
-    const done = ['Resolved', 'Closed'].includes(ticket.status);
+    const done = ticket.status === 'Closed';
     return `<tr role="row" data-id="${esc(ticket.id)}" ${done ? 'class="table__muted"' : ''}>
       ${
         canAssign

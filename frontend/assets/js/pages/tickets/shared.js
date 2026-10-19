@@ -17,15 +17,16 @@ import { esc } from '../../html.js';
 import { t } from '../../i18n.js';
 
 export const PRIORITIES = ['P1', 'P2', 'P3', 'P4'];
-export const OPEN_STATUSES = ['New', 'Open', 'WaitingOnRequester'];
-/** What an agent may set by hand. */
-export const SETTABLE = ['Open', 'WaitingOnRequester', 'Resolved', 'Closed'];
+/** Open until the requester says it is solved: a Resolved ticket is still open (D143). */
+export const OPEN_STATUSES = ['New', 'Open', 'Pending', 'Resolved'];
+/** What an agent may set by hand. Closing is the requester's, or a Lead's with a reason. */
+export const SETTABLE = ['Open', 'Pending', 'Resolved'];
 
 /** Each status has its own tone and its own silhouette: colour is never alone. */
 const STATUS = {
   New: { tone: '', icon: 'statusOpen' },
   Open: { tone: 'badge--info', icon: 'statusProgress' },
-  WaitingOnRequester: { tone: 'badge--warning', icon: 'statusWaiting' },
+  Pending: { tone: 'badge--warning', icon: 'statusWaiting' },
   Resolved: { tone: 'badge--success', icon: 'statusResolved' },
   Closed: { tone: '', icon: 'statusResolved' },
 };
@@ -34,17 +35,18 @@ const PRIORITY_TONE = { P1: 'badge--danger', P2: 'badge--warning', P3: '', P4: '
 
 /* ----------------------------------------------------------------- writing */
 
-export const statusLabel = (status, staff = false) =>
-  t(
-    staff && status === 'WaitingOnRequester'
-      ? 'tk.status.waitingStaff'
-      : `ticket.status.${status}`
-  );
+/**
+ * The status in words. Rows and history written before D143 still say
+ * WaitingOnRequester: it reads as Pending. The second argument is kept so the
+ * callers that say who is reading need no change; both read the same words.
+ */
+export const statusLabel = (status) =>
+  t(`ticket.status.${status === 'WaitingOnRequester' ? 'Pending' : status}`);
 
-export function statusBadge(status, { staff = false } = {}) {
-  const look = STATUS[status] ?? STATUS.New;
+export function statusBadge(status) {
+  const look = STATUS[status === 'WaitingOnRequester' ? 'Pending' : status] ?? STATUS.New;
   return `<span class="badge ${look.tone}">${icon(look.icon, 'badge__icon')}<span>${esc(
-    statusLabel(status, staff)
+    statusLabel(status)
   )}</span></span>`;
 }
 
@@ -112,9 +114,15 @@ export function slaBadge(ticket, now = Date.now()) {
  */
 export function expectedBy(ticket) {
   const { state, dueAt } = ticket.sla;
-  if (ticket.status === 'Closed' || ticket.status === 'Resolved') {
-    const when = ticket.resolvedAt ?? ticket.closedAt;
-    return { label: t('tk.expect.resolvedOn'), value: when ? dueDate(when) : '—' };
+  if (ticket.status === 'Closed') {
+    const when = ticket.closedAt ?? ticket.resolvedAt;
+    return { label: t('tk.expect.closedOn'), value: when ? dueDate(when) : '—' };
+  }
+  if (ticket.status === 'Resolved') {
+    return {
+      label: t('tk.expect.resolvedOn'),
+      value: ticket.resolvedAt ? dueDate(ticket.resolvedAt) : '—',
+    };
   }
   if (state === 'paused')
     return { label: t('tk.expect.reply'), value: t('tk.expect.waitingOnYou') };
@@ -167,6 +175,9 @@ const CODE_KEYS = {
   file_too_large: 'tk.error.tooLarge',
   empty_upload: 'tk.error.empty',
   lead_only: 'tk.error.leadOnly',
+  rating_required: 'tk.error.ratingRequired',
+  already_rated: 'tk.error.alreadyRated',
+  own_work: 'tk.error.ownWork',
   unknown_category: 'tk.error.unknownCategory',
   unknown_location: 'tk.error.unknownLocation',
   unknown_requester: 'tk.error.unknownRequester',

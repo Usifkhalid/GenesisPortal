@@ -11,7 +11,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { createJobLease, noLease } from './lib/job-lease.js';
 import { logger } from './lib/logger.js';
-import { startTicketAutoClose } from './jobs/closeResolvedTickets.js';
+import { startConfirmationReminders } from './jobs/remindResolvedTickets.js';
 import { startPinnedAnnouncements } from './jobs/pinnedAnnouncements.js';
 import { startSessionPruning } from './jobs/prune-sessions.js';
 import { startFileScanSweep } from './jobs/scanFiles.js';
@@ -60,8 +60,9 @@ const jobs = [
   startSessionPruning(app.locals.sessionStore, logger, jobOptions),
   // Directory sync at 02:00 Cairo time (jobs/syncUsers.js).
   startNightlySync(app.locals.syncRunner, logger, jobOptions),
-  // Resolved tickets close after three working days (jobs/closeResolvedTickets.js).
-  startTicketAutoClose(app.locals.tickets, logger, jobOptions),
+  // Resolved tickets remind their requester every 24 hours; nothing closes
+  // them (jobs/remindResolvedTickets.js, D143).
+  startConfirmationReminders(app.locals.tickets, logger, jobOptions),
   // Alerts at 75% and 100% of a ticket's SLA, every five minutes (jobs/slaWatch.js).
   startSlaWatch(app.locals.tickets, logger, jobOptions),
   // Scheduled pinned announcements are announced when they go live.

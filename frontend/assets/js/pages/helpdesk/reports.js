@@ -4,8 +4,12 @@
  *
  * A label strip with the totals and the averages, then one table per way of
  * counting: status, priority, category, company, location, and the SLA
- * (first response and resolution: met, breached, still running). The CSV is
- * the same range, one row per ticket, straight from the API.
+ * (first response and resolution: met, breached, still running). Then how
+ * satisfied the requesters were: over the tickets closed in the range, the
+ * share of rated ones with 4 or 5 stars, the average rating, and how many
+ * closed by the requester's confirmation or by a lead without it, as a whole,
+ * per agent and per category. The CSV is the same range, one row per ticket,
+ * straight from the API.
  *
  * Times are business hours on the team's clock (Sunday to Thursday, 08:00 to
  * 17:00 unless IT settings say otherwise), as the targets are.
@@ -38,6 +42,51 @@ function businessTime(minutes) {
 function share(met, breached) {
   const decided = met + breached;
   return decided ? `${formatNumber(Math.round((met / decided) * 100))}%` : '—';
+}
+
+/** "92%" of the rated tickets; "—" when none was rated. */
+const percent = (value) => (value == null ? '—' : `${formatNumber(value)}%`);
+
+/** "4.3" stars out of five; "—" when none was rated. */
+const stars = (value) => (value == null ? '—' : formatNumber(value));
+
+const SATISFACTION_COLUMNS = [
+  ['hd.reports.colConfirmed', (r) => formatNumber(r.confirmed)],
+  ['hd.reports.colLead', (r) => formatNumber(r.closedByLead)],
+  ['hd.reports.rated', (r) => formatNumber(r.rated)],
+  ['hd.reports.colSatisfied', (r) => percent(r.satisfiedPercent)],
+  ['hd.reports.colAverage', (r) => stars(r.averageRating)],
+];
+
+/** A satisfaction table: one row per agent or per category. */
+function satisfactionTable(id, title, firstColumn, rows, nameOf) {
+  const body = rows.length
+    ? rows
+        .map(
+          (r) => `<tr>
+            <th scope="row">${nameOf(r)}</th>
+            ${SATISFACTION_COLUMNS.map(
+              ([key, value]) =>
+                `<td class="hd-report__num" data-label="${esc(t(key))}">${esc(value(r))}</td>`
+            ).join('')}
+          </tr>`
+        )
+        .join('')
+    : `<tr><td colspan="${SATISFACTION_COLUMNS.length + 1}">${esc(t('hd.reports.noClosed'))}</td></tr>`;
+  return `<section class="card hd-report__card" aria-labelledby="${id}">
+    <h2 class="card__title" id="${id}">${esc(title)}</h2>
+    <div class="table-wrap" data-density="compact">
+      <table class="table">
+        <thead><tr>
+          <th scope="col">${esc(firstColumn)}</th>
+          ${SATISFACTION_COLUMNS.map(
+            ([key]) => `<th scope="col" class="hd-report__num">${esc(t(key))}</th>`
+          ).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  </section>`;
 }
 
 /** One table of counts: a name column and a number column. */
@@ -144,6 +193,19 @@ export async function render(root, ctx) {
       <td class="hd-report__num" data-label="${esc(t('hd.reports.pending'))}">${esc(formatNumber(s.pending))}</td>
     </tr>`;
 
+    const sat = r.satisfaction;
+    const satisfactionSummary = [
+      pair(t('hd.reports.satisfied'), esc(percent(sat.satisfiedPercent))),
+      pair(t('hd.reports.avgRating'), esc(stars(sat.averageRating))),
+      pair(t('hd.reports.rated'), esc(formatNumber(sat.rated))),
+      pair(t('hd.reports.confirmed'), esc(formatNumber(sat.confirmed))),
+      pair(t('hd.reports.closedByLead'), esc(formatNumber(sat.closedByLead))),
+    ].join('');
+    const agentName = (row) =>
+      row.id
+        ? esc(localized(row))
+        : `<span class="hd-report__muted">${esc(t('hd.reports.unassignedAgent'))}</span>`;
+
     host.innerHTML = `<section class="card" aria-labelledby="hdSummaryTitle">
         <h2 class="card__title" id="hdSummaryTitle">${esc(
           t('hd.reports.summary', {
@@ -168,6 +230,30 @@ export async function render(root, ctx) {
           </table>
         </div>
       </section>
+      <section class="card" aria-labelledby="hdSatisfactionTitle">
+        <h2 class="card__title" id="hdSatisfactionTitle">${esc(t('hd.reports.satisfaction'))}</h2>
+        <dl class="labelstrip labelstrip--compact">${satisfactionSummary}</dl>
+        <p class="hd-report__note">${esc(
+          t('hd.reports.satisfactionNote', {
+            from: formatDay(r.from, { weekday: 'short', year: true }),
+            to: formatDay(r.to, { weekday: 'short', year: true }),
+          })
+        )}</p>
+      </section>
+      ${satisfactionTable(
+        'hdSatByAgent',
+        t('hd.reports.byAgent'),
+        t('hd.reports.agent'),
+        sat.byAgent,
+        agentName
+      )}
+      ${satisfactionTable(
+        'hdSatByCategory',
+        t('hd.reports.bySatisfactionCategory'),
+        t('hd.reports.byCategory'),
+        sat.byCategory,
+        named
+      )}
       <div class="hd-report__grid">
         ${countTable(
           'hdByStatus',

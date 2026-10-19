@@ -14,6 +14,7 @@
 import {
   LANGUAGES,
   assignTicket,
+  closeTicketAsLead,
   csrfHeaders,
   expect as strictExpect,
   expectLanguage,
@@ -152,13 +153,7 @@ for (const lang of LANGUAGES) {
       expect(saved.items.every((item) => item.enabled)).toBeTruthy();
 
       // Closed again, so the next run's queue is not crowded by this one.
-      await signOut(page);
-      await signIn(page, { company: 'HLD', name: 'Sherif Awad', lang });
-      const closed = await page.request.patch(`/api/tickets/${ticket.id}`, {
-        headers: await csrfHeaders(page),
-        data: { status: 'Closed' },
-      });
-      expect(closed.ok()).toBeTruthy();
+      await closeTicketAsLead(page, ticket.id, lang);
     });
   });
 }

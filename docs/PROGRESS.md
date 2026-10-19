@@ -494,3 +494,11 @@ Done: the new-ticket form no longer asks for urgency; a ticket starts at its cat
 Files: frontend/assets/js/pages/tickets/new.js, css/pages/tickets.css, i18n/{en,ar}.json, tests/e2e/tickets.spec.js, docs/{DECISIONS,PROGRESS}.md.
 Verified: `npm test` pass at 2 workers; lint clean; tickets e2e 16 pass (port 3177, as 3100 was in use by another process).
 Open issues: none new.
+
+## Session 36 — Pending, and the requester confirms resolution (2026-10-19)
+
+Done: "Waiting on requester" is Pending everywhere (D143). IT's Resolved asks the requester "Is your problem solved?" (bell + email, 24-hour reminders); "Yes" = 1-5 star rating (keyboard radio stars) + optional feedback → Closed; "No" = reason → Open, assignee told. Resolved stays open, clock keeps running; auto-close, its job and `autoCloseAt` removed. Leads only: Close without confirmation (reason, audited, shown, counted apart). Reports: satisfaction %, average, confirmed vs lead-closed, per agent and category. Migration `20261019010000_ticket_confirmation`.
+Files: backend/prisma/{schema.prisma,migrations/20261019010000_*}, modules/tickets/{rules,schema,routes,service,reports,store-*}.js, lib/sla.js, jobs/remindResolvedTickets.js (replaces closeResolvedTickets.js), server.js; frontend: components/star-rating.js, pages/tickets/{detail,shared,mine,queue}.js, pages/home.js, pages/helpdesk/reports.js, tickets.css, icons.js, i18n/*, notification-text.js; tests (tickets, notifications, sla, helpdesk, tickets-store incl. migration on SQL Server, authz-matrix, e2e tickets/home/notifications); docs/{API,DECISIONS}.md.
+Verified: `npm test` 609 pass (2 workers); lint clean; e2e tickets, tickets-home, notifications 24 pass (EN/AR, 1440/360).
+Open issues: brief asked for an "auto-close after hours" test and no auto-close: removed it (D143). Arabic copy not native-reviewed. `.env` has PORTAL_DATA=live, so `npm test`'s pretest prepares `mgportal_live_test` while tests use `mgportal_test`: I set DATABASE_URL_TEST to run. No Help topic about the confirmation yet.
+Next: run `npm run db:live:setup` on live (applies the migration); the full e2e suite was not re-run.

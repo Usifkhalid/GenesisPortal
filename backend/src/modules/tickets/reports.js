@@ -12,7 +12,12 @@
  *               and within target ("pending")
  *   averages    business minutes on the team's clock from raising to the first
  *               response, and to resolution (less the minutes the clock stood
- *               still waiting on the requester)
+ *               still while Pending)
+ *   satisfaction  over the tickets CLOSED in the range (not raised in it): how
+ *               many the requester confirmed and how many a lead closed
+ *               without confirmation, the share of rated tickets with 4 or 5
+ *               stars, the average rating, per agent (the assignee) and per
+ *               category (D143)
  *
  * The CSV is one row per ticket with the same facts, for a spreadsheet.
  */
@@ -36,8 +41,41 @@ export function targetState(doneAt, dueAt, now) {
   return now.getTime() > dueAt.getTime() ? 'breached' : 'pending';
 }
 
+/**
+ * When the resolution clock stopped: the day the requester confirmed (or a
+ * lead closed it), not the day IT set Resolved (D143). A ticket closed before
+ * that rule closed itself days after it was resolved, so it keeps its
+ * resolved date; a ticket that is Resolved and not yet closed is still running.
+ */
+const resolutionAt = (t) =>
+  t.status === 'Closed' ? (t.closeMode ? t.closedAt : (t.resolvedAt ?? t.closedAt)) : null;
+
 const average = (list) =>
   list.length ? Math.round(list.reduce((sum, n) => sum + n, 0) / list.length) : null;
+
+/** Stars out of 5 to one decimal, or null when nothing was rated. */
+const averageStars = (stars) =>
+  stars.length
+    ? Math.round((stars.reduce((sum, n) => sum + n, 0) / stars.length) * 10) / 10
+    : null;
+
+/**
+ * What satisfaction means for a set of closed tickets: how they were closed and
+ * what the requesters said. Satisfied is 4 or 5 stars, out of all that were rated.
+ */
+export function satisfactionOf(tickets) {
+  const stars = tickets.filter((t) => t.rating != null).map((t) => t.rating);
+  const satisfied = stars.filter((n) => n >= 4).length;
+  return {
+    closed: tickets.length,
+    confirmed: tickets.filter((t) => t.closeMode === 'confirmed').length,
+    closedByLead: tickets.filter((t) => t.closeMode === 'lead').length,
+    rated: stars.length,
+    satisfied,
+    satisfiedPercent: stars.length ? Math.round((satisfied / stars.length) * 100) : null,
+    averageRating: averageStars(stars),
+  };
+}
 
 /**
  * @param {object} deps
@@ -60,8 +98,8 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
   }
 
   /** The tickets in range with what every report row needs, worked out once. */
-  async function facts(req, query) {
-    const scopes = await tickets.staffScopes(req);
+  async function facts(req, query, scopesAsked) {
+    const scopes = scopesAsked ?? (await tickets.staffScopes(req));
     const range = rangeOf(query);
     const { items } = await store.listTickets({
       scopes,
@@ -78,15 +116,16 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
     const rows = [];
     for (const t of items) {
       const schedule = await scheduleOf(t.teamId);
+      const done = resolutionAt(t);
       rows.push({
         ticket: t,
         firstResponse: targetState(t.firstRespondedAt, t.firstResponseDueAt, at),
-        resolution: targetState(t.resolvedAt, t.resolveDueAt, at),
+        resolution: targetState(done, t.resolveDueAt, at),
         firstResponseMinutes: t.firstRespondedAt
           ? schedule.between(t.createdAt, t.firstRespondedAt)
           : null,
-        resolveMinutes: t.resolvedAt
-          ? Math.max(0, schedule.between(t.createdAt, t.resolvedAt) - (t.slaPausedMinutes ?? 0))
+        resolveMinutes: done
+          ? Math.max(0, schedule.between(t.createdAt, done) - (t.slaPausedMinutes ?? 0))
           : null,
       });
     }
@@ -111,9 +150,54 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
     };
   }
 
+  /** Satisfaction over the tickets closed in the range, as a whole, per agent and per category. */
+  async function satisfaction(scopes, range) {
+    const { items } = await store.listTickets({
+      scopes,
+      closedFrom: cairoDayStart(range.from),
+      closedBefore: cairoDayEnd(range.to),
+      statuses: ['Closed'],
+      order: 'recent',
+    });
+    const [categories, people] = await Promise.all([
+      store.find('category', { id: [...new Set(items.map((t) => t.categoryId))] }),
+      store.getUsers([...new Set(items.map((t) => t.assigneeId).filter(Boolean))]),
+    ]);
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
+    const personById = new Map(people.map((p) => [p.id, p]));
+
+    const groupBy = (key, describe) => {
+      const groups = new Map();
+      for (const t of items) {
+        const id = t[key] ?? null;
+        if (!groups.has(id)) groups.set(id, []);
+        groups.get(id).push(t);
+      }
+      return [...groups.entries()]
+        .map(([id, list]) => ({ id, ...describe(id), ...satisfactionOf(list) }))
+        .sort(
+          (a, b) =>
+            b.closed - a.closed || String(a.nameEn ?? '').localeCompare(String(b.nameEn ?? ''))
+        );
+    };
+
+    return {
+      ...satisfactionOf(items),
+      byAgent: groupBy('assigneeId', (id) => ({
+        nameEn: personById.get(id)?.displayNameEn ?? null,
+        nameAr: personById.get(id)?.displayNameAr || personById.get(id)?.displayNameEn || null,
+      })),
+      byCategory: groupBy('categoryId', (id) => ({
+        nameEn: categoryById.get(id)?.nameEn ?? null,
+        nameAr: categoryById.get(id)?.nameAr ?? null,
+      })),
+    };
+  }
+
   /** GET /api/helpdesk/reports */
   async function report(req, query) {
-    const { range, rows } = await facts(req, query);
+    const scopes = await tickets.staffScopes(req);
+    const { range, rows } = await facts(req, query, scopes);
     const names = await namesFor(rows);
 
     const tally = (key, order) => {
@@ -162,6 +246,7 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
         firstResponseMinutes: average(minutes('firstResponseMinutes')),
         resolveMinutes: average(minutes('resolveMinutes')),
       },
+      satisfaction: await satisfaction(scopes, range),
     };
   }
 
@@ -184,6 +269,9 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
       'Assignee',
       'First response (Cairo)',
       'Resolved (Cairo)',
+      'Closed (Cairo)',
+      'Closed how',
+      'Rating (1-5)',
       'First response SLA',
       'Resolution SLA',
       'First response (business minutes)',
@@ -201,6 +289,9 @@ export function createReportService({ store, tickets, now = () => new Date() }) 
       person(t.assigneeId),
       when(t.firstRespondedAt),
       when(t.resolvedAt),
+      when(t.closedAt),
+      t.closeMode ?? '',
+      t.rating ?? '',
       r.firstResponse,
       r.resolution,
       r.firstResponseMinutes ?? '',
