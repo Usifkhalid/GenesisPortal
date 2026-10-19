@@ -1,8 +1,8 @@
 /**
  * pages/tickets/new.js — raise a ticket. Short, and made for a phone:
  * what is it about (tiles), a subject, what happened, a file or a pasted
- * screenshot, how urgent, where. The category's default urgency is only the
- * value the choice starts on (D106).
+ * screenshot, where. There is no urgency question: the category's default
+ * priority applies (D142).
  *
  * The ticket is created first, then each file is sent to it with its own
  * progress: the API has no ticket to attach a file to before that. A file
@@ -22,7 +22,6 @@ import { showToast } from '../../components/toast.js';
 import { esc } from '../../html.js';
 import { localized, t } from '../../i18n.js';
 import {
-  PRIORITIES,
   announceChange,
   categoryIcon,
   createFileQueue,
@@ -35,8 +34,6 @@ import {
   priorityLabel,
 } from './shared.js';
 import { api } from '../../api.js';
-
-const FALLBACK_PRIORITY = 'P3';
 
 /**
  * @param {HTMLElement} root
@@ -63,15 +60,12 @@ export async function render(root, ctx) {
   }
 
   const { attachments: rules } = options;
-  let priority = FALLBACK_PRIORITY;
-  let pickedUrgency = false;
   let submitting = false;
 
   const tiles = options.categories
     .map(
       (c) => `<li><label class="tk-tile">
-        <input class="tk-tile__input" type="radio" name="category" value="${esc(c.id)}"
-          data-priority="${esc(c.defaultPriority)}" />
+        <input class="tk-tile__input" type="radio" name="category" value="${esc(c.id)}" />
         <span class="tk-tile__face">
           ${icon(categoryIcon(c), 'tk-tile__icon')}
           <span class="tk-tile__name">${esc(localized(c))}</span>
@@ -79,16 +73,6 @@ export async function render(root, ctx) {
       </label></li>`
     )
     .join('');
-
-  const urgency = PRIORITIES.map(
-    (p) => `<label class="choice tk-urgency__option">
-      <input class="choice__control" type="radio" name="priority" value="${p}" />
-      <span class="choice__text">
-        <span class="choice__label">${esc(priorityLabel(p))}</span>
-        <span class="choice__help">${esc(t(`tk.urgency.${p}`))}</span>
-      </span>
-    </label>`
-  ).join('');
 
   const accept = rules.extensions.map((e) => `.${e}`).join(',');
 
@@ -145,11 +129,6 @@ export async function render(root, ctx) {
       <p class="field__error" id="tkFile-error" role="alert" hidden></p>
     </div>
 
-    <fieldset class="tk-fieldset tk-urgency">
-      <legend class="field__label"><span>${esc(t('tk.new.urgency'))}</span></legend>
-      <div class="tk-urgency__list">${urgency}</div>
-    </fieldset>
-
     <div class="field">
       <label class="field__label" for="tkLocation"><span>${esc(t('tk.new.location'))}</span>
         <span class="field__optional">(${esc(t('field.optional'))})</span></label>
@@ -179,24 +158,8 @@ export async function render(root, ctx) {
   const subject = form.elements.subject;
   const description = form.elements.description;
 
-  /* ---------------------------------------------------------------- urgency */
-  const setUrgency = (value) => {
-    priority = value;
-    const radio = form.querySelector(`input[name="priority"][value="${value}"]`);
-    if (radio) radio.checked = true;
-  };
-  setUrgency(FALLBACK_PRIORITY);
-
   form.addEventListener('change', (event) => {
-    const input = event.target;
-    if (input.name === 'category') {
-      setFieldError(form, 'tkCategory', '');
-      // The category's default is where the answer starts, until they answer.
-      if (!pickedUrgency) setUrgency(input.dataset.priority || FALLBACK_PRIORITY);
-    } else if (input.name === 'priority') {
-      pickedUrgency = true;
-      priority = input.value;
-    }
+    if (event.target.name === 'category') setFieldError(form, 'tkCategory', '');
   });
   subject.addEventListener('input', () => setFieldError(form, 'tkSubject', ''));
   description.addEventListener('input', () => setFieldError(form, 'tkDescription', ''));
@@ -313,7 +276,6 @@ export async function render(root, ctx) {
           subject: subjectText,
           description: descriptionText,
           categoryId: category,
-          priority,
           locationId: location || null,
         },
       }));

@@ -1749,12 +1749,6 @@
     "status": {
       "waitingStaff": "Waiting on requester"
     },
-    "urgency": {
-      "P1": "I cannot work at all, or many people cannot, and there is no way around it.",
-      "P2": "A lot of my work is blocked, or it affects my whole team.",
-      "P3": "Something is wrong, but I can keep working for now.",
-      "P4": "A question or a small request. No rush."
-    },
     "expect": {
       "reply": "Reply expected by",
       "update": "Update expected by",
@@ -1800,7 +1794,6 @@
       "filesHelp": "Up to {count} files. Photos, screenshots, PDF and Office files.",
       "pasted": "Screenshot added",
       "screenshotName": "Screenshot",
-      "urgency": "How urgent is it?",
       "location": "Where are you?",
       "noLocation": "Not sure / somewhere else",
       "submit": "Send request",

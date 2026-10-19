@@ -118,35 +118,6 @@
   outline-offset: var(--border-2);
 }
 
-/* How urgent: four plain choices, each with its example under it. */
-.tk-urgency__list {
-  display: grid;
-  gap: var(--space-2);
-}
-
-@container page (min-width: 40rem) {
-  .tk-urgency__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.tk-urgency__option {
-  padding: var(--space-3) var(--space-4);
-  border: var(--border-1) solid var(--rule);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-}
-
-.tk-urgency__option:has(:checked) {
-  border-color: var(--brand-accent-edge);
-  background: var(--brand-accent-wash);
-}
-
-.tk-urgency__option:has(:focus-visible) {
-  outline: var(--border-2) solid var(--brand-accent-ink);
-  outline-offset: var(--border-2);
-}
-
 .tk-form__actions {
   padding-block-start: var(--space-2);
 }

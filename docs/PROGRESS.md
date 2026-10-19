@@ -487,3 +487,10 @@ Verified: `npm test` 598 pass at 2 workers (10 new, fake data); lint clean. Not 
 Admin screen exists: Administration > IT team (HoldingAdmin, `#admin/it-team`, `/api/admin/it-team`) adds, removes and changes members; hours, SLA, categories, locations are in `/helpdesk` settings (leads). No screen creates or retires a team (not built).
 Open issues: no per-company copies exist in the schema (data is per team/group, D141). Holidays are estimates for 2026-27.
 Next: run setup on live, sign in as the lead, file a test ticket.
+
+## Session 35 — Remove "How urgent is it?" (2026-10-19)
+
+Done: the new-ticket form no longer asks for urgency; a ticket starts at its category's default priority (D142, replaces D106). Removed the form field, its CSS and the `tk.new.urgency` / `tk.urgency.*` strings (en + ar); the API still accepts `priority`.
+Files: frontend/assets/js/pages/tickets/new.js, css/pages/tickets.css, i18n/{en,ar}.json, tests/e2e/tickets.spec.js, docs/{DECISIONS,PROGRESS}.md.
+Verified: `npm test` pass at 2 workers; lint clean; tickets e2e 16 pass (port 3177, as 3100 was in use by another process).
+Open issues: none new.

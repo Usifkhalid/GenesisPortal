@@ -88,17 +88,12 @@ for (const lang of LANGUAGES) {
       // Plain words only: no codes, no SLA.
       const form = page.locator('#tkNew');
       await expect(form).toBeVisible();
-      await expect(form).toContainText(t(lang, 'tk.new.urgency'));
+      await expect(form.locator('input[name="priority"]')).toHaveCount(0);
       await expect(form).not.toContainText(/\bSLA\b|\bP[1-4]\b/);
-      for (const p of ['P1', 'P2', 'P3', 'P4']) {
-        await expect(form).toContainText(t(lang, `ticket.priority.${p}`));
-        await expect(form).toContainText(t(lang, `tk.urgency.${p}`));
-      }
 
       await page.locator('.tk-tile').first().click();
       await page.locator('#tkSubject').fill(subject);
       await page.locator('#tkDescription').fill('Paper jams at the second tray every time.');
-      await page.locator('input[name="priority"][value="P2"]').check();
       await pasteScreenshot(page, '#tkDescription');
       const file = page.locator('#tkFiles .tk-file');
       await expect(file).toHaveCount(1);
@@ -113,7 +108,7 @@ for (const lang of LANGUAGES) {
         await done.locator('.labelstrip__value bdi').first().textContent()
       ).trim();
       expect(number).toMatch(/^IT-\d{4}-\d{5}$/);
-      await expect(done).toContainText(t(lang, 'ticket.priority.P2'));
+      await expect(done).toContainText(t(lang, 'ticket.priority.P3'));
       await expect(done).toContainText(t(lang, 'tk.expect.reply'));
       const href = await done.locator('a.btn--primary').getAttribute('href');
       const ticketId = href.replace('#tickets/', '');
@@ -176,7 +171,7 @@ for (const lang of LANGUAGES) {
       await expect(row).toHaveCount(1);
       await expect(row).toContainText(number);
       // IT's words are here: the code and the clock. Assignment is not.
-      await expect(row).toContainText('P2');
+      await expect(row).toContainText('P3');
       await expect(page.locator('[data-pick], #tkPickAll, #tkBulk')).toHaveCount(0);
       await expectNoSidewaysScroll(page);
       await shot(page, `tickets-queue-${lang}`);

@@ -1468,3 +1468,13 @@ work is given out by a Lead, and the ticket says whose it is.
 - **"For every company":** the schema keeps this data per team and per group, not per company (D99), and the IT team has `servesAllCompanies`, so GEN, HLD, MSR and any company added later are served by the same rows. Only a team an admin narrowed to chosen companies gets a `SupportTeamCompany` row for each active company lacking one. Creating a company in the portal calls the same function inside its transaction, so a new company never meets an unserved helpdesk; `docs/ADD-A-COMPANY.md` says so.
 - **Members:** `npm run db:live:setup -- --it-leads a@x.com --it-members c@x.com` (`team-members.js`). It adds people or changes a role, never removes (removing stays on Administration > IT team). Every email must be an active user, checked for all before any write; a person in both lists, or a change that would leave no active lead, is refused. Audited as `helpdesk.member.add` / `.update`, the admin screen's actions, with no actor (a terminal run). Output is counts only; error messages never name an email.
 - **Existing teams keep their name:** the demo seed still calls the team "IT Support"; the live name applies only when the team is created.
+
+## D142 — No urgency question on the new-ticket form (2026-10-19)
+
+Supersedes D106. The requester no longer picks "How urgent is it?"; a ticket starts at its category's default priority (the API already did this when `priority` is left out, and still accepts one). Only the IT team changes priority afterwards. The form, its CSS and the `tk.urgency.*` / `tk.new.urgency` strings are gone.
+
+## D142 — The new-ticket form no longer asks "How urgent is it?" (2026-10-19)
+
+- **Change:** the urgency question is gone from `#tickets/new`. A ticket starts at its category's default priority (the API already does this when `priority` is left out); IT changes it afterwards. The confirmation still shows the resulting priority. Replaces D106.
+- **Why:** requesters over-rated urgency and the choice slowed a form made for a phone.
+- **Kept:** the API still accepts `priority` on create (the IT "log a ticket for someone" path), and categories keep their default priority.
