@@ -46,6 +46,22 @@ export function createMemoryDirectoryStore(repo) {
     };
   };
 
+  const hrPerson = (u) => ({
+    id: u.id,
+    email: u.email,
+    displayNameEn: u.displayNameEn,
+    displayNameAr: u.displayNameAr ?? '',
+    companyId: u.companyId,
+    departmentId: u.departmentId ?? null,
+    jobTitle: u.jobTitle ?? null,
+    officeLocation: u.officeLocation ?? null,
+    staffId: u.staffId ?? null,
+    employmentCategory: u.employmentCategory ?? null,
+    hireDate: u.hireDate ?? null,
+    hrFields: u.hrFields ?? null,
+    isActive: u.isActive,
+  });
+
   const requesterOf = (id) => {
     const u = id ? byId(users, id) : null;
     return u
@@ -146,6 +162,61 @@ export function createMemoryDirectoryStore(repo) {
       Object.assign(byId(users, id), { displayNameAr, searchKey });
     },
 
+    /* ---- HR import (hr-import.js) */
+    async loadHrImportState() {
+      return {
+        companies: companies.map((c) => ({ id: c.id, code: c.code })),
+        departments: departments.map((d) => ({
+          id: d.id,
+          companyId: d.companyId,
+          nameEn: d.nameEn,
+          nameAr: d.nameAr,
+        })),
+        users: users.map((u) => hrPerson(u)),
+      };
+    },
+
+    async findHoldingAdminByEmail(email) {
+      const u = users.find(
+        (x) =>
+          x.isActive &&
+          x.email.toLowerCase() === String(email ?? '').toLowerCase() &&
+          x.roles.some((r) => r.role === ROLES.HOLDING_ADMIN && r.scopeCompanyId == null)
+      );
+      return u ? { id: u.id, email: u.email } : null;
+    },
+
+    async createDepartment({ companyId, nameEn, nameAr }) {
+      const row = { id: randomUUID(), companyId, nameEn, nameAr, isActive: true };
+      departments.push(row);
+      return row;
+    },
+
+    async updateHrProfile(id, data, { fromCompanyId, toCompanyId } = {}) {
+      const u = byId(users, id);
+      if (toCompanyId && toCompanyId !== fromCompanyId) {
+        const there = u.roles.some(
+          (r) => r.role === ROLES.USER && r.scopeCompanyId === toCompanyId
+        );
+        u.roles = u.roles
+          .filter(
+            (r) => !(there && r.role === ROLES.USER && r.scopeCompanyId === fromCompanyId)
+          )
+          .map((r) =>
+            r.role === ROLES.USER && r.scopeCompanyId === fromCompanyId
+              ? { ...r, scopeCompanyId: toCompanyId }
+              : r
+          );
+      }
+      Object.assign(u, data);
+      if ('companyId' in data) u.company = byId(companies, data.companyId);
+      if ('departmentId' in data) {
+        const dept = data.departmentId ? byId(departments, data.departmentId) : null;
+        u.department = dept ? { nameEn: dept.nameEn, nameAr: dept.nameAr } : null;
+      }
+      return hrPerson(u);
+    },
+
     /* ---- sync runs */
     async findRunningRun(since) {
       const found = syncRuns.find((r) => r.status === 'running' && r.startedAt >= since);
@@ -205,7 +276,11 @@ export function createMemoryDirectoryStore(repo) {
           nameEn: d.nameEn,
           nameAr: d.nameAr,
         })),
-        users: users.map((u) => ({ ...view(u), entraObjectId: u.entraObjectId })),
+        users: users.map((u) => ({
+          ...view(u),
+          entraObjectId: u.entraObjectId,
+          hrFields: u.hrFields ?? null,
+        })),
       };
     },
 

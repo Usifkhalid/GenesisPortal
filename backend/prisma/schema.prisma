@@ -107,33 +107,41 @@ model Department {
 /// A person, mirrored from Entra ID. Graph sync owns the directory fields;
 /// lastSyncedAt says when they were last refreshed.
 model UserProfile {
-  id               String    @id @default(uuid()) @db.NVarChar(36)
+  id                 String    @id @default(uuid()) @db.NVarChar(36)
   /// The Entra object id (oid claim). Mock users carry a made-up one.
-  entraObjectId    String    @unique @db.NVarChar(36)
-  email            String    @unique @db.NVarChar(320)
-  companyId        String    @db.NVarChar(36)
-  departmentId     String?   @db.NVarChar(36)
-  displayNameEn    String    @db.NVarChar(200)
-  displayNameAr    String    @db.NVarChar(200)
-  jobTitle         String?   @db.NVarChar(200)
-  managerId        String?   @db.NVarChar(36)
-  officeLocation   String?   @db.NVarChar(200)
+  entraObjectId      String    @unique @db.NVarChar(36)
+  email              String    @unique @db.NVarChar(320)
+  companyId          String    @db.NVarChar(36)
+  departmentId       String?   @db.NVarChar(36)
+  displayNameEn      String    @db.NVarChar(200)
+  displayNameAr      String    @db.NVarChar(200)
+  jobTitle           String?   @db.NVarChar(200)
+  managerId          String?   @db.NVarChar(36)
+  officeLocation     String?   @db.NVarChar(200)
   /// Business phone (Graph businessPhones[0]).
-  phone            String?   @db.VarChar(50)
-  mobilePhone      String?   @db.VarChar(50)
+  phone              String?   @db.VarChar(50)
+  mobilePhone        String?   @db.VarChar(50)
   /// What Graph said, kept so the data-quality report can show names that did
   /// not match a department or company. Sync owns them.
-  graphDepartment  String?   @db.NVarChar(200)
-  graphCompanyName String?   @db.NVarChar(200)
+  graphDepartment    String?   @db.NVarChar(200)
+  graphCompanyName   String?   @db.NVarChar(200)
+  /// From HR's staff list (npm run import:hr, D140). Never from Microsoft 365.
+  staffId            String?   @db.NVarChar(20)
+  employmentCategory String?   @db.NVarChar(50)
+  hireDate           DateTime? @db.Date
+  /// The fields HR set ("companyId,departmentId,jobTitle,officeLocation"):
+  /// sync and the sign-in refresh leave these alone (lib/hr-fields.js).
+  hrFields           String?   @db.VarChar(200)
+  hrImportedAt       DateTime?
   /// Normalised name, email and title (lib/text-search.js) that directory
   /// search reads. Written wherever those fields are.
-  searchKey        String    @default("") @db.NVarChar(1000)
+  searchKey          String    @default("") @db.NVarChar(1000)
   /// Interface language: "en" or "ar".
-  language         String    @default("en") @db.VarChar(5)
-  isActive         Boolean   @default(true)
-  lastSyncedAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  language           String    @default("en") @db.VarChar(5)
+  isActive           Boolean   @default(true)
+  lastSyncedAt       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   company    Company       @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department Department?   @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -147,12 +155,12 @@ model UserProfile {
   announcements     Announcement[]
   announcementReads AnnouncementRead[]
   syncRuns          SyncRun[]
-  bookings          Booking[]           @relation("BookingOrganiser")
-  bookingsCancelled Booking[]           @relation("BookingCancelledBy")
+  bookings          Booking[]                @relation("BookingOrganiser")
+  bookingsCancelled Booking[]                @relation("BookingCancelledBy")
   teamMemberships   SupportTeamMember[]
-  ticketsRequested  Ticket[]            @relation("TicketRequester")
-  ticketsCreated    Ticket[]            @relation("TicketCreatedBy")
-  ticketsAssigned   Ticket[]            @relation("TicketAssignee")
+  ticketsRequested  Ticket[]                 @relation("TicketRequester")
+  ticketsCreated    Ticket[]                 @relation("TicketCreatedBy")
+  ticketsAssigned   Ticket[]                 @relation("TicketAssignee")
   ticketComments    TicketComment[]
   ticketAttachments TicketAttachment[]
   ticketEvents      TicketEvent[]
@@ -160,6 +168,7 @@ model UserProfile {
   @@index([companyId, isActive])
   @@index([departmentId])
   @@index([managerId])
+  @@index([staffId])
 }
 
 /// One role held by one user. scopeCompanyId NULL means holding-wide, which is

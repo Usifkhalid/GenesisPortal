@@ -76,6 +76,23 @@ const RUN_INCLUDE = {
 };
 
 /** @param {import('@prisma/client').PrismaClient} db */
+/** A person as the HR import reads them. */
+const HR_PERSON = {
+  id: true,
+  email: true,
+  displayNameEn: true,
+  displayNameAr: true,
+  companyId: true,
+  departmentId: true,
+  jobTitle: true,
+  officeLocation: true,
+  staffId: true,
+  employmentCategory: true,
+  hireDate: true,
+  hrFields: true,
+  isActive: true,
+};
+
 function operations(db) {
   const inScope = (companyIds) => (companyIds ? [{ companyId: { in: companyIds } }] : []);
 
@@ -160,6 +177,57 @@ function operations(db) {
       await db.userProfile.update({ where: { id }, data: { displayNameAr, searchKey } });
     },
 
+    /* ---- HR import (hr-import.js) */
+    async loadHrImportState() {
+      const [companies, departments, users] = await Promise.all([
+        db.company.findMany({ select: { id: true, code: true } }),
+        db.department.findMany({
+          select: { id: true, companyId: true, nameEn: true, nameAr: true },
+        }),
+        db.userProfile.findMany({ select: HR_PERSON }),
+      ]);
+      return { companies, departments, users };
+    },
+
+    /** An active person with a holding-wide HoldingAdmin role, by email. */
+    async findHoldingAdminByEmail(email) {
+      return db.userProfile.findFirst({
+        where: {
+          email: String(email ?? '').toLowerCase(),
+          isActive: true,
+          roleAssignments: { some: { role: ROLES.HOLDING_ADMIN, scopeCompanyId: null } },
+        },
+        select: { id: true, email: true },
+      });
+    },
+
+    async createDepartment({ companyId, nameEn, nameAr }) {
+      return db.department.create({ data: { companyId, nameEn, nameAr } });
+    },
+
+    /**
+     * Writes HR's fields. A company move takes the person's plain User role
+     * with it; any admin role stays where it was granted.
+     */
+    async updateHrProfile(id, data, { fromCompanyId, toCompanyId } = {}) {
+      if (toCompanyId && toCompanyId !== fromCompanyId) {
+        const there = await db.roleAssignment.findFirst({
+          where: { userId: id, role: ROLES.USER, scopeCompanyId: toCompanyId },
+        });
+        if (there) {
+          await db.roleAssignment.deleteMany({
+            where: { userId: id, role: ROLES.USER, scopeCompanyId: fromCompanyId },
+          });
+        } else {
+          await db.roleAssignment.updateMany({
+            where: { userId: id, role: ROLES.USER, scopeCompanyId: fromCompanyId },
+            data: { scopeCompanyId: toCompanyId },
+          });
+        }
+      }
+      return db.userProfile.update({ where: { id }, data, select: HR_PERSON });
+    },
+
     /* ---- sync runs */
     async findRunningRun(since) {
       return db.syncRun.findFirst({
@@ -227,6 +295,7 @@ function operations(db) {
             graphDepartment: true,
             graphCompanyName: true,
             isActive: true,
+            hrFields: true,
           },
         }),
       ]);

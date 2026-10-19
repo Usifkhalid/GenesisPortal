@@ -10,7 +10,9 @@
  *
  * What sync owns: email, English name, job title, office, business and mobile
  * phone, company, department, manager and whether the account is active. What
- * it never touches: the Arabic display name, language, roles. People who
+ * it never touches: the Arabic display name, language, roles, and the fields
+ * HR's staff list set (company, department, job title, office: lib/hr-fields.js,
+ * D140), which Graph only fills while HR has left them empty. People who
  * vanish from Graph or are disabled become inactive, never deleted, so their
  * history stays.
  *
@@ -21,6 +23,7 @@
  */
 
 import { writeAudit } from '../lib/audit.js';
+import { hrOwned, keepHrFields } from '../lib/hr-fields.js';
 import { runLeased } from '../lib/job-lease.js';
 import { logger } from '../lib/logger.js';
 import { normalizeText, searchKeyOf } from '../lib/text-search.js';
@@ -143,8 +146,10 @@ export function planSync({
       (graphCompanyName && companyByName.get(normalizeText(graphCompanyName))) ||
       (domain && companyByDomain.get(domain)) ||
       null;
-    if (!company && existing) {
-      company = state.companies.find((c) => c.id === existing.companyId) ?? null;
+    const owned = hrOwned(existing);
+    // HR placed this person: their company stays HR's, whatever Graph or the domain say.
+    if ((!company || owned.has('companyId')) && existing) {
+      company = state.companies.find((c) => c.id === existing.companyId) ?? company;
     }
     if (!company) {
       plan.unplaced ??= [];
@@ -162,7 +167,7 @@ export function planSync({
       ? (departments.get(company.id)?.get(normalizeText(graphDepartment)) ?? null)
       : null;
     const enabled = g.accountEnabled !== false;
-    if (graphDepartment && !department && enabled) {
+    if (graphDepartment && !department && enabled && !owned.has('departmentId')) {
       const key = `${company.id}\u0000${graphDepartment}`;
       const tally = unmatchedDepartments.get(key) ?? {
         code: 'unmatched_department',
@@ -176,7 +181,7 @@ export function planSync({
 
     const displayNameEn =
       clean(g.displayName) ?? existing?.displayNameEn ?? email.split('@')[0];
-    const fields = {
+    const fields = keepHrFields(existing, {
       entraObjectId: g.id,
       email,
       displayNameEn,
@@ -189,7 +194,7 @@ export function planSync({
       graphDepartment,
       graphCompanyName,
       isActive: enabled,
-    };
+    });
     const searchKey = searchKeyOf({
       displayNameEn,
       displayNameAr: existing?.displayNameAr ?? '',

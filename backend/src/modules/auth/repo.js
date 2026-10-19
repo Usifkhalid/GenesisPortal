@@ -43,6 +43,7 @@ const REFRESH_PERSON = {
   mobilePhone: true,
   graphDepartment: true,
   graphCompanyName: true,
+  hrFields: true,
 };
 
 /** Memberships of active support teams: what makes someone IT staff (D135). */

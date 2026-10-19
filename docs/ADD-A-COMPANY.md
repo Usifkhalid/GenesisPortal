@@ -94,6 +94,29 @@ name** or mail domain on their account (steps 1 and 2); a colour that was refuse
 company that was entered wrongly can be edited (everything but the code) or deactivated
 and a new one created.
 
+## 7. Import the company's staff from HR
+
+Once its people have signed in or the directory sync has brought them in, HR's staff list
+gives them their department, job title, office, staff id, employment category and hire date,
+and places holding staff who use another company's mail address.
+
+1. Put the company's rows in `private/hr-people.csv` and its departments (English and Arabic
+   names) in `private/hr-departments.csv` with the company's portal **code** in
+   `company_code`. Rows for a company not in the portal yet use `PENDING_<NAME>`; they are
+   listed and skipped, so the same file can be rerun once the company exists: change the
+   code from `PENDING_<NAME>` to the new code.
+2. `npm run import:hr -- --as <your email> --dry-run` (PORTAL_DATA=live, you must be a
+   HoldingAdmin). Read `reports/hr-import-<date>.csv`: `ambiguous` rows name the possible
+   accounts; `unmatched` rows (`no_microsoft_account`) are people who need a Microsoft 365
+   account.
+3. For a row that should match but does not, add `staff_id,email` to
+   `private/hr-matches.csv`; it wins over name matching.
+4. `npm run import:hr -- --as <your email>` writes it. Rerunning is safe: people are found
+   again by staff id and only differences are written.
+
+From then on company, department, job title and office are HR's: the nightly sync and
+sign-in do not overwrite them (docs/DECISIONS.md D140).
+
 ## Everything is in the audit log
 
 Creating the company, each department and each role assignment is recorded, with who did

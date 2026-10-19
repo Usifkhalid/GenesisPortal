@@ -30,3 +30,7 @@ portal-project-context.md
 
 # Tool-made copy of CLAUDE.md for other coding agents; CLAUDE.md is the one source.
 AGENTS.md
+
+# HR personal data (staff lists, hand matches) and import reports: never committed.
+private/
+reports/

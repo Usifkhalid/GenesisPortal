@@ -7,7 +7,9 @@
  * The same rules as the nightly sync (jobs/syncUsers.js): company from Graph's
  * companyName when it names a portal company, otherwise from the email domain,
  * otherwise unchanged; department matched by name within that company; the
- * Arabic display name, language and roles are never touched.
+ * Arabic display name, language and roles are never touched. Nor are the
+ * fields HR's staff list set (lib/hr-fields.js, D140): an HR company wins over
+ * the email domain, and Graph only fills what HR left empty.
  *
  * /me/manager needs more than User.Read in most tenants. A refusal leaves the
  * manager as it is and is logged once per process, not at every sign-in.
@@ -17,6 +19,7 @@
  */
 
 import { writeAudit } from '../../lib/audit.js';
+import { hrOwned, keepHrFields } from '../../lib/hr-fields.js';
 import { normalizeText, searchKeyOf } from '../../lib/text-search.js';
 import { domainOf } from './provision.js';
 
@@ -61,7 +64,9 @@ export function planProfileRefresh({ person, me, managerId, companies, departmen
       )
     : null;
   const byDomain = domain ? companies.find((c) => c.domains.includes(domain)) : null;
-  const companyId = (byName ?? byDomain)?.id ?? person.companyId;
+  const companyId = hrOwned(person).has('companyId')
+    ? person.companyId
+    : ((byName ?? byDomain)?.id ?? person.companyId);
 
   const graphDepartment = clean(me.department);
   const department = graphDepartment
@@ -74,7 +79,7 @@ export function planProfileRefresh({ person, me, managerId, companies, departmen
       )
     : null;
 
-  const data = {
+  const data = keepHrFields(person, {
     displayNameEn: clean(me.displayName) ?? person.displayNameEn,
     jobTitle: clean(me.jobTitle),
     officeLocation: clean(me.officeLocation),
@@ -87,7 +92,7 @@ export function planProfileRefresh({ person, me, managerId, companies, departmen
     // Never oneself; unknown keeps what is there.
     managerId:
       managerId === undefined || managerId === person.id ? person.managerId : managerId,
-  };
+  });
   const changed = REFRESHED_FIELDS.filter((k) => (person[k] ?? null) !== data[k]);
   if (changed.length === 0) return { data: {}, changed };
 

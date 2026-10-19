@@ -66,6 +66,8 @@ npm run db:live:setup                          # create + migrate mgportal_live,
 npm run db:live:setup -- --domain HLD=<domain> # a company's real mail domain
 npm run sync:users -- --dry-run                # what a sync would do, nothing written
 npm run sync:users                             # one sync now, with a report
+npm run import:hr -- --as <email> --dry-run    # HR's staff list (private/*.csv): report only
+npm run import:hr -- --as <email>              # write it (HoldingAdmin only, audited)
 ```
 
 `db:seed` and `db:reset` refuse to run with `PORTAL_DATA=live`. `db:migrate` is Prisma's own
@@ -75,6 +77,13 @@ by the sync: it lists the Entra department names that match none, for an admin t
 Administration. The sync keeps its safety stops (nothing written when Entra returns nobody, or
 when more than 20% of active people would be deactivated). It also runs from Administration >
 Directory sync and nightly at 02:00 Cairo time.
+
+`import:hr` matches HR's staff list to portal accounts by name (or by hand in
+`private/hr-matches.csv`), creates HR's departments and sets company, department, job title,
+office, staff id, employment category and hire date. Those four profile fields are then HR's:
+sync and sign-in no longer overwrite them (docs/DECISIONS.md D140). Counts go to the terminal,
+details with a reason per row to `reports/hr-import-<date>.csv`. `private/` and `reports/`
+hold personal data and are git-ignored.
 
 ### Test database
 
