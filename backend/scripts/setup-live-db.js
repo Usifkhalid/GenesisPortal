@@ -1,14 +1,21 @@
 /**
  * setup-live-db.js — `npm run db:live:setup`: makes the live database
  * (PORTAL_DATA=live, "<name>_live", e.g. mgportal_live) ready for the real
- * tenant: created when missing, migrated, and given the companies with their
- * mail domains. Nothing else: no departments, no fake people, no rooms, no
- * helpdesk, no announcements. People arrive only through the directory sync
- * and Entra sign-in. Safe to run again: it adds what is missing and never
- * deletes.
+ * tenant: created when missing, migrated, given the companies with their
+ * mail domains, and given the IT helpdesk's reference data (the IT team, its
+ * hours, SLA targets, categories, canned replies, locations, holidays: the same
+ * as the demo seed, see modules/tickets/defaults.js). Nothing else: no
+ * departments, no fake people or tickets, no rooms, no announcements. People
+ * arrive only through the directory sync and Entra sign-in. Safe to run again:
+ * it adds what is missing and never deletes or edits.
  *
  *   npm run db:live:setup
  *   npm run db:live:setup -- --domain HLD=example.com   a company's real domain
+ *   npm run db:live:setup -- --it-leads a@x.com,b@x.com --it-members c@x.com
+ *
+ * `--it-leads` / `--it-members` put existing active users on the IT team (it
+ * adds or changes a role, never removes). An email that is not an active user
+ * refuses the whole run before anything is written. Output is counts only.
  *
  * Refuses unless PORTAL_DATA=live, NODE_ENV is development and the server is
  * on this machine. Prints the database name, never the connection string.
@@ -70,6 +77,11 @@ async function main(args) {
 
   const { COMPANIES } = await import('../prisma/seed-data.js');
   const { list, overridden, placeholders } = liveCompanies(COMPANIES, args);
+  const [{ ensureHelpdeskDefaults }, { parseTeamArgs, setItMembers }] = await Promise.all([
+    import('../src/modules/tickets/defaults.js'),
+    import('../src/modules/tickets/team-members.js'),
+  ]);
+  const team = parseTeamArgs(args);
 
   const created = await ensureDatabase(url);
   migrateDeploy(url);
@@ -87,16 +99,36 @@ async function main(args) {
         where: { companyId: ids.get(code), domain: { endsWith: '.example' } },
       });
     }
-    const [companies, departments, people] = await Promise.all([
+    const helpdesk = await ensureHelpdeskDefaults(db);
+    const members =
+      team.leads || team.members
+        ? await setItMembers(db, { teamId: helpdesk.teamId, ...team })
+        : null;
+    const [companies, departments, people, itLeads, itAgents] = await Promise.all([
       db.company.findMany({ select: { code: true, domains: { select: { domain: true } } } }),
       db.department.count(),
       db.userProfile.count(),
+      db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Lead' } }),
+      db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Agent' } }),
     ]);
     console.log(`Live database "${name}": ${created ? 'created, ' : ''}migrated.`);
     for (const c of companies) {
       console.log(`  ${c.code.padEnd(5)} ${c.domains.map((d) => d.domain).join(', ')}`);
     }
     console.log(`  ${departments} departments, ${people} people.`);
+    const added = Object.values(helpdesk.created).reduce((a, b) => a + b, 0);
+    console.log(
+      `  IT helpdesk: ${added} default rows added (${helpdesk.created.team ? 'team created' : 'team existed'}).`
+    );
+    if (members) {
+      console.log(
+        `  IT team members: ${members.added} added, ${members.changed} role changed, ${members.unchanged} unchanged.`
+      );
+    }
+    console.log(`  IT team now: ${itLeads} leads, ${itAgents} agents.`);
+    if (!itLeads) {
+      console.log('Note: the IT team has no lead yet. Run again with --it-leads <email>.');
+    }
     for (const c of placeholders) {
       console.log(
         `Note: ${c.code} still has the placeholder domain ${c.domain}. ` +

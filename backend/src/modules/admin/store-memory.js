@@ -365,6 +365,9 @@ export function createMemoryAdminStore(repo) {
     },
   };
 
+  /** No helpdesk tables in memory: nothing to create. */
+  store.ensureHelpdeskDefaults = async () => {};
+
   /** Nothing to roll back here: the writes are the last thing a service does. */
   return { ...store, transaction: (fn) => fn(store) };
 }

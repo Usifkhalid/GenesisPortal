@@ -16,6 +16,7 @@ const UNIQUES = {
   room: [['mailboxEmail']],
   supportTeam: [['code']],
   supportTeamMember: [['teamId', 'userId']],
+  supportTeamCompany: [['teamId', 'companyId']],
   businessCalendar: [['teamId']],
   slaPolicy: [['teamId', 'priority']],
   ticketCategory: [['teamId', 'nameEn']],
@@ -64,6 +65,10 @@ function table(name) {
     create,
     update,
     findFirst: async ({ where }) => findRow(where) ?? null,
+    findMany: async ({ where = {} } = {}) =>
+      rows.filter((row) => flatten(where).every(([k, v]) => row[k] === v)),
+    count: async ({ where = {} } = {}) =>
+      rows.filter((row) => flatten(where).every(([k, v]) => row[k] === v)).length,
     upsert: async ({ where, update: changes, create: data }) =>
       findRow(where) ? update({ where, data: changes }) : create({ data }),
   };

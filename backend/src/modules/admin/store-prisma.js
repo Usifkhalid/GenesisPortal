@@ -12,6 +12,7 @@
 
 import { getPrisma } from '../../lib/prisma.js';
 import { ROLES } from '../../lib/roles.js';
+import { ensureHelpdeskDefaults } from '../tickets/defaults.js';
 
 const ADMIN_ROLES = [ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN];
 
@@ -157,6 +158,9 @@ function auditWhere(filter) {
 function bind(db) {
   return {
     auditLog: db.auditLog,
+
+    /** The IT helpdesk's reference data, when missing (tickets/defaults.js). */
+    ensureHelpdeskDefaults: (req) => ensureHelpdeskDefaults(db, { req }),
 
     /* ---- companies */
     async listCompanies({ active } = {}) {

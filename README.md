@@ -62,8 +62,9 @@ and real people never share a database. Mail, calendar and rooms follow `GRAPH_M
 separately and can stay `mock` while the directory is real.
 
 ```bash
-npm run db:live:setup                          # create + migrate mgportal_live, add GEN, MSR, HLD
+npm run db:live:setup                          # create + migrate mgportal_live, add GEN, MSR, HLD and the IT helpdesk defaults
 npm run db:live:setup -- --domain HLD=<domain> # a company's real mail domain
+npm run db:live:setup -- --it-leads a@x.com,b@x.com --it-members c@x.com  # IT team by email (active users only)
 npm run sync:users -- --dry-run                # what a sync would do, nothing written
 npm run sync:users                             # one sync now, with a report
 npm run import:hr -- --as <email> --dry-run    # HR's staff list (private/*.csv): report only
