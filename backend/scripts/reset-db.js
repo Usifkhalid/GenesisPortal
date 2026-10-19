@@ -20,6 +20,12 @@ async function main() {
   const { env } = await import('../src/config/env.js');
   if (env.NODE_ENV !== 'development') refuse(env.NODE_ENV);
   if (!env.hasDatabase) throw new Error('DATABASE_URL is not configured.');
+  // The live database holds real people and is never wiped or filled with fakes.
+  if (env.PORTAL_DATA === 'live') {
+    throw new Error(
+      'Refusing to reset the live database (PORTAL_DATA=live). Use PORTAL_DATA=demo.'
+    );
+  }
 
   const url = env.DATABASE_URL;
   const name = databaseName(url);

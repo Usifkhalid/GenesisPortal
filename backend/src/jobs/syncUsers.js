@@ -6,6 +6,8 @@
  *   createSyncRunner  one run at a time: lock, plan, apply, record, audit
  *   startNightlySync  the 02:00 Cairo timer
  *
+ * Guest accounts are skipped and counted.
+ *
  * What sync owns: email, English name, job title, office, business and mobile
  * phone, company, department, manager and whether the account is active. What
  * it never touches: the Arabic display name, language, roles. People who
@@ -103,8 +105,14 @@ export function planSync({
   /** Graph ids of people the portal will hold after this run. */
   const placed = new Set(state.users.map((u) => u.entraObjectId));
   const toPlace = [];
+  let guests = 0;
 
   for (const g of graphUsers) {
+    // Guests (other organisations' people invited into the tenant) are not staff.
+    if (g.userType === 'Guest') {
+      guests += 1;
+      continue;
+    }
     const email = clean(g.mail ?? g.userPrincipalName)?.toLowerCase();
     if (!email) {
       warnings.push({ code: 'missing_email', id: g.id });
@@ -258,6 +266,7 @@ export function planSync({
   }
 
   warnings.push(...unmatchedDepartments.values());
+  if (guests > 0) warnings.push({ code: 'guests_skipped', count: guests });
   for (const u of (plan.unplaced ?? []).slice(0, MAX_UNPLACED_LISTED)) {
     warnings.push({ code: 'unplaced_user', ...u });
   }
@@ -274,7 +283,7 @@ export function planSync({
 }
 
 /** Looks up every manager, a few at a time. A failed lookup is a warning. */
-async function fetchManagers(client, graphUsers, warnings, concurrency = 8) {
+export async function fetchManagers(client, graphUsers, warnings, concurrency = 8) {
   const managerIds = new Map();
   let next = 0;
   async function worker() {

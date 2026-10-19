@@ -957,6 +957,7 @@
         "missing_email": "شخص في Graph بلا بريد إلكتروني (المعرّف {id}).",
         "manager_unresolved": "مدير {email} غير موجود في البوابة.",
         "manager_lookup_failed": "تعذر البحث عن مدير أحد الأشخاص (المعرّف {id}).",
+        "guests_skipped": "تم تخطي {count} من حسابات الضيوف من مؤسسات أخرى.",
         "other": "تحذير: {code}"
       },
       "loadFailed": "تعذر تحميل سجل المزامنة."

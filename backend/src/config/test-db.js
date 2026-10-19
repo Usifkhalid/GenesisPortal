@@ -25,6 +25,20 @@ export function withDatabase(url, name) {
 }
 
 /**
+ * DATABASE_URL pointed at "<name>_live", the database PORTAL_DATA=live uses
+ * (mgportal → mgportal_live). A URL already naming a _live database is kept,
+ * so a child process that inherits it does not make "_live_live".
+ * @param {string} url
+ */
+export function liveDatabaseUrl(url) {
+  const name = databaseName(url);
+  if (!name) return url;
+  if (/_live$/i.test(name)) return url;
+  if (/_test$/i.test(name)) throw new Error('PORTAL_DATA=live cannot use a *_test database.');
+  return withDatabase(url, `${name}_live`);
+}
+
+/**
  * @param {{ DATABASE_URL?: string, DATABASE_URL_TEST?: string }} source
  * @returns {string | null}  null when there is no database configured at all
  */

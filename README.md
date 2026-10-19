@@ -32,8 +32,8 @@ Open <http://localhost:3000>. The design system is at
 changes need only a browser reload.
 
 Out of the box `AUTH_MODE=mock` and `GRAPH_MODE=mock`: sign-in lists seeded fake users and
-Microsoft Graph returns canned data, so no Entra ID tenant is needed. Real tenant access
-has not been granted yet.
+Microsoft Graph returns canned data, so no Entra ID tenant is needed. For the real tenant
+see "Demo and live data" below.
 
 ## Database
 
@@ -46,6 +46,35 @@ npm run db:reset         # DROP the development database, migrate, seed
 All read `DATABASE_URL` from `.env`. `db:reset` loses everything in that database and
 refuses to run unless `NODE_ENV` is `development` (the default), the server is on this
 machine and the database is not a test one.
+
+### Demo and live data
+
+One switch in `.env`, `PORTAL_DATA`, chooses which database a developer's machine uses.
+Both live on the same SQL Server; only the database name differs.
+
+| `PORTAL_DATA` | Database | Contents | Needs |
+| --- | --- | --- | --- |
+| `demo` (default) | `DATABASE_URL` as written (`mgportal`) | seeded fake people, rooms, helpdesk, demo content | `AUTH_MODE=mock`, `GRAPH_DIRECTORY_MODE=mock` (or absent) |
+| `live` | the same name plus `_live` (`mgportal_live`) | the three companies with their domains; people only from the real tenant | `AUTH_MODE=entra`, `GRAPH_DIRECTORY_MODE=real` |
+
+The server refuses a mix (real directory on demo data, or mock sign-in on live data), so fake
+and real people never share a database. Mail, calendar and rooms follow `GRAPH_MODE`
+separately and can stay `mock` while the directory is real.
+
+```bash
+npm run db:live:setup                          # create + migrate mgportal_live, add GEN, MSR, HLD
+npm run db:live:setup -- --domain HLD=<domain> # a company's real mail domain
+npm run sync:users -- --dry-run                # what a sync would do, nothing written
+npm run sync:users                             # one sync now, with a report
+```
+
+`db:seed` and `db:reset` refuse to run with `PORTAL_DATA=live`. `db:migrate` is Prisma's own
+CLI and always works on the demo database; after pulling new migrations, run `db:live:setup`
+again to apply them to the live one. Departments are never created
+by the sync: it lists the Entra department names that match none, for an admin to add under
+Administration. The sync keeps its safety stops (nothing written when Entra returns nobody, or
+when more than 20% of active people would be deactivated). It also runs from Administration >
+Directory sync and nightly at 02:00 Cairo time.
 
 ### Test database
 

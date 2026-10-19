@@ -5,8 +5,9 @@
  * import `graph()` and get whichever implementation GRAPH_MODE selects, so a
  * feature written against the mock works unchanged against the real tenant.
  *
- * Real tenant access is not granted yet, so `mock` is the dev default and the
- * real client is proven only in session 19.
+ * GRAPH_DIRECTORY_MODE picks users and managers apart from the rest: with it
+ * real and GRAPH_MODE mock, the directory comes from the tenant (application
+ * token, User.Read.All) while mail, calendar and rooms stay mocked (D139).
  */
 
 import { env } from '../../config/env.js';
@@ -25,6 +26,7 @@ import { env } from '../../config/env.js';
  * @property {string[]} businessPhones
  * @property {string | null} mobilePhone
  * @property {boolean} accountEnabled
+ * @property {string | null} [userType]  "Member" or "Guest"; guests are not synced
  */
 
 /**
@@ -73,6 +75,7 @@ import { env } from '../../config/env.js';
 /**
  * @typedef {object} GraphClient
  * @property {string} mode
+ * @property {string} [directoryMode]  set when users and managers come from elsewhere
  * @property {() => Promise<GraphUser[]>} listUsers  every user, all pages
  * @property {(userId: string) => Promise<{ id: string } | null>} getManager
  *   the user's manager, or null when they have none
@@ -119,17 +122,47 @@ let instance;
  *   only: where sent mail goes instead of backend/mock/outbox/
  * @returns {Promise<GraphClient>}
  */
-export async function createGraph({ memoryCalendar, outbox } = {}) {
-  if (env.GRAPH_MODE === 'real') return (await import('./real.js')).createClient();
+export async function createGraph({ memoryCalendar, outbox, config = env } = {}) {
+  const directoryMode = config.GRAPH_DIRECTORY_MODE ?? config.GRAPH_MODE;
+  if (config.GRAPH_MODE === 'real' && directoryMode === 'real') {
+    return (await import('./real.js')).createClient();
+  }
 
   const [{ createClient }, { createMemoryCalendar }] = await Promise.all([
     import('./mock.js'),
     import('./mock-calendar.js'),
   ]);
-  return createClient(undefined, {
+  const mock = createClient(undefined, {
     ...(memoryCalendar ? { calendar: createMemoryCalendar(memoryCalendar) } : {}),
     ...(outbox ? { outbox } : {}),
   });
+  if (config.GRAPH_MODE === 'real') {
+    // The real tenant for mail, calendar and rooms; the mock directory.
+    const real = (await import('./real.js')).createClient();
+    return withDirectory(real, mock);
+  }
+  if (directoryMode === 'real') {
+    return withDirectory(mock, (await import('./real.js')).createClient());
+  }
+  return mock;
+}
+
+/**
+ * `base` with users and managers taken from `directory`.
+ * @param {GraphClient} base
+ * @param {GraphClient} directory
+ * @returns {GraphClient}
+ */
+export function withDirectory(base, directory) {
+  return {
+    ...base,
+    directoryMode: directory.mode,
+    listUsers: () => directory.listUsers(),
+    getManager: (userId) => directory.getManager(userId),
+    ...(directory.applicationPermissions
+      ? { applicationPermissions: directory.applicationPermissions }
+      : {}),
+  };
 }
 
 /** The process's client. @returns {Promise<GraphClient>} */

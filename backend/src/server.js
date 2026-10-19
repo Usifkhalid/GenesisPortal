@@ -36,6 +36,8 @@ const server = app.listen(env.PORT, () => {
       env: env.NODE_ENV,
       auth: env.AUTH_MODE,
       graph: env.GRAPH_MODE,
+      directory: env.GRAPH_DIRECTORY_MODE,
+      data: env.PORTAL_DATA,
       storage: env.STORAGE_DRIVER,
       scan: env.SCAN_MODE,
       telemetry: telemetry.enabled,

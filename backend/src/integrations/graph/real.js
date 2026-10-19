@@ -38,6 +38,7 @@ const SELECT = [
   'businessPhones',
   'mobilePhone',
   'accountEnabled',
+  'userType',
 ].join(',');
 /** Windows time zone name Exchange knows Cairo by; it carries the DST rules. */
 const EXCHANGE_ZONE = 'Egypt Standard Time';
@@ -117,7 +118,17 @@ export function createClient(deps = {}) {
       if (response.status === 404) return null;
       const retryable = response.status === 429 || response.status === 503;
       if (!retryable || attempt >= MAX_ATTEMPTS) {
-        throw new Error(`Graph request failed: ${response.status}`);
+        // Graph's error code (e.g. Authorization_RequestDenied) says what to
+        // fix; its message is left out, as it can carry internals.
+        const code = await response
+          .json()
+          .then((b) => b?.error?.code)
+          .catch(() => null);
+        const err = new Error(
+          `Graph request failed: ${response.status}${code ? ` ${String(code).slice(0, 80)}` : ''}`
+        );
+        err.status = response.status;
+        throw err;
       }
       await wait(retryAfterMs(response.headers.get('Retry-After')));
     }
@@ -163,6 +174,21 @@ export function createClient(deps = {}) {
 
   return {
     mode: 'real',
+
+    /**
+     * The application permissions (app roles) Entra put in the app's own
+     * token, e.g. ["User.Read.All"]: what admin consent actually granted.
+     * For diagnosing a 403; the token itself never leaves this function.
+     */
+    async applicationPermissions() {
+      const [, payload] = String(await getToken()).split('.');
+      try {
+        const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        return Array.isArray(claims.roles) ? claims.roles.map(String).sort() : [];
+      } catch {
+        return [];
+      }
+    },
 
     async listUsers() {
       const users = [];

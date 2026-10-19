@@ -4,6 +4,9 @@ import { describe, test } from 'node:test';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
+import { liveCompanies } from '../scripts/setup-live-db.js';
+import { syncReport } from '../scripts/sync-users.js';
+import { createGraph, withDirectory } from '../src/integrations/graph/index.js';
 import { createClient as createMockGraph } from '../src/integrations/graph/mock.js';
 import {
   createClient as createRealGraph,
@@ -166,7 +169,69 @@ describe('Graph adapters', () => {
   });
 });
 
+describe('directory mode apart from mail, calendar and rooms', () => {
+  test('the real directory beside the mocked rest takes only users and managers', async () => {
+    const mock = createMockGraph();
+    const calls = [];
+    const directory = {
+      mode: 'real',
+      listUsers: async () => (calls.push('listUsers'), [{ id: 'real-1' }]),
+      getManager: async (id) => (calls.push(`getManager ${id}`), null),
+    };
+    const client = withDirectory(mock, directory);
+    assert.equal(client.mode, 'mock');
+    assert.equal(client.directoryMode, 'real');
+    assert.deepEqual(await client.listUsers(), [{ id: 'real-1' }]);
+    assert.equal(await client.getManager('real-1'), null);
+    assert.deepEqual(calls, ['listUsers', 'getManager real-1']);
+    // Rooms (and mail, calendar) are still the mock's.
+    assert.deepEqual(await client.listRooms(), await mock.listRooms());
+  });
+
+  test('createGraph picks each half from its own mode', async () => {
+    const mockOnly = await createGraph({ config: { GRAPH_MODE: 'mock' } });
+    assert.equal(mockOnly.mode, 'mock');
+    assert.equal(mockOnly.directoryMode, undefined);
+    const split = await createGraph({
+      config: { GRAPH_MODE: 'mock', GRAPH_DIRECTORY_MODE: 'real' },
+    });
+    assert.equal(split.mode, 'mock');
+    assert.equal(split.directoryMode, 'real');
+  });
+
+  test('the real client asks Graph for userType', async () => {
+    const urls = [];
+    const client = createRealGraph({
+      fetch: async (url) => (
+        urls.push(url),
+        {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ value: [] }),
+        }
+      ),
+      getToken: async () => 't',
+    });
+    await client.listUsers();
+    assert.match(urls[0], /\$select=[^&]*userType/);
+  });
+});
+
 describe('sync mapping', () => {
+  test('skips guest accounts and counts them', async () => {
+    const w = await world({
+      graph: graphWith((data) => {
+        data.users.find((u) => u.mail === 'chris.walker@contractor-partners.example').userType =
+          'Guest';
+      }),
+    });
+    const run = await w.sync();
+    assert.equal(run.status, 'success');
+    assert.deepEqual(warning(run, 'guests_skipped'), [{ code: 'guests_skipped', count: 1 }]);
+    // A guest is not reported as a person on an unknown domain.
+    assert.deepEqual(warning(run, 'unplaced_user'), []);
+  });
   test('places people by company name or mail domain and matches departments', async () => {
     const w = await world();
     const run = await w.sync();
@@ -281,6 +346,69 @@ describe('sync mapping', () => {
     assert.equal(first.created, 24);
     assert.equal(entries[0].actorId, w.ha.user.id);
     assert.equal(entries[0].companyId, null);
+  });
+});
+
+describe('command-line sync and the live database', () => {
+  test('the report counts people per company, managers, departments and domains', () => {
+    const report = syncReport({
+      companyCodes: ['GEN', 'HLD', 'MSR'],
+      people: [
+        { companyCode: 'GEN', isActive: true, hasManager: true },
+        { companyCode: 'GEN', isActive: true, hasManager: false },
+        { companyCode: 'GEN', isActive: false, hasManager: true },
+        { companyCode: 'MSR', isActive: true, hasManager: true },
+      ],
+      warnings: [
+        { code: 'unmatched_department', companyCode: 'GEN', name: 'Drilling', count: 4 },
+        { code: 'unplaced_user', email: 'a@x.com', domain: 'x.com' },
+        { code: 'unplaced_user', email: 'b@x.com', domain: 'x.com' },
+        { code: 'unplaced_user', email: 'c@y.com', domain: 'y.com' },
+        { code: 'guests_skipped', count: 7 },
+      ],
+    });
+    assert.deepEqual(report.perCompany, {
+      GEN: { active: 2, withManager: 1 },
+      HLD: { active: 0, withManager: 0 },
+      MSR: { active: 1, withManager: 1 },
+    });
+    assert.equal(report.active, 3);
+    assert.equal(report.withManager, 2);
+    assert.deepEqual(report.unmatchedDepartments, [
+      { companyCode: 'GEN', name: 'Drilling', count: 4 },
+    ]);
+    assert.deepEqual(report.unknownDomains, { 'x.com': 2, 'y.com': 1 });
+    assert.equal(report.unknownDomainPeople, 3);
+    assert.equal(report.guestsSkipped, 7);
+    assert.equal(report.stop, undefined);
+  });
+
+  test('a safety stop is reported', () => {
+    const report = syncReport({
+      companyCodes: [],
+      people: [],
+      warnings: [{ code: 'deactivation_limit', wouldDeactivate: 9, active: 10 }],
+    });
+    assert.equal(report.stop.code, 'deactivation_limit');
+  });
+
+  test('the live companies are the configured ones, with a real domain given on the command line', () => {
+    const companies = [
+      { code: 'HLD', domain: 'mgholding.example' },
+      { code: 'GEN', domain: 'genesismining-eg.com' },
+    ];
+    const plain = liveCompanies(companies, []);
+    assert.deepEqual(
+      plain.placeholders.map((c) => c.code),
+      ['HLD']
+    );
+    const given = liveCompanies(companies, ['--domain', 'hld=MGHolding.com']);
+    assert.equal(given.list.find((c) => c.code === 'HLD').domain, 'mgholding.com');
+    assert.deepEqual(given.overridden, ['HLD']);
+    assert.deepEqual(given.placeholders, []);
+    assert.equal(liveCompanies(companies, ['--domain=GEN=gen.eg']).list[1].domain, 'gen.eg');
+    assert.throws(() => liveCompanies(companies, ['--domain', 'XYZ=x.com']), /XYZ/);
+    assert.throws(() => liveCompanies(companies, ['--domain', 'HLD=not a domain']), /domain/);
   });
 });
 

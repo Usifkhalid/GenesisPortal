@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-import { resolveTestDatabaseUrl } from './test-db.js';
+import { liveDatabaseUrl, resolveTestDatabaseUrl } from './test-db.js';
 
 /** Repository root, resolved from this file rather than the cwd. */
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -32,6 +32,8 @@ const underTest =
 if (underTest) {
   process.env.AUTH_MODE ??= 'mock';
   process.env.GRAPH_MODE ??= 'mock';
+  process.env.GRAPH_DIRECTORY_MODE ??= 'mock';
+  process.env.PORTAL_DATA ??= 'demo';
 }
 if (existsSync(envFile)) process.loadEnvFile(fileURLToPath(envFile));
 
@@ -57,6 +59,20 @@ if (wantsTestDatabase && process.env.TEST_DATABASE_ACTIVE !== '1') {
     // any it starts, so that nothing derives a test name from it a second time.
     process.env.TEST_DATABASE_ACTIVE = '1';
   }
+}
+
+// PORTAL_DATA=live on a developer's machine: the same server, the database
+// "<name>_live" (mgportal_live), holding only what the real tenant put there.
+// demo keeps DATABASE_URL as written (fake people, demo content). Tests never
+// switch: their database is derived above from the demo name. In production
+// DATABASE_URL is the real database and is used as given (D139).
+if (
+  !wantsTestDatabase &&
+  process.env.PORTAL_DATA === 'live' &&
+  (process.env.NODE_ENV ?? 'development') === 'development' &&
+  process.env.DATABASE_URL
+) {
+  process.env.DATABASE_URL = liveDatabaseUrl(process.env.DATABASE_URL);
 }
 
 /**
@@ -152,6 +168,22 @@ const schema = z
     GRAPH_MODE: z.enum(['mock', 'real']).default('mock'),
 
     /**
+     * Users and managers only (the directory sync), apart from mail, calendar
+     * and rooms. real: the tenant's directory with the application's own
+     * token (client credentials, User.Read.All). Absent: follows GRAPH_MODE.
+     */
+    GRAPH_DIRECTORY_MODE: z.enum(['mock', 'real']).optional(),
+
+    /**
+     * Which data a developer's machine works on. demo: DATABASE_URL as written,
+     * with seeded fake people and demo content. live: the database of the same
+     * name plus "_live", filled only from the real tenant; it needs the real
+     * directory and Entra sign-in, so fake and real people never mix (D139).
+     * Absent: demo, except in production, which has only real data.
+     */
+    PORTAL_DATA: z.enum(['demo', 'live']).optional(),
+
+    /**
      * Where uploaded files (company logos) are kept by the local storage
      * adapter. Default: <repo>/storage, outside frontend/, so it is never
      * served as a static file. Azure Blob replaces the adapter later.
@@ -245,6 +277,12 @@ const schema = z
       if (value.GRAPH_MODE === 'mock') {
         refuse('GRAPH_MODE', 'mock Graph is not allowed in production');
       }
+      if (value.GRAPH_DIRECTORY_MODE === 'mock') {
+        refuse('GRAPH_DIRECTORY_MODE', 'mock directory is not allowed in production');
+      }
+      if (value.PORTAL_DATA === 'demo') {
+        refuse('PORTAL_DATA', 'demo data is not allowed in production');
+      }
       if (value.STORAGE_DRIVER !== 'azure') {
         refuse('STORAGE_DRIVER', 'must be "azure" in production');
       }
@@ -267,8 +305,28 @@ const schema = z
       refuse('SESSION_ABSOLUTE_HOURS', 'must not be shorter than SESSION_IDLE_MINUTES');
     }
 
-    if (value.AUTH_MODE === 'entra' || value.GRAPH_MODE === 'real') {
-      const why = 'when AUTH_MODE=entra or GRAPH_MODE=real';
+    const directoryMode = value.GRAPH_DIRECTORY_MODE ?? value.GRAPH_MODE;
+    const portalData = value.PORTAL_DATA ?? (value.NODE_ENV === 'production' ? 'live' : 'demo');
+    if (portalData === 'live') {
+      if (directoryMode !== 'real') {
+        refuse('GRAPH_DIRECTORY_MODE', 'must be "real" when PORTAL_DATA=live');
+      }
+      if (value.AUTH_MODE !== 'entra') {
+        refuse(
+          'AUTH_MODE',
+          'must be "entra" when PORTAL_DATA=live (mock sign-in lists people)'
+        );
+      }
+    } else if (directoryMode === 'real') {
+      refuse('GRAPH_DIRECTORY_MODE', 'real people belong in PORTAL_DATA=live, not demo');
+    }
+
+    if (
+      value.AUTH_MODE === 'entra' ||
+      value.GRAPH_MODE === 'real' ||
+      directoryMode === 'real'
+    ) {
+      const why = 'when AUTH_MODE=entra or GRAPH_MODE or GRAPH_DIRECTORY_MODE is real';
       require('ENTRA_TENANT_ID', why);
       require('ENTRA_CLIENT_ID', why);
       require('ENTRA_CLIENT_SECRET', why);
@@ -301,6 +359,8 @@ export function loadEnv(source) {
   return Object.freeze({
     ...data,
     LOG_LEVEL: data.LOG_LEVEL ?? defaultLevel[data.NODE_ENV],
+    GRAPH_DIRECTORY_MODE: data.GRAPH_DIRECTORY_MODE ?? data.GRAPH_MODE,
+    PORTAL_DATA: data.PORTAL_DATA ?? (data.NODE_ENV === 'production' ? 'live' : 'demo'),
     APP_BASE_URL: (data.APP_BASE_URL ?? `http://localhost:${data.PORT}`).replace(/\/+$/, ''),
     sessionIdleMs: data.SESSION_IDLE_MINUTES * 60_000,
     sessionAbsoluteMs: Math.round(data.SESSION_ABSOLUTE_HOURS * 3_600_000),

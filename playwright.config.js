@@ -27,6 +27,8 @@ function serverEnv(port, extra = {}) {
     NODE_ENV: 'development',
     AUTH_MODE: 'mock',
     GRAPH_MODE: 'mock',
+    GRAPH_DIRECTORY_MODE: 'mock',
+    PORTAL_DATA: 'demo',
     // E2E_LOG_LEVEL=info also prints the server's request log (see webServer).
     LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'warn',
     // Text assets as production serves them, so page-weight.spec.js reports

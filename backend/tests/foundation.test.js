@@ -5,6 +5,11 @@ import { z } from 'zod';
 
 import { createApp } from '../src/app.js';
 import { loadEnv } from '../src/config/env.js';
+import {
+  databaseName,
+  liveDatabaseUrl,
+  resolveTestDatabaseUrl,
+} from '../src/config/test-db.js';
 import { snapshot, writeAudit } from '../src/lib/audit.js';
 import { guardAuditLog } from '../src/lib/prisma.js';
 import { HttpError } from '../src/middleware/errors.js';
@@ -268,6 +273,52 @@ describe('config loader', () => {
       { SESSION_IDLE_MINUTES: '900', SESSION_ABSOLUTE_HOURS: '12' },
       /SESSION_ABSOLUTE_HOURS/
     );
+  });
+
+  test('the directory has its own Graph mode, following GRAPH_MODE when absent', () => {
+    assert.equal(loadEnv({}).GRAPH_DIRECTORY_MODE, 'mock');
+    assert.equal(loadEnv(production).GRAPH_DIRECTORY_MODE, 'real');
+    assert.throws(
+      () => loadEnv({ ...production, GRAPH_DIRECTORY_MODE: 'mock' }),
+      /GRAPH_DIRECTORY_MODE/
+    );
+    const entra = { ENTRA_TENANT_ID: 't', ENTRA_CLIENT_ID: 'c', ENTRA_CLIENT_SECRET: 's' };
+    const live = { PORTAL_DATA: 'live', AUTH_MODE: 'entra', GRAPH_DIRECTORY_MODE: 'real' };
+    const env = loadEnv({ ...entra, ...live });
+    // Mail, calendar and rooms stay mocked beside the real directory.
+    assert.equal(env.GRAPH_MODE, 'mock');
+    assert.equal(env.GRAPH_DIRECTORY_MODE, 'real');
+    assert.throws(() => loadEnv({ ...live }), /ENTRA_CLIENT_SECRET/);
+  });
+
+  test('PORTAL_DATA keeps fake and real people apart', () => {
+    const entra = { ENTRA_TENANT_ID: 't', ENTRA_CLIENT_ID: 'c', ENTRA_CLIENT_SECRET: 's' };
+    assert.equal(loadEnv({}).PORTAL_DATA, 'demo');
+    assert.equal(loadEnv(production).PORTAL_DATA, 'live');
+    assert.throws(() => loadEnv({ ...production, PORTAL_DATA: 'demo' }), /PORTAL_DATA/);
+    // live: only the real directory and real sign-in.
+    assert.throws(
+      () => loadEnv({ ...entra, PORTAL_DATA: 'live', AUTH_MODE: 'entra' }),
+      /GRAPH_DIRECTORY_MODE/
+    );
+    assert.throws(
+      () => loadEnv({ ...entra, PORTAL_DATA: 'live', GRAPH_DIRECTORY_MODE: 'real' }),
+      /AUTH_MODE/
+    );
+    // demo: never the real directory.
+    assert.throws(
+      () => loadEnv({ ...entra, AUTH_MODE: 'entra', GRAPH_DIRECTORY_MODE: 'real' }),
+      /GRAPH_DIRECTORY_MODE/
+    );
+  });
+
+  test('the live database is the demo one plus _live, never a test one', () => {
+    const url = 'sqlserver://localhost:1433;database=mgportal;user=u;password=p';
+    assert.equal(databaseName(liveDatabaseUrl(url)), 'mgportal_live');
+    assert.equal(liveDatabaseUrl(liveDatabaseUrl(url)), liveDatabaseUrl(url));
+    assert.throws(() => liveDatabaseUrl(url.replace('mgportal', 'mgportal_test')), /_test/);
+    // The tests' database still comes from the demo name.
+    assert.equal(databaseName(resolveTestDatabaseUrl({ DATABASE_URL: url })), 'mgportal_test');
   });
 
   test('on Azure App Service a missing NODE_ENV stops the start', () => {

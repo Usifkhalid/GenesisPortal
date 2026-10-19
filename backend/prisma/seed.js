@@ -10,7 +10,7 @@
  * editing seed-data.js. It updates and adds; it never deletes.
  */
 
-import { isProduction } from '../src/config/env.js';
+import { env, isProduction } from '../src/config/env.js';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma.js';
 import { ROLES } from '../src/lib/roles.js';
 import { searchKeyOf } from '../src/lib/text-search.js';
@@ -30,8 +30,19 @@ import {
  * @returns {Promise<{ companies: number, departments: number, users: number, rooms: number }>}
  */
 export async function seed(prisma) {
+  const companyIds = await seedCompanies(prisma, COMPANIES);
+  return seedDemo(prisma, companyIds);
+}
+
+/**
+ * The companies and their mail domains, nothing else: all the live database
+ * starts with (scripts/setup-live-db.js). Returns code → id.
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @param {typeof COMPANIES} companies
+ */
+export async function seedCompanies(prisma, companies) {
   const companyIds = new Map();
-  for (const { code, ...data } of COMPANIES) {
+  for (const { code, ...data } of companies) {
     const row = await prisma.company.upsert({
       where: { code },
       update: data,
@@ -46,7 +57,11 @@ export async function seed(prisma) {
       create: { companyId: row.id, domain: data.domain },
     });
   }
+  return companyIds;
+}
 
+/** Departments, fake people, rooms and the helpdesk: the demo database only. */
+async function seedDemo(prisma, companyIds) {
   const departmentIds = new Map();
   for (const { company, key, ...names } of DEPARTMENTS) {
     const companyId = companyIds.get(company);
@@ -186,6 +201,9 @@ export async function seed(prisma) {
 // Run only as `node backend/prisma/seed.js`, not when a test imports seed().
 if (import.meta.main) {
   if (isProduction) throw new Error('Refusing to seed fake users into production.');
+  if (env.PORTAL_DATA === 'live') {
+    throw new Error('Refusing to seed fake users into the live database (PORTAL_DATA=live).');
+  }
 
   try {
     const counts = await seed(await getPrisma());

@@ -19,7 +19,9 @@
     "db:deploy": "node backend/scripts/migrate-deploy.js",
     "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
     "db:seed": "node backend/prisma/seed.js",
-    "db:reset": "node backend/scripts/reset-db.js"
+    "db:reset": "node backend/scripts/reset-db.js",
+    "db:live:setup": "node backend/scripts/setup-live-db.js",
+    "sync:users": "node backend/scripts/sync-users.js"
   },
   "dependencies": {
     "@azure/identity": "^4.13.3",

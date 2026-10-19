@@ -957,6 +957,7 @@
         "missing_email": "A person in Graph has no email address (id {id}).",
         "manager_unresolved": "The manager of {email} is not in the portal.",
         "manager_lookup_failed": "The manager of a person could not be looked up (id {id}).",
+        "guests_skipped": "{count} guest accounts from other organisations were skipped.",
         "other": "Warning: {code}"
       },
       "loadFailed": "The sync history could not be loaded."
