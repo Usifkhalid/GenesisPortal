@@ -21,7 +21,8 @@
     "db:reset": "node backend/scripts/reset-db.js",
     "db:setup-live": "node backend/scripts/setup-live-db.js",
     "sync:users": "node backend/scripts/sync-users.js",
-    "import:hr": "node backend/scripts/import-hr.js"
+    "import:hr": "node backend/scripts/import-hr.js",
+    "migrate:from-portal": "node backend/scripts/migrate-from-portal.js"
   },
   "dependencies": {
     "@mg/shared": "*",

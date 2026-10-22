@@ -11,6 +11,8 @@
 
 import { fileURLToPath } from 'node:url';
 
+import { z } from 'zod';
+
 import {
   createEnvLoader,
   parseEmailList,
@@ -56,6 +58,15 @@ export const loadEnv = createEnvLoader({
   adminsVar: 'INITIAL_HOLDING_ADMINS',
   defaultPort: 3000,
   defaultContainer: 'portal-files',
+  extraShape: {
+    /**
+     * The portal's own helpdesk jobs: the SLA watch (75%/100% alerts) and the
+     * 24-hour "is your problem solved?" reminders. off once the tickets have
+     * moved to the IT Helpdesk app (D145), which runs the same jobs on its own
+     * copy, so nobody hears twice. Removed with the portal's helpdesk (2b).
+     */
+    PORTAL_HELPDESK_JOBS: z.enum(['on', 'off']).default('on'),
+  },
 });
 
 export const env = loadEnv(process.env);

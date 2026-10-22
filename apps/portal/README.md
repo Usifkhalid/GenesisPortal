@@ -90,6 +90,11 @@ sync and sign-in no longer overwrite them (docs/DECISIONS.md D140). Counts go to
 details with a reason per row to `reports/hr-import-<date>.csv`. `private/` and `reports/`
 hold personal data and are git-ignored.
 
+The live tickets, IT team and settings move to the IT Helpdesk app with
+`npm run helpdesk:migrate:from-portal` (apps/helpdesk/README.md, D145). Before it, set
+`PORTAL_HELPDESK_JOBS=off` here and restart the portal: its SLA alerts and confirmation
+reminders stop, and the helpdesk sends them from then on.
+
 ### Test database
 
 `npm test` and `npm run test:e2e` never use `DATABASE_URL`. They run on `mgportal_test`

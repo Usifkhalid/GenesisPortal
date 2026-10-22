@@ -37,9 +37,13 @@ const EMPTY = Object.freeze({
  * @param {import('@prisma/client').PrismaClient} db  a client or a transaction
  * @param {object} [options]
  * @param {object | null} [options.req]  the signed-in admin, for the audit row
+ * @param {boolean} [options.settings]  false: the team and the companies it
+ *   serves only, no hours, SLA, categories, replies, locations or holidays.
+ *   The helpdesk passes it once its settings came from the portal (D145), so
+ *   no default is added beside a migrated (perhaps renamed) one.
  * @returns {Promise<{ teamId: string, created: Record<string, number> }>} what was added
  */
-export async function ensureHelpdeskDefaults(db, { req = null } = {}) {
+export async function ensureHelpdeskDefaults(db, { req = null, settings = true } = {}) {
   const { calendar, sla, categories, cannedReplies, code, servesAllCompanies } =
     SUPPORT_TEAMS[0];
   const team = { code, servesAllCompanies };
@@ -51,7 +55,45 @@ export async function ensureHelpdeskDefaults(db, { req = null } = {}) {
     created.team = 1;
   }
   const teamId = row.id;
+  if (settings) {
+    await ensureSettings(db, teamId, created, { calendar, sla, categories, cannedReplies });
+  }
 
+  if (!row.servesAllCompanies) {
+    const served = new Set(
+      (await db.supportTeamCompany.findMany({ where: { teamId } })).map((c) => c.companyId)
+    );
+    for (const company of await db.company.findMany({ where: { isActive: true } })) {
+      if (served.has(company.id)) continue;
+      await db.supportTeamCompany.create({ data: { teamId, companyId: company.id } });
+      created.companies += 1;
+    }
+  }
+
+  if (Object.values(created).some(Boolean)) {
+    await writeAudit(
+      req,
+      'helpdesk.defaults.create',
+      'SupportTeam',
+      null,
+      { code: team.code, created },
+      {
+        tx: db,
+        companyId: null,
+        entityId: teamId,
+      }
+    );
+  }
+  return { teamId, created };
+}
+
+/** The team's hours, SLA, categories and replies, and the group's locations and holidays. */
+async function ensureSettings(
+  db,
+  teamId,
+  created,
+  { calendar, sla, categories, cannedReplies }
+) {
   if (!(await db.businessCalendar.findFirst({ where: { teamId } }))) {
     await db.businessCalendar.create({ data: { teamId, ...calendar } });
     created.calendar = 1;
@@ -95,31 +137,4 @@ export async function ensureHelpdeskDefaults(db, { req = null } = {}) {
     await db.holiday.create({ data: holiday });
     created.holidays += 1;
   }
-
-  if (!row.servesAllCompanies) {
-    const served = new Set(
-      (await db.supportTeamCompany.findMany({ where: { teamId } })).map((c) => c.companyId)
-    );
-    for (const company of await db.company.findMany({ where: { isActive: true } })) {
-      if (served.has(company.id)) continue;
-      await db.supportTeamCompany.create({ data: { teamId, companyId: company.id } });
-      created.companies += 1;
-    }
-  }
-
-  if (Object.values(created).some(Boolean)) {
-    await writeAudit(
-      req,
-      'helpdesk.defaults.create',
-      'SupportTeam',
-      null,
-      { code: team.code, created },
-      {
-        tx: db,
-        companyId: null,
-        entityId: teamId,
-      }
-    );
-  }
-  return { teamId, created };
 }

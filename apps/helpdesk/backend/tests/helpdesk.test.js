@@ -21,6 +21,7 @@ import {
 } from '@mg/shared/server/modules/auth/provision.js';
 import { cairo, iso, signIn } from '@mg/shared/server/testing/clients.js';
 import {
+  DEV,
   START,
   SUNDAY,
   buildApp,
@@ -136,7 +137,10 @@ describe('signing in', () => {
   });
 
   test('no PORTAL_URL, no link back to the portal', async () => {
-    const { app, repo } = buildApp(createApp);
+    // Whatever apps/helpdesk/.env says: this test is about the setting being absent.
+    const { app, repo } = buildApp(createApp, {
+      config: { ...DEV, PORTAL_URL: undefined },
+    });
     const salma = await signIn(
       app,
       repo.users.find((u) => u.email.startsWith('salma'))

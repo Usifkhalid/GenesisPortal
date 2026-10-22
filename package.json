@@ -31,7 +31,8 @@
     "helpdesk:db:reset": "npm run db:reset -w @mg/helpdesk --",
     "helpdesk:db:setup-live": "npm run db:setup-live -w @mg/helpdesk --",
     "helpdesk:sync:users": "npm run sync:users -w @mg/helpdesk --",
-    "helpdesk:import:hr": "npm run import:hr -w @mg/helpdesk --"
+    "helpdesk:import:hr": "npm run import:hr -w @mg/helpdesk --",
+    "helpdesk:migrate:from-portal": "npm run migrate:from-portal -w @mg/helpdesk --"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

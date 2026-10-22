@@ -10,7 +10,8 @@
 
 import { getPrisma } from '@mg/shared/server/lib/prisma.js';
 import { withWriteRetry } from '@mg/shared/server/lib/retry.js';
-import { ensureHelpdeskDefaults } from '@mg/shared/server/modules/tickets/defaults.js';
+
+import { ensureDefaults } from './defaults.js';
 
 const INCLUDE = {
   domains: { select: { domain: true, createdAt: true } },
@@ -41,8 +42,8 @@ function bind(db) {
   return {
     auditLog: db.auditLog,
 
-    /** The IT helpdesk's reference data, when missing (tickets/defaults.js). */
-    ensureHelpdeskDefaults: (req) => ensureHelpdeskDefaults(db, { req }),
+    /** The IT helpdesk's reference data, when missing and not from the portal (defaults.js). */
+    ensureHelpdeskDefaults: (req) => ensureDefaults(db, { req }),
 
     async listCompanies() {
       const rows = await db.company.findMany({ include: INCLUDE, orderBy: { code: 'asc' } });

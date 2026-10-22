@@ -11,6 +11,8 @@
  *   INITIAL_HELPDESK_ADMINS  the helpdesk's first administrators (D136)
  *   GRAPH_MAIL_MODE          mail through Graph (GRAPH_MODE's other name)
  *   PORTAL_URL               where "Back to portal" leads; absent: no link
+ *   PORTAL_SOURCE_DATABASE_URL, PORTAL_SOURCE_STORAGE_DIR
+ *                            the portal's data, for `migrate:from-portal` only (D145)
  *
  * Importing this file also tells the shared code which app it is serving
  * (config/runtime.js), and which database client to use: the helpdesk's own,
@@ -73,6 +75,17 @@ export const loadEnv = createEnvLoader({
      * the header. Absent: no link.
      */
     PORTAL_URL: z.url().optional(),
+    /**
+     * The portal's database, read once by `npm run migrate:from-portal` (D145)
+     * and by nothing else: the server never opens it. Give it a read-only
+     * login. Absent: the migration refuses to start.
+     */
+    PORTAL_SOURCE_DATABASE_URL: z.string().min(1).optional(),
+    /**
+     * The portal's local upload folder, for the same migration (its ticket
+     * attachments). Absent: <repo>/storage, where the portal keeps them.
+     */
+    PORTAL_SOURCE_STORAGE_DIR: z.string().min(1).optional(),
   },
 });
 

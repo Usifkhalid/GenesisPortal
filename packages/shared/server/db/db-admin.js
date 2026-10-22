@@ -81,6 +81,12 @@ async function ensureRowVersioning(db, name) {
   return true;
 }
 
+/** Whether the database `url` names exists on its server. Changes nothing. */
+export async function databaseExists(url) {
+  const name = assertName(databaseName(url));
+  return withMaster(url, (db) => exists(db, name));
+}
+
 /**
  * Creates the database when it is missing, and makes sure it reads by row
  * version. @returns {Promise<boolean>} true when created

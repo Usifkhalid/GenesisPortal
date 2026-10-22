@@ -54,7 +54,57 @@ npm run helpdesk:import:hr -- --as <email> --dry-run            # HR's staff lis
 ```
 
 Set the IT team after the first sync: `--it-leads` and `--it-members` take people who are
-already in the database.
+already in the database. After a migration from the portal (below) the team is already
+there, and `db:setup-live` keeps the portal's companies and settings as they are.
+
+## Moving the portal's helpdesk here (D145)
+
+The portal's live tickets, IT team and settings are copied once into `mghelpdesk_live`.
+The script creates and migrates that database itself; `db:setup-live` is not needed first.
+
+```bash
+# apps/portal/.env:   PORTAL_HELPDESK_JOBS=off, then restart the portal
+# apps/helpdesk/.env: HELPDESK_DATA=live, PORTAL_SOURCE_DATABASE_URL=<mgportal_live, read-only login>
+# stop the helpdesk server while it runs
+npm run helpdesk:migrate:from-portal -- --as <you> --dry-run   # counts per table and company; nothing written
+npm run helpdesk:migrate:from-portal -- --as <you>             # create + migrate mghelpdesk_live, copy, check
+npm run helpdesk:migrate:from-portal -- --as <you> --verify    # the check again, nothing written
+```
+
+- **Read-only portal:** it reads `PORTAL_SOURCE_DATABASE_URL` through a wrapper that refuses
+  every write before it is sent, and the portal's files from `PORTAL_SOURCE_STORAGE_DIR`
+  (default `<repo>/storage`). A `db_datareader` login on `mgportal_live` is the second lock.
+  The server never opens either (`backend/tests/standalone.test.js`).
+- **What comes:** companies and domains, departments, every person (HR's fields and staff ids
+  kept), plain User roles and `--as`'s HoldingAdmin (they become the helpdesk's first
+  administrator; other admin roles stay in the portal), the IT team with leads, agents, hours,
+  SLA, categories, locations, holidays, canned replies, every ticket with its number, dates,
+  replies, internal notes, history, SLA clock and pause, rating, feedback and close reason,
+  attachments (bytes copied, scan verdict kept: a pending or unknown file is scanned before it is
+  served), ticket notifications that are unread or carry an alert key (so no SLA alert or
+  reminder goes out twice), and the ticket and IT-settings audit rows (`origin = 'portal'`,
+  original time and actor). The yearly counter continues after the highest number.
+- **Matching:** a company by code, a person by Entra object id then email: someone the
+  directory sync already brought keeps their row, never a second one. Later `sync:users` and
+  `import:hr` match the same rows (HR by the stored staff id).
+- **Safe twice:** `PortalImport` records every row copied; a second run copies nothing. It
+  refuses when `mghelpdesk_live` holds tickets that did not come from the portal (unless
+  `--force-merge`), when a portal number is taken here, while the portal's helpdesk jobs or a
+  helpdesk server ran in the last 15 minutes, or when `--as` is not an active holding-wide
+  HoldingAdmin of the portal. Nothing sends mail or alerts.
+- **Report:** counts to the terminal; `reports/helpdesk-migration-<Cairo time>.json`
+  (git-ignored) with counts per table and company, warnings and the check (every table's count,
+  every ticket number, every file's size and SHA-256). Exit code 1 if the check fails. The run
+  is audited (`helpdesk.migrate_from_portal`).
+
+## Runs on its own
+
+The helpdesk needs nothing from the portal at runtime. Its process runs its own jobs, each
+behind a JobLease row so two instances never both work a round: session pruning, the nightly
+user sync (02:00 Cairo), the SLA watch (75% and 100%, every five minutes), the 24-hour
+confirmation reminders and the malware-scan sweep. Notifications (bell and email) are written
+and sent at the moment of the change. `/api/health` and `/api/ready`, its own session store
+(`mgh.sid`), rate limits, CSP, the scan gate and the production guard are the portal's.
 
 ## Checks
 
@@ -70,9 +120,11 @@ frontend/            index.html (the shell), login.html, offline.html, manifest
   assets/js/         app.js, pages/requests.js, pages/administration/*
   assets/i18n/       helpdesk.<lang>.json over packages/shared/web's common.<lang>.json
   assets/css/pages/  helpdesk-app.css
-backend/src/         server.js, app.js, config/env.js, modules/me, modules/admin
+backend/src/         server.js, app.js, config/env.js, modules/me, modules/admin,
+                     modules/migration (the one-time copy from the portal, D145)
 backend/prisma/      schema.prisma (generated into backend/generated/client), migrations/, seed.js
 backend/scripts/     thin wrappers over packages/shared/server/cli
-backend/tests/       app, authorisation matrix, SQL Server, strings
+backend/tests/       app, authorisation matrix, SQL Server, strings, the migration,
+                     the helpdesk with the portal switched off
 tests/e2e/           Playwright specs
 ```

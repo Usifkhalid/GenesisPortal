@@ -1,5 +1,6 @@
 Scheduled background work (notification digests, booking reminders).
-Each job is a module started from server.js.
+Each job is a module started from server.js through schedule.js, which leaves out the SLA watch
+and the reminders when PORTAL_HELPDESK_JOBS=off (D145).
 
 - prune-sessions.js: deletes expired Session rows at startup and then hourly.
 - remindResolvedTickets.js: reminds the requester of a Resolved helpdesk ticket every 24 hours until they

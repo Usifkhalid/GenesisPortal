@@ -62,7 +62,15 @@ export function liveCompanies(companies, args) {
   };
 }
 
-async function main(args) {
+/**
+ * @param {string[]} args
+ * @param {object} [hooks]  the helpdesk's, once the portal's data was copied in (D145):
+ *   companiesFromPortal(db) → true: companies already here keep their names and
+ *     domains (only missing ones are added; --domain still sets one)
+ *   settingsFromPortal(db) → true: say so; ensureDefaults then adds none
+ *   ensureDefaults(db)  replaces ensureHelpdeskDefaults
+ */
+async function main(args, hooks = {}) {
   const { env, dataVar } = runtime();
   if (env[dataVar] !== 'live') {
     throw new Error(`Set ${dataVar}=live in .env first: this sets up the live database only.`);
@@ -93,14 +101,18 @@ async function main(args) {
   ]);
   try {
     const db = await getPrisma();
-    const ids = await seedCompanies(db, list);
+    const keepCompanies = Boolean(await hooks.companiesFromPortal?.(db));
+    const ids = keepCompanies
+      ? await addMissingCompanies(db, list, overridden, seedCompanies)
+      : await seedCompanies(db, list);
     // A real domain given now replaces the placeholder an earlier run stored.
     for (const code of overridden) {
       await db.companyDomain.deleteMany({
         where: { companyId: ids.get(code), domain: { endsWith: '.example' } },
       });
     }
-    const helpdesk = await ensureHelpdeskDefaults(db);
+    const fromPortal = Boolean(await hooks.settingsFromPortal?.(db));
+    const helpdesk = await (hooks.ensureDefaults ?? ensureHelpdeskDefaults)(db);
     const members =
       team.leads || team.members
         ? await setItMembers(db, { teamId: helpdesk.teamId, ...team })
@@ -119,8 +131,11 @@ async function main(args) {
     console.log(`  ${departments} departments, ${people} people.`);
     const added = Object.values(helpdesk.created).reduce((a, b) => a + b, 0);
     console.log(
-      `  IT helpdesk: ${added} default rows added (${helpdesk.created.team ? 'team created' : 'team existed'}).`
+      fromPortal
+        ? '  IT helpdesk: team and settings came from the portal; no defaults added.'
+        : `  IT helpdesk: ${added} default rows added (${helpdesk.created.team ? 'team created' : 'team existed'}).`
     );
+    if (keepCompanies) console.log('  Companies came from the portal: kept as they are.');
     if (members) {
       console.log(
         `  IT team members: ${members.added} added, ${members.changed} role changed, ${members.unchanged} unchanged.`
@@ -142,12 +157,40 @@ async function main(args) {
 }
 
 /**
+ * Companies missing by code are created; those already here are left alone,
+ * except a --domain given for one, which becomes its main domain.
+ */
+async function addMissingCompanies(db, list, overridden, seedCompanies) {
+  const present = new Map(
+    (await db.company.findMany({ select: { id: true, code: true } })).map((c) => [c.code, c.id])
+  );
+  const made = await seedCompanies(
+    db,
+    list.filter((c) => !present.has(c.code))
+  );
+  const ids = new Map([...present, ...made]);
+  for (const code of overridden.filter((c) => present.has(c))) {
+    const { domain } = list.find((c) => c.code === code);
+    const companyId = ids.get(code);
+    await db.companyDomain.upsert({
+      where: { domain },
+      update: { companyId },
+      create: { companyId, domain },
+    });
+    await db.company.update({ where: { id: companyId }, data: { domain } });
+  }
+  return ids;
+}
+
+/**
  * The command line: the app's script calls this after importing its env.js.
  * @param {string} name  the npm script, for messages
+ * @param {string[]} [args]
+ * @param {object} [hooks]  see main()
  */
-export async function cli(name, args = process.argv.slice(2)) {
+export async function cli(name, args = process.argv.slice(2), hooks = {}) {
   try {
-    await main(args);
+    await main(args, hooks);
   } catch (err) {
     console.error(`${name}: ${err.message}`);
     process.exitCode = 1;

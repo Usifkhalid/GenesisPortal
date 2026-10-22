@@ -199,6 +199,10 @@ model AuditLog {
   before    String?  @db.NVarChar(Max)
   after     String?  @db.NVarChar(Max)
   ip        String?  @db.VarChar(45)
+  /// NULL for a row this helpdesk wrote; "portal" for one copied from the
+  /// portal by `npm run migrate:from-portal` (D145), with its original time
+  /// and actor.
+  origin    String?  @db.VarChar(20)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -637,4 +641,27 @@ model CannedReply {
   team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([teamId, isActive, sortOrder])
+}
+
+/// One row the portal's helpdesk handed over (`npm run migrate:from-portal`,
+/// D145): which portal row (entity + its id there) became which row here. It
+/// is how a second run knows what it already copied, and how a ticket that
+/// did not come from the portal is told apart. Not a business table: no
+/// companyId, written only by the migration.
+model PortalImport {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  /// The model name: Ticket, UserProfile, AuditLog, ...
+  entity    String   @db.NVarChar(60)
+  /// The row's id (or key) in the portal's database.
+  sourceId  String   @db.NVarChar(200)
+  /// The row's id (or key) here: the same as sourceId unless it matched a
+  /// row that was already here (a company by code, a person by Entra id).
+  targetId  String   @db.NVarChar(200)
+  /// Which run copied or matched it (the run's audit row).
+  runId     String   @db.NVarChar(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entity, sourceId])
+  @@index([entity, targetId])
 }
