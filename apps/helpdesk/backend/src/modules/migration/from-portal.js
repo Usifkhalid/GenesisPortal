@@ -398,10 +398,8 @@ export async function migrateFromPortal({
     target.jobLease.findMany({}),
   ]);
   const jobsWarnings = [];
-  if (
-    busy(portalLeases, ['sla-watch'], 15) ||
-    busy(portalLeases, ['ticket-confirmation-reminders'], 75)
-  ) {
+  // The SLA watch runs every five minutes while the portal's helpdesk jobs are on.
+  if (busy(portalLeases, ['sla-watch', 'ticket-confirmation-reminders'], 15)) {
     jobsWarnings.push(
       "The portal's helpdesk jobs ran lately: set PORTAL_HELPDESK_JOBS=off in apps/portal/.env, restart the portal, and run again in 15 minutes."
     );
