@@ -3,15 +3,16 @@ node_modules/
 *.log
 .DS_Store
 
-# Generated Prisma client.
-backend/generated/
-backend/prisma/*.db
+# Generated Prisma clients (the helpdesk's is generated into its app folder).
+apps/*/backend/generated/
+apps/*/backend/prisma/*.db
 
-# Uploaded files (company logos): the local storage adapter (lib/storage.js).
+# Uploaded files: the local storage adapter (packages/shared/server/lib/storage.js).
+# The portal's are in <repo>/storage, the helpdesk's in apps/helpdesk/storage.
 storage/
 
-# Mail the mocked Graph "sent" (integrations/graph/mock-mail.js).
-backend/mock/outbox/
+# Mail the mocked Graph "sent" (integrations/graph/mock-mail.js), per app.
+apps/*/backend/mock/outbox/
 
 # Test and tooling output.
 coverage/

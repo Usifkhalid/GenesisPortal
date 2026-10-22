@@ -1,0 +1,56 @@
+/* =========================================================================
+ * helpdesk-app.css — what the IT Helpdesk app adds to helpdesk.css (D144):
+ * the "Back to portal" link and the account menu's phone-only links, and the
+ * Administration > Companies table. Tokens only; logical properties only.
+ * ========================================================================= */
+
+/* --- Back to portal: a quiet link beside the bell ----------------------- */
+
+.hd-portal-link {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.hd-portal-link[hidden] {
+  display: none;
+}
+
+/* On a phone the bar has no room for the words: the menu carries the link. */
+@media (max-width: 47.99rem) {
+  .hd-portal-link {
+    display: none;
+  }
+}
+
+/* --- Account menu: links the phone's bar has no room for ---------------- */
+
+@media (min-width: 48rem) {
+  .hd-phone-only {
+    display: none;
+  }
+}
+
+.hd-phone-only .menu__item[hidden] {
+  display: none;
+}
+
+/* --- Administration > Companies ---------------------------------------- */
+
+.hd-domains {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hd-domains li + li {
+  margin-block-start: var(--space-1);
+}
+
+.hd-swatch {
+  display: inline-block;
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  border: var(--border-1) solid var(--rule);
+  border-radius: var(--radius-xs);
+  vertical-align: middle;
+}

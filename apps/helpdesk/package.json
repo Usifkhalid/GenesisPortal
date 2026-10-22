@@ -1,0 +1,33 @@
+{
+  "name": "@mg/helpdesk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The MG Holding IT Helpdesk: employees raise and follow tickets, the IT team works them.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "postinstall": "prisma generate --schema backend/prisma/schema.prisma",
+    "dev": "node --watch backend/src/server.js",
+    "start": "node backend/src/server.js",
+    "pretest": "node backend/scripts/prepare-test-db.js",
+    "test": "node --test --test-concurrency=2 \"backend/tests/**/*.test.js\"",
+    "test:e2e": "playwright test",
+    "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
+    "db:deploy": "node backend/scripts/migrate-deploy.js",
+    "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
+    "db:seed": "node backend/prisma/seed.js",
+    "db:reset": "node backend/scripts/reset-db.js",
+    "db:setup-live": "node backend/scripts/setup-live-db.js",
+    "sync:users": "node backend/scripts/sync-users.js",
+    "import:hr": "node backend/scripts/import-hr.js"
+  },
+  "dependencies": {
+    "@mg/shared": "*",
+    "@prisma/client": "^6.1.0",
+    "express": "^5.1.0",
+    "express-session": "^1.19.0",
+    "zod": "^4.6.5"
+  }
+}

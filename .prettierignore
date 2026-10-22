@@ -1,5 +1,5 @@
 node_modules/
-backend/generated/
+**/generated/
 coverage/
 .impeccable/
 package-lock.json
@@ -11,10 +11,11 @@ package-lock.json
 
 # Written and verified in a browser by session 3. Prettier's CSS and HTML
 # printers would rewrap them wholesale for no behavioural gain.
-frontend/assets/css/
-frontend/assets/fonts/fonts.css
-frontend/styleguide.html
+apps/*/frontend/assets/css/
+packages/shared/web/assets/css/
+packages/shared/web/assets/fonts/fonts.css
+apps/portal/frontend/styleguide.html
 
 # A table of long single-line SVG path strings. Prettier moves the break for
 # some entries and not others, which reads worse than the aligned original.
-frontend/assets/js/components/icons.js
+packages/shared/web/assets/js/components/icons.js

@@ -1,43 +1,37 @@
 {
-  "name": "mg-holding-portal",
+  "name": "mg-holding",
   "version": "0.1.0",
   "private": true,
-  "description": "Internal employee portal for MG Holding and its companies.",
+  "description": "MG Holding: the employee portal and the IT Helpdesk, two apps with shared packages.",
   "type": "module",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "dev": "node --watch backend/src/server.js",
-    "start": "node backend/src/server.js",
-    "pretest": "node backend/scripts/prepare-test-db.js",
-    "test": "node --test \"backend/tests/**/*.test.js\"",
-    "test:e2e": "playwright test",
+    "dev": "npm run dev -w @mg/portal",
+    "dev:helpdesk": "npm run dev -w @mg/helpdesk",
+    "test": "npm test -w @mg/portal && npm test -w @mg/helpdesk",
+    "test:portal": "npm test -w @mg/portal",
+    "test:helpdesk": "npm test -w @mg/helpdesk",
+    "test:e2e": "npm run test:e2e -w @mg/portal",
+    "test:e2e:helpdesk": "npm run test:e2e -w @mg/helpdesk",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
-    "db:deploy": "node backend/scripts/migrate-deploy.js",
-    "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
-    "db:seed": "node backend/prisma/seed.js",
-    "db:reset": "node backend/scripts/reset-db.js",
-    "db:live:setup": "node backend/scripts/setup-live-db.js",
-    "sync:users": "node backend/scripts/sync-users.js",
-    "import:hr": "node backend/scripts/import-hr.js"
-  },
-  "dependencies": {
-    "@azure/identity": "^4.13.3",
-    "@azure/msal-node": "^7.0.1",
-    "@azure/storage-blob": "^12.34.0",
-    "@prisma/client": "^6.1.0",
-    "applicationinsights": "^3.17.0",
-    "compression": "^1.8.2",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.7.1",
-    "express-session": "^1.19.0",
-    "helmet": "^8.0.0",
-    "pino": "^10.4.0",
-    "pino-http": "^11.0.0",
-    "zod": "^4.6.5"
+    "db:migrate": "npm run db:migrate -w @mg/portal --",
+    "db:deploy": "npm run db:deploy -w @mg/portal --",
+    "db:generate": "npm run db:generate -w @mg/portal --",
+    "db:seed": "npm run db:seed -w @mg/portal --",
+    "db:reset": "npm run db:reset -w @mg/portal --",
+    "db:live:setup": "npm run db:live:setup -w @mg/portal --",
+    "sync:users": "npm run sync:users -w @mg/portal --",
+    "import:hr": "npm run import:hr -w @mg/portal --",
+    "helpdesk:db:deploy": "npm run db:deploy -w @mg/helpdesk --",
+    "helpdesk:db:generate": "npm run db:generate -w @mg/helpdesk --",
+    "helpdesk:db:seed": "npm run db:seed -w @mg/helpdesk --",
+    "helpdesk:db:reset": "npm run db:reset -w @mg/helpdesk --",
+    "helpdesk:db:setup-live": "npm run db:setup-live -w @mg/helpdesk --",
+    "helpdesk:sync:users": "npm run sync:users -w @mg/helpdesk --",
+    "helpdesk:import:hr": "npm run import:hr -w @mg/helpdesk --"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -54,5 +48,9 @@
     "prisma@6.19.3": true,
     "@prisma/client@6.19.3": true,
     "@prisma/engines@6.19.3": true
-  }
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
 }

@@ -3,6 +3,11 @@
 Base path `/api`. JSON in, JSON out. Everything that is not under `/api` is the static
 frontend.
 
+Two apps answer this API (D144): the portal (`apps/portal`, every section below) and the IT
+Helpdesk (`apps/helpdesk`), which answers the sign-in, notification, ticket, IT Helpdesk
+and IT team routes the same way, plus its own Administration and `GET /api/me` (see "The IT
+Helpdesk app" at the end). Each has its own session cookie and database.
+
 ## Conventions
 
 **Authentication.** A server-side session, identified by an httpOnly, Secure, SameSite
@@ -543,6 +548,29 @@ Development only, never mounted in production, and answering 404 unless Graph is
 | --- | --- |
 | `GET /api/dev/outbox` | `{ items: [{ id, from, to, subject, html, text, sentAt }] }`: what the portal "sent", newest first, from `backend/mock/outbox/`. The page is `#dev`. |
 | `GET /api/dev/outbox/:id/html` | one mail's HTML for the preview frame, with a sandboxed policy of its own (inline styles, no script). Development only, like the list. |
+
+### The IT Helpdesk app (`apps/helpdesk`, D144)
+
+The same routes as the portal for sign-in (`/api/auth/*`, `/auth/*`), notifications,
+tickets (`/api/tickets`), the IT team (`/api/helpdesk/*`, `/api/admin/it-team`) and the
+development outbox, with these differences:
+
+- Mock sign-in answers `redirectTo: '/'` for everyone. There is no `helpdesk_only` refusal:
+  everyone signed in may raise and follow their own tickets.
+- Ticket notification links are `#tickets/<id>` for the requester and the IT team alike, and
+  emails link to the helpdesk's `APP_BASE_URL`.
+- `GET /api/me` → `{ user, company, roles, helpdesk: { role: 'Lead' | 'Agent' } | null,
+  admin: boolean, portalUrl: string | null, authMode, csrfToken, serviceWorker }`.
+  `admin` is true for the helpdesk's HoldingAdmins; `portalUrl` is `PORTAL_URL`.
+
+Administration, HoldingAdmin only (403 for anyone else), every write audited:
+
+| Route | Body / answer |
+| --- | --- |
+| `GET /api/admin/companies` | `{ items: [{ id, code, nameEn, nameAr, domains, accentColor, isActive, userCount, createdAt, updatedAt }] }`, the main domain first |
+| `POST /api/admin/companies` | `{ code (2–5 capitals), nameEn, nameAr, domains (1–5), accentColor }` → 201, the company. `409 code_taken`, `409 domain_taken`, `400 accent_not_accessible`. Runs the IT defaults (D141). Audit `company.create`. |
+| `PATCH /api/admin/companies/:id` | `{ updatedAt, nameEn?, nameAr?, domains?, accentColor?, isActive? }` → the company. `409 stale_record`, `409 domain_taken`, `400 nothing_to_change`. Audit `company.update`, `.deactivate` or `.reactivate`. |
+| `GET /api/admin/people?q=&page=&pageSize=` | the directory search, to pick an IT team member |
 
 ### The rest
 

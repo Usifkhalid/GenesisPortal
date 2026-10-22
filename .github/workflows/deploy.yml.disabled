@@ -51,7 +51,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx prisma generate --schema backend/prisma/schema.prisma
+      - run: npx prisma generate --schema apps/portal/backend/prisma/schema.prisma
       - run: npm run lint
       - run: npm audit --omit=dev --audit-level=high
       - run: npm test
@@ -63,8 +63,9 @@ jobs:
       # engine inside node_modules matches App Service.
       - run: npm prune --omit=dev
       - run: |
-          zip -qr release.zip backend frontend package.json package-lock.json node_modules \
-            -x "backend/tests/*" "backend/mock/outbox/*"
+          zip -qr release.zip package.json package-lock.json node_modules packages/shared apps/portal \
+            -x "apps/portal/backend/tests/*" "apps/portal/tests/*" "apps/portal/backend/mock/outbox/*" \
+               "node_modules/@mg/helpdesk/*" "node_modules/@mg/portal/*"
       - uses: actions/upload-artifact@v4
         with:
           name: release

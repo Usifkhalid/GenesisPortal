@@ -1,0 +1,123 @@
+{
+  "app": {
+    "name": "MG Holding IT Helpdesk"
+  },
+  "offline": {
+    "pageTitle": "Offline · IT Helpdesk",
+    "home": "Open the IT Helpdesk"
+  },
+  "page": {
+    "backHome": "Back to the IT Helpdesk",
+    "pending": {
+      "text": "This part of the IT Helpdesk is not open yet. It will appear here when it is ready."
+    }
+  },
+  "notification": {
+    "prefs": {
+      "channels": {
+        "inApp": "In the IT Helpdesk"
+      }
+    }
+  },
+  "email": {
+    "open": "Open in the IT Helpdesk"
+  },
+  "login": {
+    "pageTitle": "Sign in · IT Helpdesk",
+    "mock": {
+      "lead": "Development sign-in. Pick someone to see the IT Helpdesk as they do. None of these people is real."
+    },
+    "error": {
+      "not_provisioned": {
+        "title": "You are not set up in the IT Helpdesk yet",
+        "text": "Your Microsoft account worked, but it has no IT Helpdesk profile. Ask IT to add you."
+      },
+      "consent_required": {
+        "title": "The IT Helpdesk needs approval in Microsoft",
+        "text": "Microsoft says the IT Helpdesk has not been approved for your organisation yet. Ask your Global Administrator to grant admin consent to its app registration (Microsoft Graph, User.Read) in Entra ID, under Enterprise applications, Permissions."
+      },
+      "not_assigned": {
+        "title": "Your account is not assigned to the IT Helpdesk",
+        "text": "Microsoft only lets assigned people in. Ask your Global Administrator to assign you, or a group you are in, to the app registration in Entra ID, under Enterprise applications, Users and groups."
+      },
+      "app_setup": {
+        "title": "The IT Helpdesk's Microsoft sign-in is not set up correctly",
+        "text": "Microsoft refused the IT Helpdesk itself, not your account. Ask your Global Administrator to check its app registration: the client secret may have expired, or this address may not be registered as a redirect. Tell them the time you tried."
+      },
+      "company_not_set_up": {
+        "title": "Your company is not set up in the IT Helpdesk",
+        "text": "Microsoft confirmed who you are, but your email domain does not belong to any company in the IT Helpdesk yet, so nothing was created for you. Ask the IT Helpdesk's administrator to add your company and its email domain."
+      }
+    }
+  },
+  "tk": {
+    "system": "The IT Helpdesk",
+    "source": {
+      "portal": "IT Helpdesk"
+    },
+    "cfg": {
+      "members": {
+        "help": "Who works the IT Helpdesk's queue. Leads assign tickets and keep IT settings. A change applies from the person's next click.",
+        "removeBody": "{name} will leave the IT team and see only their own tickets. Tickets assigned to them stay assigned until a lead moves them."
+      }
+    }
+  },
+  "dev": {
+    "outbox": {
+      "lead": "Every email the IT Helpdesk would have sent. Nothing leaves this machine while Graph is mocked."
+    }
+  },
+  "hdApp": {
+    "nav": {
+      "label": "IT Helpdesk",
+      "new": "New ticket",
+      "mine": "My tickets",
+      "admin": "Administration",
+      "portal": "Back to portal",
+      "portalLabel": "Back to the MG Holding Portal",
+      "assignedShort": "Assigned"
+    },
+    "lead": {
+      "new": "Tell IT what you need. You can follow it here, and you are told when something changes.",
+      "mine": "The tickets you raised, and where each one stands."
+    },
+    "role": {
+      "admin": "IT Helpdesk administrator",
+      "user": "Staff"
+    },
+    "admin": {
+      "lead": "Who is on the IT team, and the companies whose people may use the IT Helpdesk. Every change is recorded.",
+      "sections": "Administration sections",
+      "itTeam": "IT team",
+      "companies": "Companies"
+    },
+    "companies": {
+      "lead": "A person signs in to a company by their email's domain. A company that is not here, or not active, has no way in.",
+      "add": "Add company",
+      "edit": "Edit {name}",
+      "code": "Code",
+      "codeHelp": "2 to 5 capital letters, such as GEN. It starts each of the company's ticket numbers and cannot be changed later.",
+      "nameEn": "Name in English",
+      "nameAr": "Name in Arabic",
+      "domains": "Mail domains",
+      "domainsHelp": "One per line, such as genesismining-eg.com. The first is the main one.",
+      "accent": "Accent colour",
+      "accentHelp": "A colour such as #1c7a4a. It marks the company's emails.",
+      "active": "Active: its people can sign in",
+      "people": "People",
+      "status": "Status",
+      "none": "No companies yet.",
+      "added": "{name} was added.",
+      "saved": "{name} was saved.",
+      "error": {
+        "code_taken": "That company code is already in use.",
+        "domain_taken": "That mail domain belongs to another company.",
+        "accent_not_accessible": "That colour cannot be made readable. Choose a darker or stronger one.",
+        "stale_record": "Someone else changed this company. Close the form and open it again.",
+        "domains_invalid": "Write each domain on its own line, such as example.com.",
+        "code_invalid": "Use 2 to 5 capital letters, such as GEN.",
+        "accent_invalid": "Write the colour as # and six digits or letters a to f, such as #1c7a4a."
+      }
+    }
+  }
+}

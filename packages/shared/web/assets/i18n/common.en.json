@@ -1,0 +1,1067 @@
+{
+  "app": {
+    "name": "MG Holding Portal",
+    "group": "MG Holding",
+    "company": "Genesis Mining",
+    "skipToContent": "Skip to main content",
+    "loadFailedTitle": "This page did not load",
+    "loadFailedText": "The connection may have dropped. Nothing was lost."
+  },
+  "pwa": {
+    "offline": {
+      "title": "No signal",
+      "text": "You are seeing what was last saved on this device. Changes cannot be sent until the signal is back.",
+      "action": "Try again"
+    },
+    "update": {
+      "title": "A new version is ready",
+      "text": "Update to get the latest changes. What you are typing now will be lost, so finish first.",
+      "action": "Update now"
+    }
+  },
+  "offline": {
+    "pageTitle": "Offline · MG Holding Portal",
+    "title": "No connection",
+    "text": "This page is not saved on your device yet. Nothing was lost. Check your signal and try again.",
+    "action": "Try again",
+    "home": "Go to Home"
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Home",
+    "announcements": "Announcements",
+    "directory": "Directory",
+    "rooms": "Rooms",
+    "tickets": "Tickets",
+    "admin": "Company admin",
+    "auditLog": "Audit log",
+    "notifications": "Notifications",
+    "signOut": "Sign out",
+    "more": "More",
+    "collapseRail": "Collapse navigation",
+    "expandRail": "Expand navigation",
+    "account": "Account menu",
+    "administration": "Administration",
+    "collapse": "Collapse",
+    "switchCompany": "Switch company",
+    "companyCurrent": "Company: {company}. Switch company",
+    "roomsShort": "Rooms",
+    "devOutbox": "Mail outbox",
+    "help": "Help"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "ar": "العربية"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "accent": {
+    "label": "Company accent",
+    "help": "Every company supplies one accent colour. Switch it to check that the whole system still holds.",
+    "ironOxide": "Iron oxide",
+    "blue": "Blue",
+    "green": "Green",
+    "amber": "Amber",
+    "red": "Red"
+  },
+  "action": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "close": "Close",
+    "delete": "Delete",
+    "deleteTicket": "Delete ticket",
+    "edit": "Edit",
+    "assign": "Assign to me",
+    "bookRoom": "Book a room",
+    "newTicket": "New ticket",
+    "openTicket": "Open ticket",
+    "viewAll": "View all",
+    "retry": "Try again",
+    "search": "Search",
+    "saving": "Saving",
+    "more": "More actions",
+    "newAnnouncement": "New announcement"
+  },
+  "field": {
+    "required": "required",
+    "optional": "optional",
+    "subject": "Subject",
+    "subjectHelp": "One line. What is wrong, and where.",
+    "subjectError": "Enter a subject so the support team can route this ticket.",
+    "description": "Description",
+    "descriptionHelp": "Add the steps you took and anything you can see on screen.",
+    "team": "Support team",
+    "teamHelp": "Pick the team that owns this kind of request.",
+    "priority": "Priority",
+    "site": "Site",
+    "date": "Date",
+    "time": "Start time",
+    "timezoneNote": "Times are Cairo time (GMT+2).",
+    "attachments": "Attachments",
+    "notifyEmail": "Email me when this ticket changes",
+    "notifyEmailHelp": "Only for changes to tickets you opened.",
+    "notifySms": "Text me when a ticket is urgent",
+    "offlineMode": "Keep this page available offline",
+    "offlineModeHelp": "Stores the last version on this device. Useful at sites with no signal.",
+    "selectPlaceholder": "Choose one",
+    "searchPlaceholder": "Search people",
+    "shift": "Shift",
+    "searchShort": "Search"
+  },
+  "team": {
+    "it": "IT",
+    "hr": "HR",
+    "facilities": "Facilities",
+    "admin": "Administration"
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "shift": {
+    "day": "Day shift",
+    "night": "Night shift"
+  },
+  "status": {
+    "label": "Status",
+    "open": "Open",
+    "inProgress": "In progress",
+    "waiting": "Waiting on you",
+    "resolved": "Resolved",
+    "closed": "Closed",
+    "overdue": "Overdue",
+    "draft": "Draft",
+    "published": "Published",
+    "available": "Available",
+    "booked": "Booked"
+  },
+  "ticket": {
+    "one": "Ticket",
+    "number": "Ticket no.",
+    "queue": "Queue",
+    "opened": "Opened",
+    "due": "SLA due",
+    "company": "Company",
+    "assignee": "Assigned to",
+    "reporter": "Opened by",
+    "unassigned": "Unassigned",
+    "sampleSubject": "Weighbridge terminal will not print tickets",
+    "sampleBody": "The terminal at the north gate accepts a load and shows the weight, but nothing comes out of the printer. Drivers are queuing. We have restarted the terminal twice.",
+    "sampleProvenance": "Last changed by Y. El-Shal, 7 Oct 2026 at 14:05 Cairo time.",
+    "detailTitle": "Ticket detail",
+    "status": {
+      "New": "New",
+      "Open": "Open",
+      "WaitingOnRequester": "Pending",
+      "Resolved": "Resolved",
+      "Closed": "Closed",
+      "Pending": "Pending"
+    },
+    "priority": {
+      "P1": "Urgent",
+      "P2": "High",
+      "P3": "Normal",
+      "P4": "Low"
+    }
+  },
+  "room": {
+    "one": "Room",
+    "name": "Room",
+    "capacity": "Capacity",
+    "floor": "Floor",
+    "building": "Building",
+    "capacityValue": "{count} seats",
+    "sampleName": "Quarry meeting room",
+    "sampleBuilding": "HQ, New Cairo"
+  },
+  "person": {
+    "sampleName": "Nadia Abdel-Rahman",
+    "sampleRole": "Mine planning engineer",
+    "sampleSite": "Abu Tartur"
+  },
+  "announcement": {
+    "one": "Announcement",
+    "published": "Published",
+    "author": "Published by",
+    "sampleTitle": "Shuttle times change from Sunday",
+    "sampleBody": "The HQ shuttle will leave fifteen minutes earlier on working days from Sunday. The last return from the Abu Tartur site moves to 17:30."
+  },
+  "notification": {
+    "unreadLabel": "Notifications, {count} unread",
+    "empty": "No new notifications.",
+    "more": "(and {count} more)",
+    "title": "Notifications",
+    "lead": "What happened to your tickets, bookings and announcements.",
+    "markAll": "Mark all as read",
+    "markOne": "Mark as read",
+    "unread": "Unread",
+    "settings": "Notification settings",
+    "loadingLabel": "Loading notifications",
+    "filter": {
+      "label": "Show",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "emptyTitle": "You are all caught up",
+    "emptyText": "New notifications appear here, and in the bell at the top.",
+    "emptyUnreadTitle": "Nothing unread",
+    "emptyUnreadText": "Every notification has been read.",
+    "status": "Showing {from}–{to} of {total}",
+    "pagination": "Notification pages",
+    "phase": {
+      "firstResponse": "first response",
+      "resolution": "resolution"
+    },
+    "tpl": {
+      "ticket": {
+        "created": {
+          "title": "New ticket {number}",
+          "detail": "{subject}"
+        },
+        "assigned": {
+          "title": "{actor} assigned {number} to you",
+          "detail": "{subject}"
+        },
+        "comment": {
+          "title": "{actor} replied on {number}",
+          "detail": "{excerpt}"
+        },
+        "status": {
+          "title": "{number} is now: {status}",
+          "detail": "{subject}"
+        },
+        "slaAtRisk": {
+          "title": "{number}: 75% of the {phase} time is used",
+          "detail": "{subject}"
+        },
+        "slaBreached": {
+          "title": "{number} has passed its {phase} deadline",
+          "detail": "{subject}"
+        },
+        "resolved": {
+          "title": "{number}: is your problem solved?",
+          "detail": "{subject}. IT marked it as resolved. Tell us if it is fixed."
+        },
+        "confirmReminder": {
+          "title": "Reminder: is {number} solved?",
+          "detail": "{subject}. IT is waiting for your answer."
+        },
+        "notSolved": {
+          "title": "{actor}: {number} is still a problem",
+          "detail": "{excerpt}"
+        },
+        "confirmed": {
+          "title": "{actor} confirmed {number} is solved",
+          "detail": "Rating: {stars} of 5. {subject}"
+        }
+      },
+      "booking": {
+        "confirmed": {
+          "title": "Booked: {room}, {when}{more}",
+          "detail": "{subject}"
+        },
+        "cancelled": {
+          "title": "Booking cancelled: {room}, {when}{more}",
+          "detail": "Cancelled by {actor}. Reason: {reason}"
+        },
+        "moved": {
+          "title": "Booking moved: {room}, {when}",
+          "detail": "Moved by {actor}, was {was}. Reason: {reason}"
+        }
+      },
+      "announcement": {
+        "pinned": {
+          "title": "Pinned announcement: {title}",
+          "detail": "{summary}"
+        }
+      },
+      "file": {
+        "infected": {
+          "title": "A file was blocked: {fileName}",
+          "detail": "It failed the malware scan and was deleted. Do not open your own copy; IT has been told."
+        }
+      }
+    },
+    "prefs": {
+      "title": "Notification settings",
+      "lead": "Choose how you hear about each kind of event. Anything you leave on reaches you both ways.",
+      "back": "Back to notifications",
+      "saved": "Settings saved",
+      "categories": {
+        "tickets": "Support tickets",
+        "bookings": "Room bookings",
+        "announcements": "Pinned announcements"
+      },
+      "hints": {
+        "tickets": "A ticket you raised or were given, replies and status changes, and tickets running out of time.",
+        "bookings": "Confirmations of your bookings, and a booking cancelled by someone else.",
+        "announcements": "When an announcement for you is pinned."
+      },
+      "channels": {
+        "inApp": "In the portal",
+        "email": "Email"
+      }
+    }
+  },
+  "table": {
+    "caption": "Open tickets assigned to the IT team, newest first.",
+    "scrollHint": "Scroll the table sideways to see every column.",
+    "sortBy": "Sort by {column}",
+    "sortedAscending": "sorted oldest first",
+    "sortedDescending": "sorted newest first"
+  },
+  "tabs": {
+    "label": "Ticket views",
+    "mine": "Mine",
+    "team": "My team",
+    "all": "All",
+    "panelMine": "Tickets you opened appear here, newest first.",
+    "panelTeam": "Everything in your team's queues.",
+    "panelAll": "Every ticket in the company you can see."
+  },
+  "pagination": {
+    "label": "Ticket pages",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page}",
+    "status": "Showing {from}–{to} of {total} tickets"
+  },
+  "breadcrumb": {
+    "label": "You are here"
+  },
+  "empty": {
+    "noTicketsTitle": "No open tickets",
+    "noTicketsText": "Nothing in this queue needs you right now. New tickets appear here as soon as they are opened.",
+    "noResultsTitle": "Nothing matched that search",
+    "noResultsText": "Check the spelling, or search for a person's name instead of their job title."
+  },
+  "loading": {
+    "label": "Loading",
+    "ticket": "Loading ticket",
+    "page": "Loading page"
+  },
+  "dialog": {
+    "assignTitle": "Assign this ticket",
+    "assignBody": "The ticket moves to your name and the current owner is told. You can hand it back at any time.",
+    "deleteTitle": "Delete this ticket?",
+    "deleteBody": "The ticket and its history are removed for everyone in the company. This cannot be undone.",
+    "deleteConfirm": "Yes, delete it"
+  },
+  "toast": {
+    "savedTitle": "Ticket saved",
+    "savedText": "The support team has been notified.",
+    "offlineTitle": "You are offline",
+    "offlineText": "Your changes are kept on this device and will be sent when the signal returns.",
+    "failedTitle": "Could not save the ticket",
+    "failedText": "The connection dropped. Nothing was lost; try again.",
+    "copiedTitle": "Ticket number copied"
+  },
+  "notice": {
+    "formErrorTitle": "This ticket cannot be sent yet",
+    "formErrorText": "One field needs your attention. It is marked below.",
+    "slaTitle": "This ticket is past its SLA",
+    "slaText": "It was due at 12:00 Cairo time. The facilities lead has been told."
+  },
+  "upload": {
+    "prompt": "Choose files or drop them here",
+    "hint": "Photos or PDFs, up to 10 MB each. On a weak signal, send one at a time.",
+    "selected": "{count} files chosen"
+  },
+  "a11y": {
+    "closeDialog": "Close this dialog",
+    "dismissToast": "Dismiss this message",
+    "ticketActions": "Actions for this ticket",
+    "copyTicketNumber": "Copy the ticket number",
+    "currentPage": "Current page",
+    "breadcrumbSeparator": "then"
+  },
+  "day": {
+    "sun": "Sun",
+    "thu": "Thu"
+  },
+  "login": {
+    "pageTitle": "Sign in · MG Holding Portal",
+    "title": "Sign in",
+    "mock": {
+      "lead": "Development sign-in. Pick someone to see the portal as they do. None of these people is real.",
+      "peopleCount": "{count} people",
+      "signInAs": "Sign in as {name}",
+      "offTitle": "Development sign-in is switched off",
+      "offText": "It only answers while the server runs with NODE_ENV=development."
+    },
+    "entra": {
+      "lead": "Use the Microsoft work account your company gave you.",
+      "button": "Sign in with Microsoft",
+      "note": "You will go to Microsoft to sign in, then come straight back here."
+    },
+    "field": {
+      "role": "Role",
+      "jobTitle": "Job title"
+    },
+    "role": {
+      "HoldingAdmin": "Holding admin",
+      "CompanyAdmin": "Company admin",
+      "User": "User"
+    },
+    "loading": "Loading sign-in",
+    "signingIn": "Signing in as {name}",
+    "failed": {
+      "title": "Could not sign in",
+      "text": "The connection may have dropped. Try again."
+    },
+    "error": {
+      "signin_failed": {
+        "title": "Sign-in did not finish",
+        "text": "Microsoft did not confirm who you are. Try again."
+      },
+      "not_provisioned": {
+        "title": "You are not set up on the portal yet",
+        "text": "Your Microsoft account worked, but it has no portal profile. Ask your company admin to add you."
+      },
+      "too_many_attempts": {
+        "title": "Too many sign-ins",
+        "text": "This account has signed in too many times in a short while. Wait 15 minutes, then try again."
+      },
+      "consent_required": {
+        "title": "The portal needs approval in Microsoft",
+        "text": "Microsoft says the portal has not been approved for your organisation yet. Ask your Global Administrator to grant admin consent to the portal's app registration (Microsoft Graph, User.Read) in Entra ID, under Enterprise applications, Permissions."
+      },
+      "not_assigned": {
+        "title": "Your account is not assigned to the portal",
+        "text": "Microsoft only lets assigned people into the portal. Ask your Global Administrator to assign you, or a group you are in, to the portal in Entra ID, under Enterprise applications, Users and groups."
+      },
+      "app_setup": {
+        "title": "The portal's Microsoft sign-in is not set up correctly",
+        "text": "Microsoft refused the portal itself, not your account. Ask your Global Administrator to check the portal's app registration: its client secret may have expired, or its redirect address may not be registered. Tell them the time you tried."
+      },
+      "cancelled": {
+        "title": "Sign-in was cancelled",
+        "text": "You left the Microsoft sign-in before it finished. Try again when you are ready."
+      },
+      "company_not_set_up": {
+        "title": "Your company is not set up in the portal",
+        "text": "Microsoft confirmed who you are, but your email domain does not belong to any company in the portal yet, so nothing was created for you. Ask the portal's holding administrator to add your company and its email domain."
+      }
+    }
+  },
+  "page": {
+    "title": "{page} · {app}",
+    "backHome": "Go to Home",
+    "notFound": {
+      "title": "Page not found",
+      "text": "There is no page at this address. It may have moved, or the link may be mistyped."
+    },
+    "noAccess": {
+      "title": "You do not have access to this page",
+      "text": "Your role does not include it. If you need it for your work, ask your company admin."
+    },
+    "pending": {
+      "text": "This part of the portal is not open yet. It will appear here when it is ready."
+    }
+  },
+  "error": {
+    "network": {
+      "title": "No connection",
+      "text": "The request did not get through. Check your signal and try again."
+    },
+    "forbidden": {
+      "title": "You do not have access to this",
+      "text": "Your role does not allow it. Ask your company admin if you need it."
+    },
+    "notFound": {
+      "title": "This could not be found",
+      "text": "It may have been removed, or it belongs to another company."
+    },
+    "invalid": {
+      "title": "Some details are not valid",
+      "text": "Check what you entered and try again."
+    },
+    "conflict": {
+      "title": "This conflicts with an existing record",
+      "text": "Reload to see the latest version, then try again."
+    },
+    "tooLarge": {
+      "title": "That is too large to send",
+      "text": "Try a smaller file, or send fewer at a time."
+    },
+    "rateLimited": {
+      "title": "Too many requests",
+      "text": "Wait a minute, then try again."
+    },
+    "server": {
+      "title": "Something went wrong on our side",
+      "text": "Try again in a moment. If it keeps happening, tell IT support."
+    },
+    "unknown": {
+      "title": "That did not work",
+      "text": "Try again in a moment."
+    }
+  },
+  "search": {
+    "results": "Search results",
+    "count": "{count} people found",
+    "none": "No people match “{query}”",
+    "all": "See all results for “{query}”",
+    "group": {
+      "people": "People"
+    },
+    "searching": "Searching",
+    "failed": "Search is not available right now.",
+    "landmark": {
+      "top": "Find a colleague",
+      "directory": "Search the directory",
+      "tickets": "Search tickets"
+    }
+  },
+  "picker": {
+    "results": "People found",
+    "chosen": "People chosen",
+    "remove": "Remove {name}",
+    "full": "No more than {count} people can be chosen.",
+    "added": "{name} added",
+    "removed": "{name} removed",
+    "none": "No one found for “{query}”.",
+    "count": "{count} people found",
+    "failed": "People could not be searched. Check your signal and try again."
+  },
+  "tickets": {
+    "navCount": "{count} open tickets"
+  },
+  "tk": {
+    "lead": "Ask IT for help and follow what you have asked for.",
+    "system": "The portal",
+    "nav": {
+      "label": "Ticket sections",
+      "mine": "My tickets",
+      "new": "New ticket"
+    },
+    "field": {
+      "category": "Category",
+      "urgency": "How urgent",
+      "priority": "Priority",
+      "location": "Location",
+      "source": "How it came in",
+      "assetTag": "Asset tag",
+      "sla": "SLA clock",
+      "firstResponse": "First reply",
+      "resolveDue": "Resolution due"
+    },
+    "source": {
+      "portal": "Portal",
+      "phone": "Phone call",
+      "walkIn": "Walk-in"
+    },
+    "expect": {
+      "reply": "Reply expected by",
+      "update": "Update expected by",
+      "waitingOnYou": "Waiting for your reply",
+      "resolvedOn": "Resolved on",
+      "closedOn": "Closed on"
+    },
+    "sla": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "breached": "Breached",
+      "paused": "Paused",
+      "met": "Met",
+      "missed": "Missed",
+      "left": "{span} left",
+      "over": "{span} over"
+    },
+    "dur": {
+      "min": "{minutes} min",
+      "hourMin": "{hours} h {minutes} min",
+      "dayHour": "{days} d {hours} h",
+      "hour": "{hours} h"
+    },
+    "size": {
+      "bytes": "{n} B",
+      "kb": "{n} KB",
+      "mb": "{n} MB"
+    },
+    "file": {
+      "uploading": "Sending… {percent}%",
+      "sent": "Sent",
+      "failed": "Could not be sent",
+      "remove": "Remove {name}"
+    },
+    "new": {
+      "title": "What do you need help with?",
+      "lead": "Tell IT what is wrong. It takes a minute.",
+      "category": "What is it about?",
+      "categoryError": "Choose what it is about, so the right person sees it.",
+      "subjectHelp": "One line: what is wrong, and where.",
+      "descriptionHelp": "What happened, and what do you see on screen? Paste a screenshot here with Ctrl+V.",
+      "descriptionError": "Say what is wrong, so IT can start without asking you again.",
+      "addFile": "Add a file or photo",
+      "filesHelp": "Up to {count} files. Photos, screenshots, PDF and Office files.",
+      "pasted": "Screenshot added",
+      "screenshotName": "Screenshot",
+      "location": "Where are you?",
+      "noLocation": "Not sure / somewhere else",
+      "submit": "Send request",
+      "failed": "The request was not sent",
+      "noCategoriesTitle": "Nothing to choose from yet",
+      "noCategoriesText": "The helpdesk has no categories for your company yet. Ask your company admin."
+    },
+    "done": {
+      "title": "Your request was sent",
+      "text": "Keep this number if you phone IT or ask about it.",
+      "view": "Open the ticket",
+      "mine": "My tickets",
+      "another": "Send another request",
+      "filesFailedTitle": "{count} file(s) did not upload",
+      "filesFailedText": "The ticket is sent. Open it and add the file again."
+    },
+    "mine": {
+      "title": "My tickets",
+      "search": "Search by number or subject",
+      "show": "Show",
+      "open": "Open",
+      "closed": "Closed",
+      "found": "{count} tickets",
+      "none": "No tickets",
+      "more": "Show more ({shown} of {total})",
+      "empty": {
+        "open": {
+          "title": "No open tickets",
+          "text": "Anything you ask IT for will appear here."
+        },
+        "closed": {
+          "title": "No closed tickets yet",
+          "text": "Solved tickets stay here for you to look back on."
+        },
+        "search": {
+          "title": "Nothing matches",
+          "text": "Try the ticket number or a word from the subject."
+        }
+      }
+    },
+    "detail": {
+      "backMine": "My tickets",
+      "backQueue": "IT queue",
+      "conversation": "Conversation",
+      "files": "Files",
+      "openedBy": "Opened by {who}",
+      "loggedBy": "Logged by {name} ({source})",
+      "missingTitle": "This ticket is not available",
+      "missingText": "It may belong to someone else, or the link is wrong."
+    },
+    "event": {
+      "created": "Ticket opened",
+      "createdSource": "Ticket logged ({source})",
+      "assignedTo": "Assigned to {name}",
+      "unassigned": "Taken off {name}",
+      "status": "Status changed from {from} to {to}",
+      "priority": "Urgency changed from {from} to {to}",
+      "priorityStaff": "Priority changed from {from} to {to}",
+      "category": "Category changed from {from} to {to}",
+      "attachment": "{name} added a file",
+      "reopened": "{name} reopened the ticket",
+      "autoClosed": "Closed automatically after no reply",
+      "unassignedPlain": "Unassigned",
+      "confirmed": "{name} confirmed that it is solved",
+      "notSolved": "{name} said it is still a problem",
+      "closedByLead": "{name} closed it without the requester’s confirmation"
+    },
+    "entry": {
+      "internal": "Internal note",
+      "internalHelp": "Only the support team can see this.",
+      "team": "Support team"
+    },
+    "reopen": {
+      "title": {
+        "Resolved": "Waiting for the requester’s answer",
+        "Closed": "This ticket is closed"
+      },
+      "text": "If it is not fixed, you can reopen it until {until} ({days} days after it was solved).",
+      "staffText": "Reopen it if the problem came back.",
+      "lateText": "The time to reopen it has passed. Please open a new ticket.",
+      "closedText": "It was closed. Please open a new ticket if you need help again.",
+      "action": "Reopen the ticket",
+      "new": "Open a new ticket",
+      "done": "Ticket reopened",
+      "failed": "The ticket could not be reopened",
+      "notYoursText": "Only the agent this ticket is assigned to, or a Lead, can reopen it.",
+      "staffResolvedText": "The requester has been asked whether it is solved. The ticket stays open and its SLA clock keeps running. Reopen it if the problem came back."
+    },
+    "reply": {
+      "title": "Add a reply",
+      "titleStaff": "Reply to the requester",
+      "titleNote": "Internal note",
+      "label": "Your reply",
+      "labelNote": "Your note",
+      "kind": "Who is this for",
+      "public": "Reply",
+      "internal": "Internal note",
+      "internalHelp": "Only the support team will see this note. The requester will not.",
+      "insert": "Insert reply",
+      "insertPlaceholder": "Choose a canned reply…",
+      "insertHelp": "Inserted in {language}, the requester’s language. Edit it before you send.",
+      "inserted": "Canned reply inserted",
+      "filesHelp": "Paste a screenshot with Ctrl+V.",
+      "error": "Write a message first.",
+      "send": "Send reply",
+      "sendNote": "Save note",
+      "sent": "Reply sent",
+      "noteSent": "Note saved",
+      "failed": "The message was not sent",
+      "filesFailed": "{count} file(s) did not upload.",
+      "notYours": "This ticket is assigned to someone else. You can add an internal note; only the assignee or a Lead answers the requester."
+    },
+    "side": {
+      "label": "Handling this ticket",
+      "handle": "Handle",
+      "leadOnly": "Only a Lead assigns tickets.",
+      "requester": "Requester",
+      "teams": "Chat on Teams",
+      "details": "Details",
+      "noLocation": "Not given",
+      "dueAt": "Due {when}",
+      "saved": "Saved",
+      "failed": "The change was not saved",
+      "notYours": "Only the agent this ticket is assigned to, or a Lead, can change these."
+    },
+    "error": {
+      "closed": "This ticket is closed.",
+      "reopenWindow": "The time to reopen this ticket has passed.",
+      "notResolved": "This ticket is not resolved, so there is nothing to do here.",
+      "tooMany": "A message can carry up to 5 files.",
+      "unsupportedFile": "This kind of file is not accepted. Photos, PDF, Office files and text are.",
+      "tooLarge": "The file is too large.",
+      "tooLargeSize": "The file is too large (up to {size}).",
+      "empty": "The file is empty.",
+      "leadOnly": "Only an IT lead can assign or reassign a ticket.",
+      "unknownCategory": "Choose a category.",
+      "unknownLocation": "Choose a location from the list.",
+      "unknownRequester": "That person is not in the directory, or this team does not serve their company.",
+      "unknownAssignee": "That person is not on this team.",
+      "nameTaken": "That name is already used.",
+      "codeTaken": "That code is already used.",
+      "dateTaken": "There is already a holiday on that date.",
+      "unknownCompany": "That company does not exist.",
+      "unknownUser": "That person is not in the directory.",
+      "lastLead": "The IT team needs at least one active lead. Make someone else a lead first.",
+      "ratingRequired": "Choose a rating from 1 to 5 stars.",
+      "alreadyRated": "This ticket has already been rated, and a rating cannot change.",
+      "ownWork": "You cannot confirm or rate a ticket you worked on yourself."
+    },
+    "queue": {
+      "title": "Queue",
+      "refresh": "Refresh",
+      "log": "Log a ticket for someone",
+      "quickLabel": "Quick filters",
+      "quick": {
+        "unassigned": "Unassigned",
+        "mine": "Mine",
+        "atRisk": "At risk",
+        "breached": "Breached",
+        "all": "All open"
+      },
+      "filters": "Filters",
+      "search": "Search number or subject",
+      "any": "Any",
+      "statusActive": "All open",
+      "statusAll": "Everything, closed too",
+      "count": "{count} tickets",
+      "caption": "IT queue",
+      "updated": "Updated",
+      "pick": "Select {number}",
+      "pickAll": "Select every ticket on this page",
+      "selected": "{count} selected",
+      "bulkTo": "Assign to",
+      "bulkAssign": "Assign",
+      "bulkClear": "Clear selection",
+      "bulkDone": "Assignment finished",
+      "bulkAll": "{count} ticket(s) assigned.",
+      "bulkPartial": "{done} assigned, {failed} not: {reason}",
+      "emptyTitle": "Nothing here",
+      "emptyText": "No ticket matches these filters.",
+      "pages": "Queue pages",
+      "pageOf": "Page {page} of {pages}"
+    },
+    "log": {
+      "title": "Log a ticket for someone",
+      "who": "Who is asking?",
+      "whoHelp": "Search the directory. The ticket is theirs and the answer goes to them.",
+      "whoError": "Choose the person who asked.",
+      "source": "How did it come in?",
+      "locationDefault": "Where the person usually works",
+      "submit": "Log ticket",
+      "done": "Ticket logged",
+      "doneText": "Number {number}.",
+      "failed": "The ticket was not logged"
+    },
+    "cfg": {
+      "team": "Team",
+      "sections": "Helpdesk settings",
+      "section": {
+        "members": "Team",
+        "categories": "Categories",
+        "locations": "Locations",
+        "targets": "Targets and hours",
+        "holidays": "Holidays",
+        "replies": "Canned replies"
+      },
+      "role": {
+        "Agent": "Agent",
+        "Lead": "Lead"
+      },
+      "name": "Name",
+      "nameEn": "Name in English",
+      "nameAr": "Name in Arabic",
+      "required": "This is required.",
+      "saved": "Saved",
+      "failed": "The change was not saved",
+      "noTeams": "No support team is set up yet.",
+      "activeLabel": "In use",
+      "sortOrder": "Order",
+      "defaultPriority": "Starting urgency",
+      "defaultPriorityHelp": "What the form preselects. The person asking can still change it.",
+      "members": {
+        "help": "Who works in the IT Helpdesk. Leads assign tickets and keep IT settings. Someone you add uses the IT Helpdesk instead of the portal from their next click; someone you remove comes back to the portal.",
+        "person": "Person",
+        "role": "Role",
+        "roleOf": "Role of {name}",
+        "add": "Add to team",
+        "addLabel": "Add a person",
+        "remove": "Remove {name} from the team",
+        "removeShort": "Remove",
+        "removeTitle": "Remove from the team?",
+        "removeBody": "{name} will leave the IT Helpdesk and come back to the portal. Tickets assigned to them stay assigned until a lead moves them."
+      },
+      "categories": {
+        "help": "What people choose from when they ask for help.",
+        "add": "Add a category",
+        "edit": "Edit category",
+        "empty": "No categories yet."
+      },
+      "locations": {
+        "help": "Sites and offices people can pick. Take a location out of use rather than deleting it.",
+        "add": "Add a location",
+        "edit": "Edit location",
+        "empty": "No locations yet."
+      },
+      "targets": {
+        "help": "How quickly IT aims to answer, counted in working hours only.",
+        "slaTitle": "Targets",
+        "slaHelp": "In working hours. A change reaches a ticket the next time its status or priority changes.",
+        "first": "First reply (hours)",
+        "resolve": "Solved (hours)",
+        "invalid": "Every target must be more than zero.",
+        "order": "The first reply cannot be due after the solution."
+      },
+      "hours": {
+        "title": "Working hours",
+        "help": "The clock only runs inside these hours, on these days, outside holidays.",
+        "days": "Working days",
+        "start": "Starts",
+        "end": "Ends",
+        "zone": "Time zone",
+        "invalid": "Choose at least one day, and an end time after the start."
+      },
+      "holidays": {
+        "help": "Days the clock does not run. They apply to every company.",
+        "year": "Year",
+        "add": "Add a holiday",
+        "edit": "Edit holiday",
+        "empty": "No holidays for this year.",
+        "deleteTitle": "Delete this holiday?",
+        "deleteBody": "“{name}” will count as a working day again."
+      },
+      "replies": {
+        "help": "Ready-made answers. They are inserted in the language of the person asking, and edited before sending.",
+        "add": "Add a canned reply",
+        "edit": "Edit canned reply",
+        "empty": "No canned replies yet.",
+        "titleEn": "Title in English",
+        "titleAr": "Title in Arabic",
+        "bodyEn": "Text in English",
+        "bodyAr": "Text in Arabic"
+      }
+    },
+    "scan": {
+      "pending": "Being checked",
+      "infected": "Blocked"
+    },
+    "confirm": {
+      "title": "Is your problem solved?",
+      "text": "IT marked this ticket as resolved on {when}. Tell us whether it is really fixed. The ticket stays open until you answer.",
+      "yes": "Yes, solved",
+      "no": "No, still a problem",
+      "rateTitle": "How was the support?",
+      "rateLegend": "Your rating (required)",
+      "rateHelp": "1 star is poor, 5 stars is excellent.",
+      "ratingError": "Choose a rating from 1 to 5 stars.",
+      "feedback": "Anything to add? (optional)",
+      "feedbackHelp": "Up to {max} characters.",
+      "submitYes": "Close the ticket",
+      "back": "Back",
+      "reasonTitle": "What is still wrong?",
+      "reasonLabel": "What is still wrong?",
+      "reasonHelp": "A short reason. The ticket goes back to IT.",
+      "reasonError": "Tell IT what is still wrong.",
+      "submitNo": "Reopen the ticket",
+      "doneYes": "Thank you. The ticket is closed.",
+      "doneNo": "The ticket is back with IT.",
+      "failed": "Your answer was not sent"
+    },
+    "rating": {
+      "title": "Rating",
+      "none": "Not rated",
+      "value": "{n} of 5 stars",
+      "option": "{n} of 5 stars",
+      "feedback": "Requester’s words",
+      "word": {
+        "1": "Poor",
+        "2": "Fair",
+        "3": "Good",
+        "4": "Very good",
+        "5": "Excellent"
+      }
+    },
+    "closed": {
+      "confirmedYou": "You confirmed that this ticket is solved.",
+      "confirmedStaff": "Closed with the requester’s confirmation.",
+      "leadYou": "IT closed this ticket without your confirmation.",
+      "leadStaff": "Closed without the requester’s confirmation. Reason: {reason}"
+    },
+    "close": {
+      "action": "Close without confirmation",
+      "title": "Close without the requester’s confirmation?",
+      "text": "Use this when the requester does not answer. The reason stays on the ticket and in the audit log, and the reports count the ticket apart.",
+      "reasonLabel": "Reason",
+      "reasonHelp": "For example: the requester is not responding.",
+      "reasonError": "Write the reason for closing it.",
+      "submit": "Close the ticket",
+      "done": "Ticket closed",
+      "failed": "The ticket was not closed"
+    }
+  },
+  "email": {
+    "open": "Open in the portal",
+    "why": "You are receiving this email because of your notification settings.",
+    "settings": "Change what you receive"
+  },
+  "dev": {
+    "outbox": {
+      "title": "Mail outbox (development)",
+      "lead": "Every email the portal would have sent. Nothing leaves this machine while Graph is mocked.",
+      "empty": "No mail has been sent yet.",
+      "unavailable": "This page exists only in development, with the mocked Graph.",
+      "to": "To",
+      "from": "From",
+      "sentAt": "Sent",
+      "reload": "Refresh",
+      "preview": "Preview of the email",
+      "unavailableTitle": "Not available here"
+    }
+  },
+  "hd": {
+    "name": "IT Helpdesk",
+    "nav": {
+      "label": "IT Helpdesk",
+      "queue": "Queue",
+      "assigned": "My assigned tickets",
+      "assignedShort": "Mine",
+      "reports": "Reports",
+      "settings": "IT settings",
+      "settingsShort": "Settings"
+    },
+    "lead": {
+      "queue": "Every ticket the IT team serves, nearest deadline first.",
+      "assigned": "The tickets assigned to you, nearest deadline first.",
+      "reports": "What came in and how the team did against its targets.",
+      "settings": "Categories, targets, working hours, locations, holidays and canned replies. Every change is recorded.",
+      "new": "Something you need IT for yourself. It goes to the queue like anyone else’s.",
+      "mine": "The tickets you raised for yourself."
+    },
+    "newForMe": "New ticket for me",
+    "myRequests": "My own tickets",
+    "backAssigned": "Back to my assigned tickets",
+    "noAccess": {
+      "pageTitle": "No access · IT Helpdesk",
+      "title": "The IT Helpdesk is for the IT team",
+      "text": "Only IT agents and leads can open it. To ask IT for help, raise a ticket in the portal.",
+      "home": "Go to the portal"
+    },
+    "reports": {
+      "range": "Dates to report on",
+      "from": "From",
+      "to": "To",
+      "show": "Show",
+      "csv": "Download CSV",
+      "badRange": "Choose a start date on or before the end date.",
+      "summary": "Tickets raised {from} to {to}",
+      "total": "Tickets",
+      "firstResponseMet": "First response on time",
+      "resolutionMet": "Resolved on time",
+      "avgFirstResponse": "Average first response",
+      "avgResolve": "Average time to resolve",
+      "businessNote": "Times count working hours only, as the targets do.",
+      "sla": "Targets (SLA)",
+      "target": "Target",
+      "firstResponse": "First response",
+      "resolution": "Resolution",
+      "met": "Met",
+      "breached": "Breached",
+      "pending": "Still running",
+      "byStatus": "Status",
+      "byPriority": "Priority",
+      "byCategory": "Category",
+      "byCompany": "Company",
+      "byLocation": "Location",
+      "tickets": "Tickets",
+      "none": "No tickets in these dates.",
+      "noneSet": "Not given",
+      "satisfaction": "Satisfaction",
+      "satisfactionNote": "Tickets closed {from} to {to}. Only tickets the requester confirmed carry a rating.",
+      "satisfied": "Satisfied (4–5 stars)",
+      "avgRating": "Average rating",
+      "rated": "Rated",
+      "confirmed": "Confirmed by the requester",
+      "closedByLead": "Closed by a lead without confirmation",
+      "byAgent": "By agent",
+      "bySatisfactionCategory": "By category",
+      "agent": "Agent",
+      "colConfirmed": "Confirmed",
+      "colLead": "By a lead",
+      "colSatisfied": "Satisfied",
+      "colAverage": "Average",
+      "unassignedAgent": "No agent",
+      "noClosed": "No ticket was closed in these dates."
+    }
+  },
+  "admin": {
+    "field": {
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "rooms": {
+    "weekday": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    }
+  },
+  "audit": {
+    "page": "Page {page} of {pages}"
+  }
+}

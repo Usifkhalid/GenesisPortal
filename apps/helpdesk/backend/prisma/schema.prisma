@@ -1,0 +1,640 @@
+// MG Holding IT Helpdesk — database schema (mghelpdesk; mghelpdesk_live, mghelpdesk_test).
+//
+// The helpdesk's own database, apart from the portal's (docs/DECISIONS.md D144).
+// Its models carry the same names and columns as the portal's (apps/portal/
+// backend/prisma/schema.prisma) so that the shared code (packages/shared/
+// server: sign-in, directory sync, HR import, notifications, tickets) reads
+// and writes either. Only what the helpdesk needs is here: companies and their
+// mail domains, people (synced from Microsoft 365, departments from HR's
+// list), roles, the IT team, tickets, SLA, categories, locations, holidays,
+// canned replies, ratings, notifications, the audit log, sessions, file scans
+// and job leases. No announcements, rooms or bookings.
+//
+// The rules of the portal's schema hold here too: business tables carry
+// companyId; timestamps are UTC; relations are NoAction; no enums (strings
+// checked in zod); no Json (nvarchar(max) holding JSON); NVARCHAR keys (D57).
+//
+// Generated into apps/helpdesk/backend/generated/client, not into
+// node_modules/.prisma, so the two apps' clients never overwrite each other.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+/// A member of the group. HLD is the holding itself. New companies are rows,
+/// never code.
+model Company {
+  id                    String   @id @default(uuid()) @db.NVarChar(36)
+  /// Short stable code: HLD, GEN, MSR. Prefixes ticket numbers.
+  code                  String   @unique @db.NVarChar(10)
+  nameEn                String   @db.NVarChar(200)
+  nameAr                String   @db.NVarChar(200)
+  /// Email domain, used to place a signed-in Entra user in a company.
+  domain                String   @unique @db.NVarChar(255)
+  /// "#rrggbb". Becomes the --brand-accent CSS variable at runtime.
+  accentColor           String   @db.Char(7)
+  logoUrl               String?  @db.NVarChar(500)
+  /// Storage key of an uploaded logo (backend/src/lib/storage.js); NULL for a
+  /// logo that is a static file, like the seeded ones. logoUrl is derived
+  /// from it on upload.
+  logoKey               String?  @db.NVarChar(200)
+  isActive              Boolean  @default(true)
+  /// Whether a colleague's mobile number appears in the directory. Off unless
+  /// the company's HoldingAdmin turns it on; business phone is always shown.
+  showMobileInDirectory Boolean  @default(false)
+  /// The portal's room-booking hours, kept so the shared stores read the same
+  /// columns in both databases. The helpdesk's own hours are BusinessCalendar.
+  workdayStartMin       Int      @default(480)
+  workdayEndMin         Int      @default(1080)
+  workingDays           String   @default("0,1,2,3,4") @db.VarChar(20)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  domains           CompanyDomain[]
+  departments       Department[]
+  users             UserProfile[]
+  roleAssignments   RoleAssignment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+  supportTeams      SupportTeamCompany[]
+  tickets           Ticket[]
+}
+
+/// Every mail domain a company owns, the primary one included (it is also
+/// Company.domain). Unique across companies, so one address maps to one place.
+model CompanyDomain {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  domain    String   @unique @db.NVarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([companyId])
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  nameEn    String   @db.NVarChar(200)
+  nameAr    String   @db.NVarChar(200)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users   UserProfile[]
+
+  @@unique([companyId, nameEn])
+  @@unique([companyId, nameAr])
+}
+
+/// A person, mirrored from Entra ID. Graph sync owns the directory fields;
+/// lastSyncedAt says when they were last refreshed.
+model UserProfile {
+  id                 String    @id @default(uuid()) @db.NVarChar(36)
+  /// The Entra object id (oid claim). Mock users carry a made-up one.
+  entraObjectId      String    @unique @db.NVarChar(36)
+  email              String    @unique @db.NVarChar(320)
+  companyId          String    @db.NVarChar(36)
+  departmentId       String?   @db.NVarChar(36)
+  displayNameEn      String    @db.NVarChar(200)
+  displayNameAr      String    @db.NVarChar(200)
+  jobTitle           String?   @db.NVarChar(200)
+  managerId          String?   @db.NVarChar(36)
+  officeLocation     String?   @db.NVarChar(200)
+  /// Business phone (Graph businessPhones[0]).
+  phone              String?   @db.VarChar(50)
+  mobilePhone        String?   @db.VarChar(50)
+  /// What Graph said, kept so the data-quality report can show names that did
+  /// not match a department or company. Sync owns them.
+  graphDepartment    String?   @db.NVarChar(200)
+  graphCompanyName   String?   @db.NVarChar(200)
+  /// From HR's staff list (npm run import:hr, D140). Never from Microsoft 365.
+  staffId            String?   @db.NVarChar(20)
+  employmentCategory String?   @db.NVarChar(50)
+  hireDate           DateTime? @db.Date
+  /// The fields HR set ("companyId,departmentId,jobTitle,officeLocation"):
+  /// sync and the sign-in refresh leave these alone (lib/hr-fields.js).
+  hrFields           String?   @db.VarChar(200)
+  hrImportedAt       DateTime?
+  /// Normalised name, email and title (lib/text-search.js) that directory
+  /// search reads. Written wherever those fields are.
+  searchKey          String    @default("") @db.NVarChar(1000)
+  /// Interface language: "en" or "ar".
+  language           String    @default("en") @db.VarChar(5)
+  isActive           Boolean   @default(true)
+  lastSyncedAt       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department?   @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  manager    UserProfile?  @relation("Manager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reports    UserProfile[] @relation("Manager")
+
+  roleAssignments   RoleAssignment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+  syncRuns          SyncRun[]
+  teamMemberships   SupportTeamMember[]
+  ticketsRequested  Ticket[]                 @relation("TicketRequester")
+  ticketsCreated    Ticket[]                 @relation("TicketCreatedBy")
+  ticketsAssigned   Ticket[]                 @relation("TicketAssignee")
+  ticketComments    TicketComment[]
+  ticketAttachments TicketAttachment[]
+  ticketEvents      TicketEvent[]
+
+  @@index([companyId, isActive])
+  @@index([departmentId])
+  @@index([managerId])
+  @@index([staffId])
+}
+
+/// One role held by one user. scopeCompanyId NULL means holding-wide, which is
+/// only valid for HoldingAdmin. The unique index lets a user hold a role once
+/// per company (and, since SQL Server treats NULLs as equal there, once
+/// holding-wide).
+model RoleAssignment {
+  id             String   @id @default(uuid()) @db.NVarChar(36)
+  userId         String   @db.NVarChar(36)
+  /// HoldingAdmin | CompanyAdmin | User — see backend/src/lib/roles.js.
+  role           String   @db.NVarChar(30)
+  scopeCompanyId String?  @db.NVarChar(36)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scopeCompany Company?    @relation(fields: [scopeCompanyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, role, scopeCompanyId])
+  @@index([scopeCompanyId])
+}
+
+/// Append-only. Rows are written by lib/audit.js and never changed or removed:
+/// lib/prisma.js refuses update and delete on this model, and the trigger
+/// AuditLog_append_only (migration 20261011000000) refuses them in the database.
+model AuditLog {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  at        DateTime @default(now())
+  /// NULL for actions taken by the system (jobs, sync).
+  actorId   String?  @db.NVarChar(36)
+  /// The company the change belongs to; NULL for holding-wide changes. Scopes
+  /// what a CompanyAdmin may read.
+  companyId String?  @db.NVarChar(36)
+  /// Dotted verb, e.g. "company.update".
+  action    String   @db.VarChar(100)
+  entity    String   @db.NVarChar(100)
+  entityId  String?  @db.NVarChar(100)
+  /// JSON snapshots; NULL before on create, NULL after on delete.
+  before    String?  @db.NVarChar(Max)
+  after     String?  @db.NVarChar(Max)
+  ip        String?  @db.VarChar(45)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actor   UserProfile? @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company?     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([companyId, at])
+  @@index([entity, entityId])
+  @@index([actorId, at])
+}
+
+model Notification {
+  id          String    @id @default(uuid()) @db.NVarChar(36)
+  userId      String    @db.NVarChar(36)
+  /// The recipient's company, copied from the user so the table is scoped
+  /// like every other.
+  companyId   String    @db.NVarChar(36)
+  /// inApp | email | teams.
+  channel     String    @db.VarChar(20)
+  /// i18n key of the template; the text is rendered in the reader's language.
+  templateKey String    @db.VarChar(100)
+  /// JSON values for the template.
+  payload     String    @db.NVarChar(Max)
+  /// Set when the same thing must reach a person once: "sla:<ticket>:<phase>:75".
+  /// A repeat of the key for the same user and channel is skipped (lib/notify.js).
+  dedupeKey   String?   @db.NVarChar(200)
+  readAt      DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, channel, readAt, createdAt])
+  @@index([companyId])
+  @@index([userId, dedupeKey])
+}
+
+/// One switch: whether a person wants a category of notification on a channel.
+/// A missing row means "on" (lib/notify.js, modules/notifications/rules.js).
+model NotificationPreference {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  userId    String   @db.NVarChar(36)
+  /// The recipient's company, copied from the user like Notification's.
+  companyId String   @db.NVarChar(36)
+  /// tickets (the portal also has bookings | announcements).
+  category  String   @db.VarChar(30)
+  /// inApp | email.
+  channel   String   @db.VarChar(20)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, category, channel])
+  @@index([companyId])
+}
+
+/// A server-side session, written by lib/session.js for express-session. The
+/// browser holds only the signed sid. Not a business table: it has no
+/// companyId and is never read through lib/scope.js.
+model Session {
+  /// NVarChar on purpose: Prisma binds strings as NVARCHAR, and a VARCHAR key
+  /// would be scanned, not sought (docs/DECISIONS.md D54).
+  sid       String   @id @db.NVarChar(64)
+  /// The serialised session, as JSON.
+  data      String   @db.NVarChar(Max)
+  /// End of the idle window; pushed forward by every request.
+  expiresAt DateTime
+  /// Set at sign-in, so a person's sessions can be found and ended.
+  userId    String?  @db.NVarChar(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+/// The malware-scan verdict on one uploaded file (lib/file-scan.js), keyed by
+/// its storage key. A file is served only while its row says "clean". Like
+/// Session it is not a business table: it has no companyId and is reached
+/// only through the record that owns the file, which is scoped.
+model FileScan {
+  storageKey   String    @id @db.NVarChar(200)
+  /// pending | clean | infected.
+  state        String    @db.VarChar(20)
+  uploadedById String?   @db.NVarChar(36)
+  /// What the uploader called it, for the notice they get if it is blocked.
+  fileName     String?   @db.NVarChar(200)
+  /// Where the file was attached ("#tickets/<id>"), for the same notice.
+  link         String?   @db.NVarChar(200)
+  scannedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([state, createdAt])
+}
+
+/// One row per background job (lib/job-lease.js). Whichever app instance
+/// moves lockedUntil forward first runs the job; the others skip that round.
+model JobLease {
+  name           String    @id @db.NVarChar(60)
+  /// Nobody else may start the job before this moment.
+  lockedUntil    DateTime
+  /// The instance that last took it, for the log.
+  holder         String    @db.NVarChar(100)
+  lastStartedAt  DateTime?
+  lastFinishedAt DateTime?
+  /// ok | failed.
+  lastResult     String?   @db.VarChar(20)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+/// One run of the Graph user sync (backend/src/jobs/syncUsers.js). Holding-wide
+/// and not a business table: it has no companyId and only HoldingAdmins read it.
+model SyncRun {
+  id            String    @id @default(uuid()) @db.NVarChar(36)
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  /// running | success | failed. A run left 'running' by a crash is ignored
+  /// after 30 minutes.
+  status        String    @db.VarChar(20)
+  /// schedule | manual.
+  source        String    @db.VarChar(20)
+  requestedById String?   @db.NVarChar(36)
+  created       Int       @default(0)
+  updated       Int       @default(0)
+  deactivated   Int       @default(0)
+  /// JSON: unmatched departments, people no company could be found for,
+  /// duplicate emails, and the failure message of a failed run.
+  warnings      String    @default("[]") @db.NVarChar(Max)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  requestedBy UserProfile? @relation(fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([startedAt])
+}
+
+/// A support team. `code` prefixes its ticket numbers (IT-2026-00042).
+model SupportTeam {
+  id                 String   @id @default(uuid()) @db.NVarChar(36)
+  code               String   @unique @db.NVarChar(10)
+  nameEn             String   @db.NVarChar(200)
+  nameAr             String   @db.NVarChar(200)
+  /// When false, only the companies in SupportTeamCompany are served.
+  servesAllCompanies Boolean  @default(true)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  companies     SupportTeamCompany[]
+  members       SupportTeamMember[]
+  categories    TicketCategory[]
+  slaPolicies   SlaPolicy[]
+  calendar      BusinessCalendar?
+  cannedReplies CannedReply[]
+  tickets       Ticket[]
+}
+
+/// One company a team serves, when it does not serve them all.
+model SupportTeamCompany {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  companyId String   @db.NVarChar(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team    SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, companyId])
+  @@index([companyId])
+}
+
+model SupportTeamMember {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  userId    String   @db.NVarChar(36)
+  /// Agent | Lead.
+  role      String   @db.NVarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TicketCategory {
+  id              String   @id @default(uuid()) @db.NVarChar(36)
+  teamId          String   @db.NVarChar(36)
+  nameEn          String   @db.NVarChar(200)
+  nameAr          String   @db.NVarChar(200)
+  /// P1 | P2 | P3 | P4: what a ticket in this category starts at.
+  defaultPriority String   @default("P3") @db.NVarChar(5)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  team    SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tickets Ticket[]
+
+  @@unique([teamId, nameEn])
+  @@index([teamId, isActive, sortOrder])
+}
+
+/// Where the problem is: an office or a site. Group-wide reference data.
+model TicketLocation {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  nameEn    String   @unique @db.NVarChar(200)
+  nameAr    String   @db.NVarChar(200)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+/// Targets in business minutes (the team's BusinessCalendar), per priority.
+model SlaPolicy {
+  id                   String   @id @default(uuid()) @db.NVarChar(36)
+  teamId               String   @db.NVarChar(36)
+  /// P1 | P2 | P3 | P4.
+  priority             String   @db.NVarChar(5)
+  firstResponseMinutes Int
+  resolveMinutes       Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, priority])
+}
+
+/// The working hours of one team. timeZone is an IANA name (Egypt observes
+/// DST, so never an offset); workingDays is "0,1,2,3,4" with 0 for Sunday; the
+/// hours are minutes after midnight on that zone's clock.
+model BusinessCalendar {
+  id          String   @id @default(uuid()) @db.NVarChar(36)
+  teamId      String   @unique @db.NVarChar(36)
+  timeZone    String   @default("Africa/Cairo") @db.NVarChar(64)
+  workingDays String   @default("0,1,2,3,4") @db.NVarChar(20)
+  startMin    Int      @default(480)
+  endMin      Int      @default(1020)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// A public holiday, group-wide: no SLA clock runs on it. `date` is a calendar
+/// day, "2026-10-06", not an instant.
+model Holiday {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  date      String   @unique @db.NVarChar(10)
+  nameEn    String   @db.NVarChar(200)
+  nameAr    String   @db.NVarChar(200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// The last number given out for a prefix and year. A create bumps the row
+/// inside its own transaction, so two creates can never be handed one number.
+model TicketSequence {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  prefix    String   @db.NVarChar(10)
+  year      Int
+  last      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([prefix, year])
+}
+
+model Ticket {
+  id                 String    @id @default(uuid()) @db.NVarChar(36)
+  /// IT-2026-00042: team code, Cairo year, yearly sequence.
+  number             String    @unique @db.NVarChar(30)
+  /// The company of the requester, for reporting. It does not decide who reads it.
+  companyId          String    @db.NVarChar(36)
+  teamId             String    @db.NVarChar(36)
+  categoryId         String    @db.NVarChar(36)
+  locationId         String?   @db.NVarChar(36)
+  requesterId        String    @db.NVarChar(36)
+  /// Differs from requesterId when an agent logged it for someone.
+  createdById        String    @db.NVarChar(36)
+  /// portal | phone | walkIn.
+  source             String    @default("portal") @db.NVarChar(20)
+  assigneeId         String?   @db.NVarChar(36)
+  subject            String    @db.NVarChar(200)
+  description        String    @db.NVarChar(Max)
+  /// P1 | P2 | P3 | P4.
+  priority           String    @db.NVarChar(5)
+  /// New | Open | Pending | Resolved | Closed. Pending is waiting on the
+  /// requester (WaitingOnRequester before D143).
+  status            String    @default("New") @db.NVarChar(30)
+  firstResponseDueAt DateTime
+  resolveDueAt       DateTime
+  firstRespondedAt   DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  /// Business minutes the clock has stood still (Pending, or closed and later
+  /// reopened). Both due dates already include them.
+  slaPausedMinutes   Int       @default(0)
+  /// When the current pause began; NULL while the clock runs.
+  slaPausedAt        DateTime?
+  /// Derived, kept by the service so the queue can filter and sort in SQL:
+  /// the due date in force (first response until answered, then resolve),
+  /// the moment 75% of that target is used, and whether the clock is running.
+  nextDueAt          DateTime
+  nextRiskAt         DateTime
+  slaActive          Boolean   @default(true)
+  /// How a Closed ticket was closed: confirmed (the requester said it is
+  /// solved) or lead (a Lead closed it without confirmation). NULL on tickets
+  /// closed before D143, which closed themselves after no reply.
+  closeMode          String?   @db.NVarChar(20)
+  /// A Lead's reason for closing without the requester's confirmation.
+  closeReason        String?   @db.NVarChar(1000)
+  /// The requester's rating, 1 to 5, and optional words. Set once, with the
+  /// confirmation, and never changed.
+  rating             Int?
+  ratingFeedback     String?   @db.NVarChar(1000)
+  ratedAt            DateTime?
+  /// Free text for now; the IT asset module will link it.
+  assetTag           String?   @db.NVarChar(100)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  team      SupportTeam     @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category  TicketCategory  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location  TicketLocation? @relation(fields: [locationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requester UserProfile     @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy UserProfile     @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignee  UserProfile?    @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  comments    TicketComment[]
+  attachments TicketAttachment[]
+  events      TicketEvent[]
+
+  @@index([requesterId, status])
+  @@index([teamId, status, slaActive, nextDueAt])
+  @@index([assigneeId, status])
+  @@index([companyId, createdAt])
+  @@index([status, resolvedAt])
+}
+
+model TicketComment {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId   String   @db.NVarChar(36)
+  authorId   String   @db.NVarChar(36)
+  body       String   @db.NVarChar(Max)
+  /// A note between agents: never shown to the requester.
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ticket Ticket      @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  author UserProfile @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  attachments TicketAttachment[]
+
+  @@index([ticketId, createdAt])
+}
+
+/// A file on a ticket (commentId NULL: with the description) or on a comment.
+/// The bytes are in lib/storage.js under storageKey; contentType is what the
+/// signature of the file said, never what the client claimed.
+model TicketAttachment {
+  id           String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId     String   @db.NVarChar(36)
+  commentId    String?  @db.NVarChar(36)
+  uploadedById String   @db.NVarChar(36)
+  fileName     String   @db.NVarChar(200)
+  contentType  String   @db.NVarChar(100)
+  size         Int
+  storageKey   String   @unique @db.NVarChar(200)
+  /// Copied from the comment, so a download is decided without a join.
+  isInternal   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticket     Ticket         @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comment    TicketComment? @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  uploadedBy UserProfile    @relation(fields: [uploadedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ticketId])
+  @@index([commentId])
+}
+
+/// The history of a ticket, one row per thing that happened. Append-only in
+/// practice: nothing updates or deletes it.
+model TicketEvent {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  ticketId   String   @db.NVarChar(36)
+  /// NULL for the system (the auto-close job).
+  actorId    String?  @db.NVarChar(36)
+  /// created | assigned | status | priority | category | comment | attachment
+  /// | reopened | confirmed | notSolved | closedByLead | autoClosed (before D143).
+  type       String   @db.NVarChar(30)
+  fromValue  String?  @db.NVarChar(200)
+  toValue    String?  @db.NVarChar(200)
+  commentId  String?  @db.NVarChar(36)
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ticket Ticket       @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor  UserProfile? @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ticketId, createdAt])
+}
+
+/// A reply an agent can drop into a comment, in both languages.
+model CannedReply {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  teamId    String   @db.NVarChar(36)
+  titleEn   String   @db.NVarChar(200)
+  titleAr   String   @db.NVarChar(200)
+  bodyEn    String   @db.NVarChar(Max)
+  bodyAr    String   @db.NVarChar(Max)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team SupportTeam @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([teamId, isActive, sortOrder])
+}

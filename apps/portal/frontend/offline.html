@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="mg-i18n" content="common portal" />
+    <meta name="theme-color" content="#f8f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d1611" media="(prefers-color-scheme: dark)" />
+    <title data-i18n="offline.pageTitle">Offline · MG Holding Portal</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icons/favicon-32.png" />
+    <link rel="stylesheet" href="assets/fonts/fonts.css" />
+    <link rel="stylesheet" href="assets/css/tokens.css" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+    <link rel="stylesheet" href="assets/css/pages/login.css" />
+  </head>
+
+  <body class="login">
+    <a class="u-skip-link" href="#main" data-i18n="app.skipToContent">Skip to main content</a>
+
+    <header class="login__bar">
+      <p class="login__brand" data-i18n="app.name">MG Holding Portal</p>
+    </header>
+
+    <main class="page login__main" id="main" tabindex="-1">
+      <div class="login__intro">
+        <h1 class="login__title" data-i18n="offline.title">No connection</h1>
+        <p class="login__lead" data-i18n="offline.text">
+          This page is not saved on your device yet. Nothing was lost. Check your signal and try
+          again.
+        </p>
+      </div>
+
+      <div class="offline__actions">
+        <button type="button" class="btn btn--primary" id="offlineRetry">
+          <span class="btn__label" data-i18n="offline.action">Try again</span>
+        </button>
+        <a class="btn btn--secondary" href="/" data-i18n="offline.home">Go to Home</a>
+      </div>
+    </main>
+
+    <script type="module" src="assets/js/offline.js"></script>
+  </body>
+</html>

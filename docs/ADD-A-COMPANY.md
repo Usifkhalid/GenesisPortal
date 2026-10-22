@@ -10,6 +10,11 @@ Who does what:
 | 1, 2 | A **Global Administrator** (or Domain Name Administrator) of the "mgholding" Microsoft 365 tenant |
 | 3 to 6 | A portal **Holding admin** |
 
+**The IT Helpdesk is a separate app with its own database (D144).** After step 3 here, add
+the same company (same code, names, colour and mail domains) in the helpdesk too: sign in
+there as its administrator → **Administration** → **Companies** → **Add company**. Its people
+arrive at the helpdesk's next directory sync (nightly, or `npm run helpdesk:sync:users`).
+
 You need: the company's code (2 to 5 capital letters, for example `TST`), its English and
 Arabic names, its mail domain, its logo (PNG, JPEG or WebP, up to 512 KB) and its brand
 colour as `#rrggbb`.

@@ -1,0 +1,24 @@
+{
+  "name": "@mg/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code both MG Holding apps run: sign-in, sessions, Microsoft Graph, notifications, tickets, the design system and the shared pages.",
+  "type": "module",
+  "exports": {
+    "./*": "./*"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.13.3",
+    "@azure/msal-node": "^7.0.1",
+    "@azure/storage-blob": "^12.34.0",
+    "applicationinsights": "^3.17.0",
+    "compression": "^1.8.2",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.0.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.5"
+  }
+}

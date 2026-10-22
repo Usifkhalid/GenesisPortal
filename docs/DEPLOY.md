@@ -1,7 +1,14 @@
-# Deploying the portal to Azure
+# Deploying the portal and the IT Helpdesk to Azure
 
 For the IT person who will set this up. Follow the steps in order; each ends with a check.
 Region: **South Africa North** (`southafricanorth`) for everything.
+
+The repository holds **two apps** (D144): the portal (`apps/portal`) and the IT Helpdesk
+(`apps/helpdesk`), each deployed on its own, with its own database, storage container and
+settings, both built from the same release with the shared code in `packages/shared`.
+Steps 1 to 12 set up the portal; "A second app: the IT Helpdesk" at the end adds the
+helpdesk beside it, reusing the resource group, plan, SQL server, storage account, Key Vault
+and monitoring.
 
 > **Status, 13 October 2026.** Nothing has been deployed yet and none of this has been run
 > against a real subscription: the project has had no Azure or tenant access. The application
@@ -83,7 +90,7 @@ az webapp identity assign -g $RG -n $APP                # the managed identity
 az webapp update -g $RG -n $APP --https-only true --client-affinity-enabled false
 az webapp config set -g $RG -n $APP \
   --always-on true --http20-enabled true --min-tls-version 1.2 --ftps-state Disabled \
-  --startup-file "node backend/src/server.js" \
+  --startup-file "node apps/portal/backend/src/server.js" \
   --generic-configurations '{"healthCheckPath": "/api/ready"}'
 
 PRINCIPAL=$(az webapp identity show -g $RG -n $APP --query principalId -o tsv)
@@ -319,8 +326,8 @@ app never changes the schema.
 By hand, from a clean checkout of the release on your machine:
 
 ```bash
-npm ci
-npx prisma generate --schema backend/prisma/schema.prisma
+npm ci                      # also generates the helpdesk's client (its postinstall)
+npx prisma generate --schema apps/portal/backend/prisma/schema.prisma
 
 # 1. Schema. (Add a temporary SQL firewall rule for your address; remove it after.)
 MIGRATE_DATABASE_URL="$(az keyvault secret show --vault-name $KV -n MIGRATE-DATABASE-URL --query value -o tsv)" \
@@ -329,10 +336,12 @@ MIGRATE_DATABASE_URL="$(az keyvault secret show --vault-name $KV -n MIGRATE-DATA
 #   see docs/ADD-A-COMPANY.md; `npm run db:seed` loads the development sample data and
 #   must NOT be run against production.
 
-# 2. Code.
+# 2. Code: the root files, node_modules, the shared package and this app. zip follows the
+#    workspace links in node_modules/@mg, so the apps' copies there are left out.
 npm prune --omit=dev
-zip -r release.zip backend frontend package.json package-lock.json node_modules \
-  -x "backend/tests/*" "backend/mock/outbox/*"
+zip -r release.zip package.json package-lock.json node_modules packages/shared apps/portal \
+  -x "apps/portal/backend/tests/*" "apps/portal/tests/*" "apps/portal/backend/mock/outbox/*" \
+     "node_modules/@mg/helpdesk/*" "node_modules/@mg/portal/*"
 az webapp deploy -g $RG -n $APP --src-path release.zip --type zip
 ```
 
@@ -444,6 +453,64 @@ with the region set to South Africa North before budgeting.
 A cheaper start for a pilot (one B2 instance, SQL S1): roughly 90 – 120 a month, at the price of
 no spare instance and slower reports. Microsoft 365 licences and Entra ID are not included: the
 company already has them.
+
+## A second app: the IT Helpdesk
+
+The helpdesk is its own App Service with its own database, container and settings
+(docs/DECISIONS.md D144). It reuses the plan, the SQL server, the storage account, Key Vault,
+Application Insights and the Entra app registration. Names below: `HD_APP` (for example
+`mgh-helpdesk`), database `mghelpdesk`, container `helpdesk-files`.
+
+1. **App Service** (as step 3, on the same plan): `az webapp create -g $RG -p $PLAN -n $HD_APP
+   --runtime "NODE:24-lts"`, the identity, https only, affinity off, always on, health check
+   `/api/ready`, and `--startup-file "node apps/helpdesk/backend/src/server.js"`.
+2. **Database** (as steps 4 and 5): `az sql db create ... -n mghelpdesk`, with two logins of
+   its own (`helpdesk_app`, `helpdesk_migrate`) and the same DENY on AuditLog. The helpdesk
+   never reads the portal's database.
+3. **Storage** (as step 6): a second private container, `helpdesk-files`, in the same account
+   (Defender scans the whole account), and the same role assignments for `$HD_APP`'s identity.
+4. **Entra** (as step 7): add `https://<helpdesk host>/auth/callback` as a redirect URI on the
+   same registration (MGH-Portal-Web), and `https://<helpdesk host>/login.html` for sign-out.
+   No new permission: sign-in, `User.Read.All` (sync) and `Mail.Send` are the portal's.
+5. **Settings** (as step 8), secrets as Key Vault references (`HD-DATABASE-URL`,
+   `HD-SESSION-SECRET`; the same `ENTRA-CLIENT-SECRET`):
+
+   | Setting | Value |
+   | --- | --- |
+   | `NODE_ENV` | `production` |
+   | `DATABASE_URL` | the `helpdesk_app` login on `mghelpdesk` |
+   | `SESSION_SECRET` | its own, 32+ characters (not the portal's) |
+   | `APP_BASE_URL` | `https://<helpdesk host>` |
+   | `AUTH_MODE` | `entra` |
+   | `GRAPH_MAIL_MODE`, `GRAPH_DIRECTORY_MODE` | `real` |
+   | `HELPDESK_DATA` | `live` (the default in production) |
+   | `NOREPLY_MAILBOX` | the sending mailbox |
+   | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` | the registration's |
+   | `STORAGE_DRIVER`, `AZURE_STORAGE_ACCOUNT_URL`, `AZURE_STORAGE_CONTAINER` | `azure`, the account, `helpdesk-files` |
+   | `SCAN_MODE` | `defender` |
+   | `INITIAL_HELPDESK_ADMINS` | the first administrator's email (remove once they exist) |
+   | `PORTAL_URL` | `https://<portal host>` (the "Back to portal" link; optional) |
+   | `APPLICATIONINSIGHTS_CONNECTION_STRING` | the same as the portal's |
+
+   Production refuses to start with anything mocked or with demo data, as the portal does.
+6. **First deployment** (as step 9), from the same clean checkout and `npm ci`:
+
+   ```bash
+   MIGRATE_DATABASE_URL="<helpdesk_migrate login>" npm run helpdesk:db:deploy
+   # Companies, domains and the IT team's defaults (D141), then the people, then the team:
+   #   npm run helpdesk:db:setup-live; npm run helpdesk:sync:users;
+   #   npm run helpdesk:db:setup-live -- --it-leads <emails> --it-members <emails>
+   zip -r helpdesk.zip package.json package-lock.json node_modules packages/shared apps/helpdesk \
+     -x "apps/helpdesk/backend/tests/*" "apps/helpdesk/tests/*" "apps/helpdesk/backend/mock/outbox/*" \
+        "node_modules/@mg/helpdesk/*" "node_modules/@mg/portal/*"
+   az webapp deploy -g $RG -n $HD_APP --src-path helpdesk.zip --type zip
+   ```
+
+   `apps/helpdesk/backend/generated/client` (its Prisma client, made by `npm ci` on Linux) must
+   be in the zip. Check `/api/health`, `/api/ready`, then sign in.
+
+Until the portal's own helpdesk is removed (the next session moves its tickets), both apps
+hold tickets in their own databases: tell staff which one to use.
 
 ## Day-to-day
 
