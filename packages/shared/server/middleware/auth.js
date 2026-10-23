@@ -10,10 +10,9 @@
  *
  * is everything lib/scope.js needs. `it` is 'Lead', 'Agent' or null: the
  * person's place on an active support team. IT team members work in the
- * IT Helpdesk (/helpdesk) and nowhere else (docs/DECISIONS.md D135):
- * `helpdeskOnly` turns them away from every other API, and `requireIt` turns
- * everyone else away from the IT side. The fuller record (names, company
- * branding) is on req.account for GET /api/me.
+ * IT Helpdesk app, which uses `requireIt` to turn everyone else away from
+ * the IT side; the portal does not read it (docs/DECISIONS.md D146). The
+ * fuller record (names, company branding) is on req.account for GET /api/me.
  */
 
 import { roleSchema } from '../lib/roles.js';
@@ -100,25 +99,6 @@ export function requireRole(...roles) {
     if (!roles.some((role) => hasRole(user, role))) throw new HttpError(403, 'forbidden');
     next();
   };
-}
-
-/**
- * The API an IT team member may call: about themselves, their notifications,
- * tickets (their own and the team's, which the ticket service decides) and
- * the Helpdesk's own routes. Everything else is the main portal, which is not
- * theirs (D135). Paths are relative to /api.
- */
-const HELPDESK_API = ['/me', '/notifications', '/tickets', '/helpdesk'];
-// Development only (never mounted in production): the mocked mail.
-const DEV_API = '/dev';
-
-const within = (path, prefix) => path === prefix || path.startsWith(`${prefix}/`);
-
-/** 403 `helpdesk_only` for an IT team member anywhere outside HELPDESK_API. */
-export function helpdeskOnly(req, res, next) {
-  if (!req.user?.it) return next();
-  if ([...HELPDESK_API, DEV_API].some((prefix) => within(req.path, prefix))) return next();
-  throw new HttpError(403, 'helpdesk_only', 'IT team members work in the IT Helpdesk.');
 }
 
 /**

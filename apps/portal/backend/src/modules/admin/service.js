@@ -161,9 +161,6 @@ export function createAdminService({ store, storage }) {
         entityId: created.id,
         companyId: created.id,
       });
-      // The new company is served by the IT team at once; a database with no
-      // team yet gets one (tickets/defaults.js).
-      await tx.ensureHelpdeskDefaults(req);
       return publicCompany(created);
     });
   }

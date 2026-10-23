@@ -33,6 +33,9 @@ function serverEnv(port, extra = {}) {
     GRAPH_MODE: 'mock',
     GRAPH_DIRECTORY_MODE: 'mock',
     PORTAL_DATA: 'demo',
+    // Where "IT Support" leads (the helpdesk e2e server's address; nothing runs
+    // there during these specs, itsupport.spec.js answers it itself).
+    HELPDESK_URL: 'http://localhost:3101',
     // E2E_LOG_LEVEL=info also prints the server's request log (see webServer).
     LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'warn',
     // Text assets as production serves them, so page-weight.spec.js reports

@@ -6,6 +6,7 @@
  *   POST   /api/tickets                      raise one (agents: for someone else)
  *   GET    /api/tickets/mine?status=&q=
  *   GET    /api/tickets/counts               the numbers beside "Tickets"
+ *   GET    /api/tickets/by-number/:number    the id of IT-2026-00042 (links by number, D146)
  *   GET    /api/tickets/:id                  with its timeline
  *   POST   /api/tickets/:id/comments         { body, isInternal }
  *   POST   /api/tickets/:id/attachments?name=&commentId=   the raw file, 10 MB
@@ -38,6 +39,7 @@ import {
   confirmBody,
   createBody,
   idParam,
+  numberParam,
   mineQuery,
   queueQuery,
   reasonBody,
@@ -82,6 +84,12 @@ export function ticketRoutes(service) {
 
   router.post('/', async (req, res) => {
     res.status(201).json(await service.create(req, createBody.parse(req.body)));
+  });
+
+  // A link by number (IT-2026-00042): the id to open it by.
+  router.get('/by-number/:number', async (req, res) => {
+    const { number } = numberParam.parse(req.params);
+    res.json(await service.idByNumber(req, number));
   });
 
   router.get('/:id', async (req, res) => {

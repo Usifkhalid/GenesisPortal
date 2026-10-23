@@ -6,24 +6,12 @@
     "greetingEvening": "Good evening, {name}",
     "today": "Today",
     "cairoTime": "Cairo time",
-    "tickets": {
-      "title": "Open right now",
-      "count": "{count} open",
-      "openAll": "See all tickets",
-      "emptyTitle": "No open tickets",
-      "emptyText": "Anything you raise with a support team will appear here."
-    },
     "rooms": {
       "title": "Your next bookings",
       "when": "When",
       "openAll": "See all rooms",
       "emptyTitle": "No bookings coming up",
       "emptyText": "Book a room and it will appear here."
-    },
-    "waiting": {
-      "title": "Waiting on you",
-      "emptyTitle": "Nothing is waiting on you",
-      "emptyText": "Tickets that need your reply, or your word that they are solved, will appear here."
     },
     "news": {
       "title": "Latest news",
@@ -44,6 +32,23 @@
     "failed": {
       "title": "This did not load",
       "text": "Check your signal and try again."
+    },
+    "itSupport": {
+      "title": "Need help from IT?",
+      "text": "Raise a ticket and follow it in the IT Helpdesk. It opens in a new tab.",
+      "open": "Open the IT Helpdesk"
+    },
+    "tickets": {
+      "title": "Open right now",
+      "count": "{count} open",
+      "openAll": "See all tickets",
+      "emptyTitle": "No open tickets",
+      "emptyText": "Anything you raise with a support team will appear here."
+    },
+    "waiting": {
+      "title": "Waiting on you",
+      "emptyTitle": "Nothing is waiting on you",
+      "emptyText": "Tickets that need your reply, or your word that they are solved, will appear here."
     }
   },
   "styleguide": {
@@ -151,12 +156,6 @@
     }
   },
   "demo": {
-    "tickets": {
-      "t1": "Weighbridge terminal will not print tickets",
-      "t2": "Site office Wi-Fi drops every afternoon",
-      "t3": "New starter needs a laptop and site access",
-      "t4": "Projector in the quarry meeting room has no signal"
-    },
     "news": {
       "n1": {
         "title": "Shuttle times change from Sunday",
@@ -185,6 +184,12 @@
         "role": "HR specialist",
         "site": "HQ, New Cairo"
       }
+    },
+    "tickets": {
+      "t1": "Weighbridge terminal will not print tickets",
+      "t2": "Site office Wi-Fi drops every afternoon",
+      "t3": "New starter needs a laptop and site access",
+      "t4": "Projector in the quarry meeting room has no signal"
     }
   },
   "admin": {
@@ -197,8 +202,7 @@
       "quality": "Data quality",
       "sync": "Directory sync",
       "rooms": "Rooms",
-      "bookings": "Bookings",
-      "itTeam": "IT team"
+      "bookings": "Bookings"
     },
     "filter": {
       "all": "All",
@@ -1202,8 +1206,20 @@
     "sections": "Topics",
     "contact": {
       "title": "Still stuck?",
-      "text": "Ask IT. A ticket reaches the whole IT team, whichever company you work for.",
-      "action": "Contact IT: new ticket"
+      "text": "Ask IT in the IT Helpdesk. A ticket reaches the whole IT team, whichever company you work for.",
+      "action": "IT Support: new ticket"
+    },
+    "noLink": {
+      "text": "Ask IT. The IT Helpdesk is where tickets are raised."
     }
+  },
+  "nav": {
+    "itSupport": "IT Support"
+  },
+  "a11y": {
+    "opensNewTab": "(opens in a new tab)"
+  },
+  "action": {
+    "getItSupport": "Get IT support"
   }
 }

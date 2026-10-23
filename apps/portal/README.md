@@ -58,7 +58,7 @@ Both live on the same SQL Server; only the database name differs.
 
 | `PORTAL_DATA` | Database | Contents | Needs |
 | --- | --- | --- | --- |
-| `demo` (default) | `DATABASE_URL` as written (`mgportal`) | seeded fake people, rooms, helpdesk, demo content | `AUTH_MODE=mock`, `GRAPH_DIRECTORY_MODE=mock` (or absent) |
+| `demo` (default) | `DATABASE_URL` as written (`mgportal`) | seeded fake people, rooms, demo content | `AUTH_MODE=mock`, `GRAPH_DIRECTORY_MODE=mock` (or absent) |
 | `live` | the same name plus `_live` (`mgportal_live`) | the three companies with their domains; people only from the real tenant | `AUTH_MODE=entra`, `GRAPH_DIRECTORY_MODE=real` |
 
 The server refuses a mix (real directory on demo data, or mock sign-in on live data), so fake
@@ -66,9 +66,8 @@ and real people never share a database. Mail, calendar and rooms follow `GRAPH_M
 separately and can stay `mock` while the directory is real.
 
 ```bash
-npm run db:live:setup                          # create + migrate mgportal_live, add GEN, MSR, HLD and the IT helpdesk defaults
+npm run db:live:setup                          # create + migrate mgportal_live, add GEN, MSR, HLD
 npm run db:live:setup -- --domain HLD=<domain> # a company's real mail domain
-npm run db:live:setup -- --it-leads a@x.com,b@x.com --it-members c@x.com  # IT team by email (active users only)
 npm run sync:users -- --dry-run                # what a sync would do, nothing written
 npm run sync:users                             # one sync now, with a report
 npm run import:hr -- --as <email> --dry-run    # HR's staff list (private/*.csv): report only
@@ -90,10 +89,19 @@ sync and sign-in no longer overwrite them (docs/DECISIONS.md D140). Counts go to
 details with a reason per row to `reports/hr-import-<date>.csv`. `private/` and `reports/`
 hold personal data and are git-ignored.
 
-The live tickets, IT team and settings move to the IT Helpdesk app with
-`npm run helpdesk:migrate:from-portal` (apps/helpdesk/README.md, D145). Before it, set
-`PORTAL_HELPDESK_JOBS=off` here and restart the portal: its SLA alerts and confirmation
-reminders stop, and the helpdesk sends them from then on.
+### IT support is the IT Helpdesk app's
+
+The portal has no tickets, queue, SLA jobs or IT team (D146). "IT Support" in the menu and a
+card on Home open the IT Helpdesk app in a new tab; its address is `HELPDESK_URL` in
+`apps/portal/.env` (hidden, with a warning in the log, when it is not set; https in
+production). Old ticket links (`#tickets/...` in the portal, `/helpdesk` and the links in
+earlier emails) lead to the same ticket there, by number or id. IT staff use the portal like
+everyone else, and `--it-leads` / `--it-members` now belong to `npm run helpdesk:db:setup-live`.
+
+The portal's database still holds the old helpdesk tables and their data, marked deprecated
+in `schema.prisma`, as a safety copy. `backend/prisma/pending-cleanup/` has the migration that
+drops them; it is not applied. When to run it: docs/DEPLOY.md, "Retiring the portal's helpdesk
+tables". A leftover `PORTAL_HELPDESK_JOBS` in `.env` is ignored (the server logs a line).
 
 ### Test database
 
@@ -119,19 +127,19 @@ npm run format           # Prettier write
 ```
 apps/portal/
   frontend/              the portal's own static files, served at / over packages/shared/web
-    assets/js/           app.js, helpdesk.js (the old IT workspace), pages/ (home, rooms, …)
+    assets/js/           app.js, pages/ (home, rooms, …)
     assets/i18n/         portal.<lang>.json (common.<lang>.json is in packages/shared/web)
   backend/src/
     server.js            process entry point
     app.js               builds the Express app (no listening)
     config/env.js        the one place that reads process.env
-    modules/<module>/    admin, announcements, rooms, directory routes, helpdesk page gate
+    modules/<module>/    admin, announcements, rooms, directory routes, itsupport (old-link redirects)
     jobs/                pinned announcements
-  backend/prisma/        schema.prisma, migrations/, seed.js
+  backend/prisma/        schema.prisma, migrations/, seed.js, pending-cleanup/ (not applied)
   backend/scripts/       thin wrappers over packages/shared/server/cli
   backend/tests/
   tests/e2e/             Playwright specs; playwright.config.js beside tests/
-packages/shared/         sign-in, sessions, Graph, notifications, tickets, design system
+packages/shared/         sign-in, sessions, Graph, notifications, the tickets code the helpdesk runs, design system
 docs/                    PROGRESS.md, DECISIONS.md, API.md, DEPLOY.md
 ```
 
@@ -151,4 +159,5 @@ docs/                    PROGRESS.md, DECISIONS.md, API.md, DEPLOY.md
 
 ## Hosting
 
-Azure App Service, South Africa North, with Azure SQL.
+Two independent apps, each deployable on its own: one Windows server, a server for the
+helpdesk alone, or one Azure App Service each (South Africa North, Azure SQL). docs/DEPLOY.md.

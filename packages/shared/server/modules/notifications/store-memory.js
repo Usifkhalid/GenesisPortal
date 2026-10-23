@@ -64,18 +64,29 @@ export function createMemoryNotificationStore(repo) {
       return copy(row);
     },
 
-    async list({ userId, unread, skip, take }) {
+    async list({ userId, unread, skip, take, hide = null }) {
       const mine = rows
-        .filter((r) => r.userId === userId && r.channel === 'inApp' && (!unread || !r.readAt))
+        .filter(
+          (r) =>
+            r.userId === userId &&
+            r.channel === 'inApp' &&
+            (!unread || !r.readAt) &&
+            !(hide && r.templateKey.startsWith(hide))
+        )
         .sort(
           (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1)
         );
       return { total: mine.length, items: mine.slice(skip, skip + take).map(copy) };
     },
 
-    async countUnread(userId) {
-      return rows.filter((r) => r.userId === userId && r.channel === 'inApp' && !r.readAt)
-        .length;
+    async countUnread(userId, hide = null) {
+      return rows.filter(
+        (r) =>
+          r.userId === userId &&
+          r.channel === 'inApp' &&
+          !r.readAt &&
+          !(hide && r.templateKey.startsWith(hide))
+      ).length;
     },
 
     async markRead(userId, ids, at) {
@@ -94,10 +105,15 @@ export function createMemoryNotificationStore(repo) {
       return count;
     },
 
-    async markAllRead(userId, at) {
+    async markAllRead(userId, at, hide = null) {
       let count = 0;
       for (const row of rows) {
-        if (row.userId === userId && row.channel === 'inApp' && !row.readAt) {
+        if (
+          row.userId === userId &&
+          row.channel === 'inApp' &&
+          !row.readAt &&
+          !(hide && row.templateKey.startsWith(hide))
+        ) {
           row.readAt = at;
           count += 1;
         }

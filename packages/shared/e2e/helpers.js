@@ -32,7 +32,7 @@ const IGNORED_ERRORS = [
   /status of 409 .*\/api\/bookings\)$/,
   // By design: someone else's ticket is 404, so a ticket's existence is not
   // learned from its address (tickets.spec.js opens one as other people).
-  /status of 404 .*\/api\/tickets\/[\w-]+\)$/,
+  /status of 404 .*\/api\/tickets\/(by-number\/)?[\w-]+\)$/,
   // By design: the IT Helpdesk answers 403 to anyone not on the IT team, and
   // Chromium logs the page's own status (tickets.spec.js asks for it, D135).
   /status of 403 .*\/helpdesk\)$/,

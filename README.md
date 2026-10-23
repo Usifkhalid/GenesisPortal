@@ -11,7 +11,7 @@ by configuration, never in code.
 
 Both are deployed on their own (docs/DEPLOY.md) and run from `packages/shared`: sign-in
 (Entra ID, backend-for-frontend), sessions, Microsoft Graph, notifications, the ticket
-rules, the scripts, the design system, the shared components and the ticket pages. Each app
+rules the helpdesk runs, the scripts, the design system and the shared components. Each app
 has its own `.env`, its own Prisma schema and its own static files, served over
 `packages/shared/web` at the same URLs.
 

@@ -5,7 +5,7 @@ Internal portal for MG Holding (code HLD) and its companies Genesis Mining (GEN,
 Users: HQ staff in Cairo on desktops, and site staff (mines, construction sites) on Android phones with weak connectivity.
 Languages: English and Arabic, both first-class, full RTL.
 Roles: HoldingAdmin (all companies), CompanyAdmin (one company), User. Ticket agents are members of a support team.
-MVP modules: app shell, sign-in, company admin, announcements, directory, room booking, support tickets (an IT helpdesk: one holding team serves every company), notifications, audit log.
+MVP modules: app shell, sign-in, company admin, announcements, directory, room booking, notifications, audit log in the portal; support tickets (an IT helpdesk: one holding team serves every company) are the separate IT Helpdesk app, which the portal links to (HELPDESK_URL, D146).
 
 ## Stack
 - Frontend: plain HTML, CSS, JavaScript (ES modules). No framework, no bundler, no build step. Served as static files by each app's backend: its own frontend/ over packages/shared/web, at the same URLs.
@@ -20,7 +20,7 @@ MVP modules: app shell, sign-in, company admin, announcements, directory, room b
 ## Folder layout
 A monorepo (npm workspaces, docs/DECISIONS.md D144). Two apps, each deployed on its own, and the code both run:
 /apps/portal: the portal (port 3000, database mgportal)
-  /frontend: index.html, helpdesk.html (the old IT workspace, D135, removed in session 2), login.html, no-access.html, styleguide.html; assets/js (app.js, pages/*), assets/i18n/portal.<lang>.json
+  /frontend: index.html, login.html, styleguide.html; assets/js (app.js, pages/*), assets/i18n/portal.<lang>.json
   /backend/src: server.js, app.js, config/env.js, modules/<module>/ (admin, announcements, rooms, directory routes); /backend/prisma; /backend/scripts (thin wrappers); /backend/tests
   /tests/e2e: Playwright specs and helpers.js (re-exports packages/shared/e2e); playwright.config.js beside it
 /apps/helpdesk: the IT Helpdesk (port 3001, database mghelpdesk; same layout; its Prisma client is generated into backend/generated/client)

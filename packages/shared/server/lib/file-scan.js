@@ -90,8 +90,13 @@ export function createScanner(config) {
 
 /* --------------------------------------------------------------- stores */
 
-/** FileScan rows in SQL Server. */
-export function createPrismaScanStore(getDb = getPrisma) {
+/**
+ * FileScan rows in SQL Server.
+ * @param {object} [options]
+ * @param {boolean} [options.supportTeams]  tell the leads of the support teams
+ *   about an infected file. The IT Helpdesk does; the portal has no teams (D146).
+ */
+export function createPrismaScanStore(getDb = getPrisma, { supportTeams = true } = {}) {
   return {
     async get(storageKey) {
       return (await getDb()).fileScan.findUnique({ where: { storageKey } });
@@ -134,6 +139,7 @@ export function createPrismaScanStore(getDb = getPrisma) {
     },
     /** The leads of every active support team: who hears about an infected file. */
     async leadIds() {
+      if (!supportTeams) return [];
       const rows = await (
         await getDb()
       ).supportTeamMember.findMany({

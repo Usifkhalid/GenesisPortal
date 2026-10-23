@@ -25,7 +25,8 @@ import { searchKeyOf } from '../../lib/text-search.js';
 const fakeId = (table, index) =>
   `${table}0000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
 
-export function createMemoryUserRepo() {
+/** @param {{ supportTeams?: boolean }} [options]  as for the database repo (repo.js) */
+export function createMemoryUserRepo({ supportTeams = true } = {}) {
   const now = new Date();
   const companies = COMPANIES.map((company, i) => ({
     id: fakeId(1, i),
@@ -214,9 +215,9 @@ export function createMemoryUserRepo() {
       const user = users.find((u) => u.id === id);
       if (!user) return null;
       const activeTeams = new Set(helpdesk.team.filter((t) => t.isActive).map((t) => t.id));
-      const memberships = helpdesk.member.filter(
-        (m) => m.userId === id && activeTeams.has(m.teamId)
-      );
+      const memberships = supportTeams
+        ? helpdesk.member.filter((m) => m.userId === id && activeTeams.has(m.teamId))
+        : [];
       return { ...user, itRole: itRoleOf(memberships) };
     },
 

@@ -67,16 +67,33 @@ import {
 const REOPEN_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** A ticket number as written in a link: IT-2026-00042. */
+const NUMBER = /^[A-Za-z]{1,10}-\d{4}-\d{5}$/;
+
 /**
  * @param {HTMLElement} root
  * @param {object} ctx  the page's context, with `who` (the reader's support role) and `ticketId`
  */
 export async function render(root, ctx) {
-  const { ticketId, who: support } = ctx;
+  const { who: support } = ctx;
+  let { ticketId } = ctx;
   const from = ctx.route.query.get('from');
 
   let data;
   try {
+    // A link by number (IT-2026-00042: the old portal's links and emails,
+    // D146) is turned into the ticket's id, and the address follows.
+    if (NUMBER.test(ticketId)) {
+      const found = await api(`/api/tickets/by-number/${encodeURIComponent(ticketId)}`, {
+        quiet: true,
+      });
+      ticketId = found.id;
+      history.replaceState(
+        null,
+        '',
+        `#tickets/${found.id}${location.hash.replace(/^[^?]*/, '')}`
+      );
+    }
     data = await api(`/api/tickets/${encodeURIComponent(ticketId)}`, { quiet: true });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {

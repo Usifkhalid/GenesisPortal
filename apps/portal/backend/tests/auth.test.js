@@ -21,7 +21,8 @@ import { requireRole } from '@mg/shared/server/middleware/auth.js';
 import { createMemoryUserRepo } from '@mg/shared/server/modules/auth/repo-memory.js';
 
 /** Mock sign-in only answers in development, so the tests say they are there. */
-const DEV = { NODE_ENV: 'development', AUTH_MODE: 'mock' };
+// No HELPDESK_URL, whatever the developer's .env says: the nav is predictable.
+const DEV = { NODE_ENV: 'development', AUTH_MODE: 'mock', HELPDESK_URL: undefined };
 
 /**
  * An app over its own copy of the seed users, with temporary routes standing
@@ -252,8 +253,9 @@ describe('GET /api/me', () => {
     assert.deepEqual(body.roles, [{ role: ROLES.COMPANY_ADMIN, scopeCompanyId: id('GEN') }]);
     assert.deepEqual(
       body.nav.map((n) => n.key),
-      ['home', 'announcements', 'rooms', 'tickets', 'directory', 'admin', 'auditLog']
+      ['home', 'announcements', 'rooms', 'directory', 'admin', 'auditLog']
     );
+    assert.equal(body.helpdeskUrl, null);
     assert.equal(body.authMode, 'mock');
     assert.ok(body.csrfToken);
   });
@@ -265,7 +267,7 @@ describe('GET /api/me', () => {
 
     assert.deepEqual(
       body.nav.map((n) => n.group),
-      ['main', 'main', 'main', 'main', 'main']
+      ['main', 'main', 'main', 'main']
     );
     assert.deepEqual(
       body.companies.map((c) => c.code),

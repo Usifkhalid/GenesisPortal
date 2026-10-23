@@ -30,12 +30,9 @@ const ROUTES = [
   '#rooms',
   '#rooms/day',
   '#rooms/mine',
-  '#tickets',
-  '#tickets/new',
   '#directory',
   '#admin/companies',
   '#admin/rooms',
-  '#admin/it-team',
   '#audit-log',
   '#notifications',
 ];

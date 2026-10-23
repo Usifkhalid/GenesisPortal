@@ -1,6 +1,6 @@
 /**
  * a11y-overlays.spec.js — axe-core over what is only on screen once it is
- * opened: the booking dialog, the ticket handling panel, the announcement
+ * opened: the booking dialog, the announcement
  * editor, the bell, the account menu, the company menu, a person's panel,
  * the "More" sheet on a phone, and the administrator's move and cancel
  * dialogs. Both languages, both screens. Any serious or critical finding fails
@@ -27,7 +27,6 @@ import {
 const expect = strictExpect.configure({ timeout: 20_000 });
 
 const STANDARDS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
-const LEAD = { company: 'HLD', name: 'Omar Fahmy' };
 
 const isSerious = (violation) =>
   violation.impact === 'serious' || violation.impact === 'critical';
@@ -151,25 +150,6 @@ for (const lang of LANGUAGES) {
       await page.goto('/#announcements/new');
       await expect(page.locator('#page h1').first()).toBeVisible();
       await scan('announcement editor');
-
-      /* --------------------------------- ticket handling, as the Lead */
-      await signOut(page);
-      await signIn(page, { ...LEAD, lang });
-      const options = await (await page.request.get('/api/tickets/options')).json();
-      const created = await page.request.post('/api/tickets', {
-        headers: await csrfHeaders(page),
-        data: {
-          subject: `Overlay ticket ${lang} ${runIndex(page, lang)} ${Date.now()}`,
-          description: 'Opened to look at the handling panel.',
-          categoryId: options.categories[0].id,
-        },
-      });
-      expect(created.ok(), 'a ticket to handle').toBeTruthy();
-      const { ticket } = await created.json();
-      // The IT team handles tickets in the IT Helpdesk (D135).
-      await page.goto(`/helpdesk#tickets/${ticket.id}`);
-      await expect(page.locator('#tkHandle')).toBeVisible();
-      await scan('ticket assign');
 
       if (advice.length) console.log(`axe advice (${lang}):\n  ${advice.join('\n  ')}`);
       expect(failures, 'serious or critical accessibility findings').toEqual([]);

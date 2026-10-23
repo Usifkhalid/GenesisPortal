@@ -6,6 +6,7 @@
 
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import { logHelpdeskLinkNotes } from './config/startup-notes.js';
 import { startPortalJobs } from './jobs/schedule.js';
 import { logger } from '@mg/shared/server/lib/logger.js';
 import { serve } from '@mg/shared/server/lib/serve.js';
@@ -13,6 +14,8 @@ import { createTelemetry } from '@mg/shared/server/lib/telemetry.js';
 
 // Application Insights, when configured; otherwise an object that does nothing.
 const telemetry = await createTelemetry(env);
+
+logHelpdeskLinkNotes({ env, source: process.env, log: logger });
 
 const app = createApp({ telemetry });
 
@@ -29,5 +32,5 @@ await serve({
     storage: env.STORAGE_DRIVER,
     scan: env.SCAN_MODE,
   },
-  jobs: (jobOptions) => startPortalJobs({ app, env, log: logger, jobOptions }),
+  jobs: (jobOptions) => startPortalJobs({ app, log: logger, jobOptions }),
 });

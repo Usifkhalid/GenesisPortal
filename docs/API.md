@@ -3,10 +3,12 @@
 Base path `/api`. JSON in, JSON out. Everything that is not under `/api` is the static
 frontend.
 
-Two apps answer this API (D144): the portal (`apps/portal`, every section below) and the IT
-Helpdesk (`apps/helpdesk`), which answers the sign-in, notification, ticket, IT Helpdesk
-and IT team routes the same way, plus its own Administration and `GET /api/me` (see "The IT
-Helpdesk app" at the end). Each has its own session cookie and database.
+Two apps answer this API (D144, D146): the portal (`apps/portal`) and the IT Helpdesk
+(`apps/helpdesk`). The sections below are the portal's, except "Helpdesk tickets", which is the
+helpdesk's: the portal answers none of the ticket, IT Helpdesk or IT team routes (they are 404
+there). The helpdesk answers the sign-in, notification, ticket, IT Helpdesk and IT team routes
+the same way, plus its own Administration and `GET /api/me` (see "The IT Helpdesk app" at the
+end). Each has its own session cookie and database.
 
 ## Conventions
 
@@ -126,7 +128,7 @@ The seeded users grouped by company, each under their highest role. Anywhere els
 #### `POST /api/auth/mock-login` (public; same condition)
 
 Body `{ "userId": "<uuid>" }`. Starts a session under a new session id.
-`200 { "redirectTo": "/", "csrfToken": "…" }` (`/helpdesk` for IT team members, D135); `404` for an unknown or inactive user.
+`200 { "redirectTo": "/", "csrfToken": "…" }`; `404` for an unknown or inactive user.
 
 #### `POST /api/auth/logout` (and `POST /auth/logout` in Entra mode)
 
@@ -164,12 +166,14 @@ created), `not_provisioned` (profile or company inactive), `consent_required`,
   "companies": [ "…the companies this person may work in, their own first…" ],
   "roles": [{ "role": "CompanyAdmin", "scopeCompanyId": "…" }],
   "nav": [{ "key": "home", "group": "main" }, { "key": "admin", "group": "admin" }],
-  "helpdesk": null, "home": "/",
+  "helpdeskUrl": "https://helpdesk.example.com",
   "authMode": "mock", "csrfToken": "…" }
 ```
 
-For an IT team member `helpdesk` is `{ "role": "Agent" | "Lead" }`, `home` is `/helpdesk` and
-`nav` is empty: they work in the IT Helpdesk only (D135).
+`helpdeskUrl` is the portal's `HELPDESK_URL` without a trailing slash, or `null`. When it is set
+`nav` also lists `{ "key": "itSupport", "group": "main" }`, which the shell draws as a link to
+that address in a new tab (D146). IT staff are ordinary users here: no `helpdesk` or `home`
+field, no restriction.
 
 **For module authors.** `requireAuth` is already applied. Use
 `requireRole(ROLES.HOLDING_ADMIN, ROLES.COMPANY_ADMIN)` from `middleware/auth.js` as the
@@ -377,6 +381,13 @@ organiser's own bookings are not audited. The organiser is not yet told when an 
 cancels: that comes with notifications.
 
 ### Helpdesk tickets (`/api/tickets`, `/api/helpdesk`, `/api/admin/it-team`)
+
+> These routes belong to the IT Helpdesk app (`apps/helpdesk`) since D146; the portal no
+> longer answers them. Where this section says "the portal" or "/helpdesk" it describes how they
+> worked before the split and applies to the helpdesk app's own pages. Added by D146:
+> `GET /api/tickets/by-number/:number` (any signed-in person) → `{ id, number }` for a ticket
+> number such as `IT-2026-00042` (any letter case), 404 unless the reader may see the ticket,
+> 400 for something that is not a number. It lets the old portal's links by number open the ticket.
 
 An IT helpdesk: one team (code `IT`) serves every company from one queue. A ticket carries
 its requester's `companyId` for reporting, but company scope does not decide who reads it

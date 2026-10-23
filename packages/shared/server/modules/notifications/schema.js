@@ -5,7 +5,10 @@
 
 import { z } from 'zod';
 
-import { CATEGORIES, CHANNELS } from '../../../web/assets/js/notification-text.js';
+import {
+  CATEGORIES as ALL_CATEGORIES,
+  CHANNELS,
+} from '../../../web/assets/js/notification-text.js';
 
 export const listQuery = z.strictObject({
   unread: z
@@ -20,15 +23,19 @@ export const readBody = z.strictObject({
   ids: z.array(z.guid()).min(1).max(100),
 });
 
-export const preferencesBody = z.strictObject({
-  items: z
-    .array(
-      z.strictObject({
-        category: z.enum(CATEGORIES),
-        channel: z.enum(CHANNELS),
-        enabled: z.boolean(),
-      })
-    )
-    .min(1)
-    .max(CATEGORIES.length * CHANNELS.length),
-});
+/** The body of PUT /preferences, for the categories this app offers. */
+export const preferencesBodyFor = (categories) =>
+  z.strictObject({
+    items: z
+      .array(
+        z.strictObject({
+          category: z.enum(categories),
+          channel: z.enum(CHANNELS),
+          enabled: z.boolean(),
+        })
+      )
+      .min(1)
+      .max(categories.length * CHANNELS.length),
+  });
+
+export const preferencesBody = preferencesBodyFor(ALL_CATEGORIES);

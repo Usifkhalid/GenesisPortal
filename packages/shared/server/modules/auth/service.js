@@ -70,20 +70,17 @@ export async function startSession(req, userId) {
   return csrfToken(req);
 }
 
-/** Where a person works after sign-in: IT team members in the Helpdesk (D135). */
-export const homeOf = (user) => (user.it ? '/helpdesk' : '/');
-
 /**
  * The navigation this person may see. The frontend draws only these; the
- * routes behind them enforce the same thing for themselves. An IT team
- * member has none of the portal's: the Helpdesk draws its own.
+ * routes behind them enforce the same thing for themselves. "IT Support" is a
+ * link to the IT Helpdesk app, so it is listed only when HELPDESK_URL is set.
+ * @param {object} user  req.user
+ * @param {{ HELPDESK_URL?: string }} [config]
  */
-export function navFor(user) {
-  if (user.it) return [];
-  const nav = ['home', 'announcements', 'rooms', 'tickets', 'directory'].map((key) => ({
-    key,
-    group: 'main',
-  }));
+export function navFor(user, config = {}) {
+  const keys = ['home', 'announcements', 'rooms', 'directory'];
+  if (config.HELPDESK_URL) keys.push('itSupport');
+  const nav = keys.map((key) => ({ key, group: 'main' }));
 
   const { adminCompanyIds } = user.scopes;
   if (adminCompanyIds === null || adminCompanyIds.length > 0) {
@@ -123,10 +120,9 @@ export async function describeMe(req, repo, config) {
     company: companyView(account.company),
     companies,
     roles: user.roles,
-    nav: navFor(user),
-    // 'Lead' | 'Agent' on an IT team, null otherwise; and the page that is theirs.
-    helpdesk: user.it ? { role: user.it } : null,
-    home: homeOf(user),
+    nav: navFor(user, config),
+    // Where "IT Support" leads (a new tab); null when this portal has no link.
+    helpdeskUrl: config.HELPDESK_URL?.replace(/\/+$/, '') ?? null,
     authMode: config.AUTH_MODE,
     csrfToken: csrfToken(req),
     // Whether the page should install the offline worker (frontend/sw.js).

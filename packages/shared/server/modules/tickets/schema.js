@@ -10,6 +10,7 @@ import {
   MAX_FEEDBACK,
   MAX_REASON,
   MEMBER_ROLES,
+  TICKET_NUMBER,
   PRIORITIES,
   RATINGS,
   SETTABLE_STATUSES,
@@ -23,6 +24,12 @@ const text = (max) => z.string().trim().min(1).max(max);
 const priority = z.enum(PRIORITIES);
 
 export const idParam = z.strictObject({ id });
+export const numberParam = z.strictObject({
+  number: z
+    .string()
+    .regex(TICKET_NUMBER)
+    .transform((value) => value.toUpperCase()),
+});
 export const attachmentParams = z.strictObject({ id, attachmentId: id });
 export const memberParams = z.strictObject({ id, userId: id });
 

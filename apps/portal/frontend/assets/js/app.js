@@ -42,6 +42,8 @@ const state = {
   company: null,
   /** @type {{ key: string, group: string }[]} what the server lets them see */
   nav: [],
+  /** Where the IT Helpdesk app is (GET /api/me); null: no link, D146. */
+  helpdeskUrl: null,
 };
 
 /**
@@ -242,7 +244,6 @@ function renderShellData() {
   const collapsed = toggle.getAttribute('aria-expanded') === 'false';
   toggle.setAttribute('aria-label', t(collapsed ? 'nav.expandRail' : 'nav.collapseRail'));
 
-  drawTicketCount();
   redrawBell();
 }
 
@@ -274,36 +275,6 @@ async function refreshAnnouncementCount() {
   drawAnnouncementCount();
 }
 
-/* ------------------------------------------------------------ ticket count */
-
-/** GET /api/tickets/counts: here only `mine` matters (the IT team is in /helpdesk, D135). */
-let ticketCounts = { mine: 0 };
-
-/** Draws the number beside Tickets: this person's own open tickets. */
-function drawTicketCount() {
-  const count = ticketCounts.mine;
-  const label = t('tickets.navCount', { count });
-  for (const el of document.querySelectorAll('[data-ticket-count]')) {
-    el.hidden = count === 0;
-    el.textContent = count > 99 ? '99+' : String(count);
-    el.setAttribute('aria-label', label);
-  }
-}
-
-/** Asks the server for this person's ticket numbers. */
-async function refreshTicketCount() {
-  try {
-    ticketCounts = await api('/api/tickets/counts', {
-      quiet: true,
-      signal: backgroundSignal(),
-    });
-  } catch {
-    // The nav is a convenience: no count is better than a wrong one.
-    ticketCounts = { mine: 0 };
-  }
-  drawTicketCount();
-}
-
 /* -------------------------------------------------------------- navigation */
 
 /**
@@ -315,10 +286,27 @@ function applyNav() {
   for (const link of document.querySelectorAll('[data-nav]')) {
     link.hidden = !allowed.has(link.dataset.nav);
   }
+  // "IT Support" opens the IT Helpdesk app in a new tab (rel and target are in the markup).
+  for (const link of document.querySelectorAll('[data-helpdesk-link]')) {
+    if (state.helpdeskUrl) link.href = `${state.helpdeskUrl}/`;
+    else link.hidden = true;
+  }
 
   const admin = isAdmin();
   document.getElementById('railAdminSection').hidden = !admin;
   document.getElementById('moreAdminSection').hidden = !admin;
+}
+
+/**
+ * The portal used to hold the tickets: an address like #tickets/<number or id>
+ * now belongs to the IT Helpdesk app, which finds the ticket by either. Goes
+ * there when the address names tickets and the portal knows where the helpdesk
+ * is. Returns true when it is leaving the page.
+ */
+function sendTicketLinkToHelpdesk() {
+  if (!state.helpdeskUrl || !/^#\/?tickets(?:[/?]|$)/.test(location.hash)) return false;
+  location.replace(`${state.helpdeskUrl}/${location.hash}`);
+  return true;
 }
 
 /* -------------------------------------------------------------------- page */
@@ -330,6 +318,7 @@ function pageContext() {
     company: state.company,
     user: { id: state.user.id, name, firstName: name.trim().split(/\s+/)[0] ?? name },
     admin: isAdmin(),
+    helpdeskUrl: state.helpdeskUrl,
   };
 }
 
@@ -505,12 +494,11 @@ async function init() {
     return;
   }
 
-  // IT team members work in the IT Helpdesk, never here (D135). The server
-  // sends them there too; this covers a portal page kept on the device.
-  if (me.home && me.home !== '/') {
-    location.replace(me.home);
-    return;
-  }
+  state.helpdeskUrl = me.helpdeskUrl ?? null;
+  // A link to a ticket in the old portal (an earlier email, a bookmark) leads
+  // to the same ticket in the IT Helpdesk app (D146).
+  if (sendTicketLinkToHelpdesk()) return;
+  window.addEventListener('hashchange', sendTicketLinkToHelpdesk);
 
   state.user = me.user;
   state.nav = me.nav;
@@ -549,8 +537,6 @@ async function init() {
   initDateInputs();
   document.addEventListener('announcements:changed', refreshAnnouncementCount);
   refreshAnnouncementCount();
-  document.addEventListener('tickets:changed', refreshTicketCount);
-  refreshTicketCount();
   NARROW.addEventListener('change', updateSearchPlaceholder);
 }
 

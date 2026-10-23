@@ -1,12 +1,7 @@
-Scheduled background work (notification digests, booking reminders).
-Each job is a module started from server.js through schedule.js, which leaves out the SLA watch
-and the reminders when PORTAL_HELPDESK_JOBS=off (D145).
+Scheduled background work. Each job is a module started from server.js through schedule.js.
+The helpdesk's jobs (SLA watch, confirmation reminders) run in the IT Helpdesk app only (D146).
 
 - prune-sessions.js: deletes expired Session rows at startup and then hourly.
-- remindResolvedTickets.js: reminds the requester of a Resolved helpdesk ticket every 24 hours until they
-  confirm it (nothing closes a ticket on a timer, D143), at startup and then hourly.
-- slaWatch.js: alerts the assignee and the team's leads at 75% and 100% of a ticket's SLA, once per
-  threshold, at startup and then every five minutes.
 - pinnedAnnouncements.js: announces pinned announcements that went live on a schedule, at startup
   and then every five minutes (one notification per post and person).
 - syncUsers.js: the directory sync from Graph, nightly at 02:00 Cairo time.

@@ -14,7 +14,7 @@ import { getLocale, t } from '../i18n.js';
 const TOPICS = [
   { key: 'signin', icon: 'user' },
   { key: 'rooms', icon: 'rooms' },
-  { key: 'tickets', icon: 'tickets' },
+  { key: 'itSupport', icon: 'tickets' },
   { key: 'announcements', icon: 'announcements' },
   { key: 'directory', icon: 'directory' },
   { key: 'notifications', icon: 'notifications' },
@@ -38,7 +38,8 @@ function topicHtml(words, { key, icon: name }) {
   </section>`;
 }
 
-export async function render(root) {
+/** @param {{ helpdeskUrl: string | null }} ctx */
+export async function render(root, ctx) {
   // The answers are their own file, so every first load does not carry them.
   const words = await (await fetch(`assets/i18n/help-${getLocale()}.json`)).json();
   root.innerHTML = `<div class="stack help">
@@ -58,11 +59,16 @@ export async function render(root) {
     <section class="help__contact card" aria-labelledby="help-contact-h">
       <div>
         <h2 id="help-contact-h">${esc(t('help.contact.title'))}</h2>
-        <p>${esc(t('help.contact.text'))}</p>
+        <p>${esc(t(ctx.helpdeskUrl ? 'help.contact.text' : 'help.noLink.text'))}</p>
       </div>
-      <a class="btn btn--primary" href="#tickets/new">
-        <span class="btn__label">${esc(t('help.contact.action'))}</span>
-      </a>
+      ${
+        ctx.helpdeskUrl
+          ? `<a class="btn btn--primary" href="${esc(ctx.helpdeskUrl)}/#tickets/new" target="_blank" rel="noopener">
+               <span class="btn__label">${esc(t('help.contact.action'))}</span>
+               <span class="u-visually-hidden">${esc(t('a11y.opensNewTab'))}</span>
+             </a>`
+          : ''
+      }
     </section>
   </div>`;
 

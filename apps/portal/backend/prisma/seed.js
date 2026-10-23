@@ -1,19 +1,17 @@
 /**
  * seed.js — loads seed-data.js into the database: the three companies, their
- * departments, fourteen fake users for AUTH_MODE=mock to list, six HQ rooms, and
- * the IT helpdesk (team, members, categories, locations, targets, hours,
- * holidays, canned replies).
+ * departments, fourteen fake users for AUTH_MODE=mock to list and six HQ rooms.
+ * The IT helpdesk's demo data is the helpdesk app's (apps/helpdesk, D146).
  *
  * Idempotent: rows are matched on natural keys (company code, department name
- * within a company, user email, room mailbox, team code, category and location
- * name, holiday date), so `npm run db:seed` can be run again after
+ * within a company, user email, room mailbox), so `npm run db:seed` can be run again after
  * editing seed-data.js. It updates and adds; it never deletes.
  */
 
 import { env, isProduction } from '../src/config/env.js';
 import { disconnectPrisma, getPrisma } from '@mg/shared/server/lib/prisma.js';
 import { COMPANIES, ROOMS } from '@mg/shared/server/demo/seed-data.js';
-import { seedCompanies, seedHelpdesk, seedPeople } from '@mg/shared/server/demo/seed.js';
+import { seedCompanies, seedPeople } from '@mg/shared/server/demo/seed.js';
 
 export { seedCompanies };
 
@@ -26,7 +24,7 @@ export async function seed(prisma) {
   return seedDemo(prisma, companyIds);
 }
 
-/** Departments, fake people, rooms and the helpdesk: the demo database only. */
+/** Departments, fake people and rooms: the demo database only. */
 async function seedDemo(prisma, companyIds) {
   const { departmentIds, userIds } = await seedPeople(prisma, companyIds);
 
@@ -39,8 +37,6 @@ async function seedDemo(prisma, companyIds) {
       create: { mailboxEmail, ...data },
     });
   }
-
-  await seedHelpdesk(prisma, userIds);
 
   return {
     companies: companyIds.size,

@@ -1,7 +1,7 @@
 /**
  * a11y.spec.js — axe-core over every page of the portal in both languages, and
- * the two main flows (booking a room, raising a ticket) used with the keyboard
- * alone.
+ * the main flow (booking a room) used with the keyboard alone. The helpdesk's
+ * are apps/helpdesk/tests/e2e/a11y.spec.js.
  *
  * Runs on both screens (1440 and 360 px). Any serious or critical axe finding
  * fails the test; moderate and minor ones are printed so they can be read, not
@@ -36,8 +36,6 @@ const ROUTES = [
   '#rooms',
   '#rooms/day',
   '#rooms/mine',
-  '#tickets',
-  '#tickets/new',
   '#directory',
   '#admin/companies',
   '#admin/departments',
@@ -46,22 +44,10 @@ const ROUTES = [
   '#admin/sync',
   '#admin/rooms',
   '#admin/bookings',
-  '#admin/it-team',
   '#audit-log',
   '#notifications',
   '#notifications/preferences',
   '#help',
-];
-
-/** The IT Helpdesk's pages (D135), as an IT Lead sees them. */
-const HELPDESK_ROUTES = [
-  '#queue',
-  '#assigned',
-  '#reports',
-  '#settings',
-  '#tickets',
-  '#tickets/new',
-  '#notifications',
 ];
 
 /** Presses Tab until `selector` has focus, as a keyboard user would. */
@@ -116,22 +102,6 @@ for (const lang of LANGUAGES) {
       }
 
       if (advice.length) console.log(`axe advice (${lang}):\n  ${advice.join('\n  ')}`);
-      expect(failures, 'serious or critical accessibility findings').toEqual([]);
-    });
-
-    test('axe finds nothing serious in the IT Helpdesk', async ({ page }) => {
-      test.setTimeout(180_000);
-      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
-      await expectLanguage(page, lang);
-
-      const failures = [];
-      for (const hash of HELPDESK_ROUTES) {
-        await page.goto(`/helpdesk${hash}`);
-        await settled(page);
-        const { violations } = await new AxeBuilder({ page }).withTags(STANDARDS).analyze();
-        failures.push(...violations.filter(isSerious).map((v) => `${hash}: ${describe(v)}`));
-        await expectNoSidewaysScroll(page);
-      }
       expect(failures, 'serious or critical accessibility findings').toEqual([]);
     });
 
@@ -204,40 +174,6 @@ for (const lang of LANGUAGES) {
       await tabTo(page, 'dialog[open] [data-confirm]');
       await page.keyboard.press('Enter');
       await expect(page.locator('#mineBody .record', { hasText: subject })).toHaveCount(0);
-    });
-
-    test('a ticket is raised and answered with the keyboard alone', async ({ page }) => {
-      await signIn(page, { company: 'GEN', role: 'User', name: 'Salma Ibrahim', lang });
-      const subject = `Keyboard ticket ${lang} ${runIndex(page, lang)} ${Date.now()}`;
-
-      await page.goto('/#tickets/new');
-      await expect(page.locator('#tkNew')).toBeVisible();
-
-      await tabTo(page, '.tk-tile__input');
-      await page.keyboard.press('Space');
-      await expect(page.locator('.tk-tile__input:checked')).toHaveCount(1);
-
-      await tabTo(page, '#tkSubject');
-      await page.keyboard.type(subject);
-      await tabTo(page, '#tkDescription');
-      await page.keyboard.type('Typed without a mouse.');
-      // No urgency question since D142: the category sets the priority.
-
-      await tabTo(page, '#tkSubmit');
-      await page.keyboard.press('Enter');
-      await expect(page.locator('#tkDone')).toBeVisible();
-
-      // Open the ticket from the confirmation, add a reply, send it.
-      await tabTo(page, '#tkDone a.btn--primary');
-      await page.keyboard.press('Enter');
-      await expect(page.locator('#tkSubject')).toContainText(subject);
-
-      await tabTo(page, '#tkReplyText');
-      await page.keyboard.type(`Another detail ${lang}`);
-      await tabTo(page, '#tkReply button[type="submit"]');
-      await page.keyboard.press('Enter');
-      await expect(page.locator('.tk-timeline')).toContainText(`Another detail ${lang}`);
-      await expectNoSidewaysScroll(page);
     });
   });
 }

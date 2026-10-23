@@ -519,14 +519,22 @@ model MockCalendarEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Helpdesk. One support team (IT) is seeded; another department is a new
-// SupportTeam row with its own categories, SLA and calendar, never code.
-// A ticket carries the requester's companyId, but the people who read it are
-// the requester and the members of its team: the one documented exception to
-// company scoping (docs/DECISIONS.md D99, modules/tickets/rules.js).
+// Helpdesk tables: DEPRECATED (docs/DECISIONS.md D146). The IT Helpdesk is an
+// app of its own (apps/helpdesk, database mghelpdesk) and the live tickets were
+// copied there (D145). The portal no longer reads or writes anything below
+// this line, but mgportal_live keeps the tables, with their data, as a
+// safety copy until the helpdesk has run live for some weeks and a fresh
+// backup exists. Then prisma/pending-cleanup/ drops them: see its README and
+// docs/DEPLOY.md "Retiring the portal's helpdesk tables". Until then the models
+// stay here so the schema matches the database.
+//
+// (How they worked: one support team (IT); a ticket carries the requester's
+// companyId but is read by the requester and the members of its team, the one
+// documented exception to company scoping, D99.)
 // ---------------------------------------------------------------------------
 
 /// A support team. `code` prefixes its ticket numbers (IT-2026-00042).
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model SupportTeam {
   id                 String   @id @default(uuid()) @db.NVarChar(36)
   code               String   @unique @db.NVarChar(10)
@@ -548,6 +556,7 @@ model SupportTeam {
 }
 
 /// One company a team serves, when it does not serve them all.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model SupportTeamCompany {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   teamId    String   @db.NVarChar(36)
@@ -562,6 +571,7 @@ model SupportTeamCompany {
   @@index([companyId])
 }
 
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model SupportTeamMember {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   teamId    String   @db.NVarChar(36)
@@ -578,6 +588,7 @@ model SupportTeamMember {
   @@index([userId])
 }
 
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketCategory {
   id              String   @id @default(uuid()) @db.NVarChar(36)
   teamId          String   @db.NVarChar(36)
@@ -598,6 +609,7 @@ model TicketCategory {
 }
 
 /// Where the problem is: an office or a site. Group-wide reference data.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketLocation {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   nameEn    String   @unique @db.NVarChar(200)
@@ -611,6 +623,7 @@ model TicketLocation {
 }
 
 /// Targets in business minutes (the team's BusinessCalendar), per priority.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model SlaPolicy {
   id                   String   @id @default(uuid()) @db.NVarChar(36)
   teamId               String   @db.NVarChar(36)
@@ -629,6 +642,7 @@ model SlaPolicy {
 /// The working hours of one team. timeZone is an IANA name (Egypt observes
 /// DST, so never an offset); workingDays is "0,1,2,3,4" with 0 for Sunday; the
 /// hours are minutes after midnight on that zone's clock.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model BusinessCalendar {
   id          String   @id @default(uuid()) @db.NVarChar(36)
   teamId      String   @unique @db.NVarChar(36)
@@ -644,6 +658,7 @@ model BusinessCalendar {
 
 /// A public holiday, group-wide: no SLA clock runs on it. `date` is a calendar
 /// day, "2026-10-06", not an instant.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model Holiday {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   date      String   @unique @db.NVarChar(10)
@@ -655,6 +670,7 @@ model Holiday {
 
 /// The last number given out for a prefix and year. A create bumps the row
 /// inside its own transaction, so two creates can never be handed one number.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketSequence {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   prefix    String   @db.NVarChar(10)
@@ -666,6 +682,7 @@ model TicketSequence {
   @@unique([prefix, year])
 }
 
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model Ticket {
   id                 String    @id @default(uuid()) @db.NVarChar(36)
   /// IT-2026-00042: team code, Cairo year, yearly sequence.
@@ -739,6 +756,7 @@ model Ticket {
   @@index([status, resolvedAt])
 }
 
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketComment {
   id         String   @id @default(uuid()) @db.NVarChar(36)
   ticketId   String   @db.NVarChar(36)
@@ -760,6 +778,7 @@ model TicketComment {
 /// A file on a ticket (commentId NULL: with the description) or on a comment.
 /// The bytes are in lib/storage.js under storageKey; contentType is what the
 /// signature of the file said, never what the client claimed.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketAttachment {
   id           String   @id @default(uuid()) @db.NVarChar(36)
   ticketId     String   @db.NVarChar(36)
@@ -784,6 +803,7 @@ model TicketAttachment {
 
 /// The history of a ticket, one row per thing that happened. Append-only in
 /// practice: nothing updates or deletes it.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model TicketEvent {
   id         String   @id @default(uuid()) @db.NVarChar(36)
   ticketId   String   @db.NVarChar(36)
@@ -806,6 +826,7 @@ model TicketEvent {
 }
 
 /// A reply an agent can drop into a comment, in both languages.
+/// DEPRECATED (D146): the IT Helpdesk app owns tickets now. Nothing in the portal reads or writes this table.
 model CannedReply {
   id        String   @id @default(uuid()) @db.NVarChar(36)
   teamId    String   @db.NVarChar(36)

@@ -272,6 +272,8 @@ function baseShape({ dataVar, adminsVar, defaultPort, defaultContainer }) {
  * @param {string} [options.defaultContainer]  the Blob container's default name
  * @param {string} [options.sessionCookieName]  the session cookie (lib/session.js)
  * @param {Record<string, import('zod').ZodType>} [options.extraShape]
+ * @param {(value: Record<string, any>, refuse: (key: string, message: string) => void) => void} [options.extraRules]
+ *   checks of that app's own variables, run with the shared ones
  * @returns {(source: Record<string, string | undefined>) => Readonly<Record<string, any>>}
  */
 export function createEnvLoader({
@@ -281,6 +283,7 @@ export function createEnvLoader({
   defaultContainer = 'portal-files',
   sessionCookieName = 'mgp.sid',
   extraShape = {},
+  extraRules = null,
 }) {
   const schema = z
     .object({
@@ -385,6 +388,7 @@ export function createEnvLoader({
         require('ENTRA_CLIENT_ID', why);
         require('ENTRA_CLIENT_SECRET', why);
       }
+      extraRules?.(value, refuse);
       if (graphMode === 'real' && value.NOREPLY_MAILBOX.endsWith('.example')) {
         ctx.addIssue({
           code: 'custom',

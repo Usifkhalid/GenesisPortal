@@ -777,6 +777,18 @@ export function createTicketService({
     return detail(ctx, ctx.ticket);
   }
 
+  /**
+   * The id of the ticket with this number, for a link by number (the old
+   * portal's links and emails, D146). Asked like any ticket: one the person may
+   * not see is not found.
+   */
+  async function idByNumber(req, number) {
+    const [row] = await store.find('ticket', { number });
+    if (!row) throw notFound();
+    const { ticket } = await loadTicket(req, row.id);
+    return { id: ticket.id, number: ticket.number };
+  }
+
   /** Back to Open, by its requester (inside the window) or by staff. */
   async function reopenPatch(ctx, at) {
     const { ticket, staffRole, isRequester } = ctx;
@@ -1424,6 +1436,7 @@ export function createTicketService({
     listMine,
     counts,
     get,
+    idByNumber,
     comment,
     addAttachment,
     readAttachment,

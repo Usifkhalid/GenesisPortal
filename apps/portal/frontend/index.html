@@ -31,7 +31,6 @@
     <link rel="stylesheet" href="assets/css/pages/announcements.css" />
     <link rel="stylesheet" href="assets/css/pages/directory.css" />
     <link rel="stylesheet" href="assets/css/pages/rooms.css" />
-    <link rel="stylesheet" href="assets/css/pages/tickets.css" />
   </head>
 
   <body>
@@ -90,12 +89,27 @@
               </svg>
               <span class="rail__label" data-rail-text data-i18n="nav.rooms">Rooms</span>
             </a>
-            <a class="nav-link" href="#tickets" data-nav="tickets">
+            <!-- Leads to the IT Helpdesk app, in a new tab. app.js sets the address
+                 from GET /api/me (helpdeskUrl); without one the server lists no
+                 "itSupport" and the link stays hidden (D146). -->
+            <a
+              class="nav-link"
+              href="#"
+              data-nav="itSupport"
+              data-helpdesk-link
+              target="_blank"
+              rel="noopener"
+              hidden
+            >
               <svg class="nav-link__icon" aria-hidden="true" focusable="false">
                 <use href="#i-tickets" />
               </svg>
-              <span class="rail__label" data-rail-text data-i18n="nav.tickets">Tickets</span>
-              <span class="nav-link__count" data-rail-text data-ticket-count hidden></span>
+              <span class="rail__label" data-rail-text data-i18n="nav.itSupport"
+                >IT Support</span
+              >
+              <span class="u-visually-hidden" data-i18n="a11y.opensNewTab"
+                >(opens in a new tab)</span
+              >
             </a>
             <a class="nav-link" href="#directory" data-nav="directory">
               <svg class="nav-link__icon" aria-hidden="true" focusable="false">
@@ -296,11 +310,22 @@
           </svg>
           <span class="bottomnav__label" data-i18n="nav.home">Home</span>
         </a>
-        <a class="bottomnav__link" href="#tickets" data-nav="tickets">
+        <a
+          class="bottomnav__link"
+          href="#"
+          data-nav="itSupport"
+          data-helpdesk-link
+          target="_blank"
+          rel="noopener"
+          hidden
+        >
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">
             <use href="#i-tickets" />
           </svg>
-          <span class="bottomnav__label" data-i18n="nav.tickets">Tickets</span>
+          <span class="bottomnav__label" data-i18n="nav.itSupport">IT Support</span>
+          <span class="u-visually-hidden" data-i18n="a11y.opensNewTab"
+            >(opens in a new tab)</span
+          >
         </a>
         <a class="bottomnav__link" href="#rooms" data-nav="rooms">
           <svg class="bottomnav__icon" aria-hidden="true" focusable="false">

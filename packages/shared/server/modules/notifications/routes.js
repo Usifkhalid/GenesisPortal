@@ -17,11 +17,12 @@
 import { Router } from 'express';
 
 import { HttpError } from '../../middleware/errors.js';
-import { listQuery, preferencesBody, readBody } from './schema.js';
+import { listQuery, preferencesBodyFor, readBody } from './schema.js';
 
 /** @param {ReturnType<import('./service.js').createNotificationService>} service */
 export function notificationRoutes(service) {
   const router = Router();
+  const preferencesBody = preferencesBodyFor(service.categories);
 
   router.get('/', async (req, res) => {
     res.json(await service.list(req, listQuery.parse(req.query)));

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { HOLIDAYS, SUPPORT_TEAMS, TICKET_LOCATIONS } from '@mg/shared/server/demo/seed-data.js';
-import { createAdminService } from '../src/modules/admin/service.js';
+import { createCompanyService } from '../src/modules/admin/service.js';
 import {
   ensureHelpdeskDefaults,
   LIVE_TEAM,
@@ -120,9 +120,8 @@ describe('creating a company', () => {
       createCompany: async (body) => ({ id: 'c-new', ...body }),
       ensureHelpdeskDefaults: (req) => ensureHelpdeskDefaults(db, { req }),
     };
-    const service = createAdminService({
+    const service = createCompanyService({
       store: { transaction: (fn) => fn(tx) },
-      storage: {},
     });
     const req = {
       user: {

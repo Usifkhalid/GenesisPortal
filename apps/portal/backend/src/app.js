@@ -25,15 +25,15 @@
 import express from 'express';
 import session from 'express-session';
 
-import { FRONTEND_DIR, FRONTEND_DIRS, env, isProduction, isTest } from './config/env.js';
-import { PrismaSessionStore, sessionLifetime } from '@mg/shared/server/lib/session.js';
+import { FRONTEND_DIRS, env, isProduction, isTest } from './config/env.js';
+import { PrismaSessionStore } from '@mg/shared/server/lib/session.js';
 import {
   createRouteTable,
   frontMiddleware,
   probeRoutes,
   sessionRoutes,
 } from '@mg/shared/server/lib/http-app.js';
-import { helpdeskOnly, loadUser, requireAuth } from '@mg/shared/server/middleware/auth.js';
+import { loadUser, requireAuth } from '@mg/shared/server/middleware/auth.js';
 import {
   apiNotFound,
   errorHandler,
@@ -89,18 +89,7 @@ import {
 import { createRoomService } from './modules/rooms/service.js';
 import { createMemoryRoomStore } from './modules/rooms/store-memory.js';
 import { createPrismaRoomStore } from './modules/rooms/store-prisma.js';
-import {
-  helpdeskRoutes,
-  helpdeskSettingsRoutes,
-  itTeamRoutes,
-} from '@mg/shared/server/modules/helpdesk/routes.js';
-import { helpdeskPages } from './modules/helpdesk/pages.js';
-import { createHelpdeskAdminService } from '@mg/shared/server/modules/tickets/admin-service.js';
-import { createReportService } from '@mg/shared/server/modules/tickets/reports.js';
-import { ticketRoutes } from '@mg/shared/server/modules/tickets/routes.js';
-import { createTicketService } from '@mg/shared/server/modules/tickets/service.js';
-import { createMemoryTicketStore } from '@mg/shared/server/modules/tickets/store-memory.js';
-import { createPrismaTicketStore } from '@mg/shared/server/modules/tickets/store-prisma.js';
+import { helpdeskRedirects } from './modules/itsupport/redirects.js';
 
 /**
  * @param {object} [options]
@@ -122,10 +111,9 @@ import { createPrismaTicketStore } from '@mg/shared/server/modules/tickets/store
  * @param {() => Promise<void>} [options.checkDatabase]  /api/ready's database check, for tests
  * @param {object} [options.directoryStore]  see modules/directory/store-prisma.js
  * @param {object} [options.roomStore]  see modules/rooms/store-prisma.js
- * @param {object} [options.ticketStore]  see modules/tickets/store-prisma.js
  * @param {object} [options.graph]  a Graph client in place of the configured one, for tests
  * @param {object} [options.notificationStore]  see modules/notifications/store-prisma.js
- * @param {() => Date} [options.now]  the clock the announcements, rooms, tickets and sync read, for tests
+ * @param {() => Date} [options.now]  the clock the announcements, rooms and sync read, for tests
  * @param {import('express-session').Store} [options.sessionStore]
  * @param {object} [options.msalClient]  a stand-in for the MSAL client, for tests
  * @param {object} [options.profileGraph]  a stand-in for integrations/graph/delegated.js, for tests
@@ -143,7 +131,10 @@ export function createApp(options = {}) {
   // (docs/DECISIONS.md D84).
   const useDatabase = config.hasDatabase && config.NODE_ENV !== 'test' && !isTest;
   const repo =
-    options.userRepo ?? (useDatabase ? createPrismaUserRepo() : createMemoryUserRepo());
+    options.userRepo ??
+    (useDatabase
+      ? createPrismaUserRepo(undefined, { supportTeams: false })
+      : createMemoryUserRepo({ supportTeams: false }));
   const store =
     options.sessionStore ??
     (useDatabase ? new PrismaSessionStore() : new session.MemoryStore());
@@ -180,9 +171,13 @@ export function createApp(options = {}) {
     config,
     now: options.now,
   });
+  // The portal has no ticket notifications: the bell and the centre leave out
+  // the old ones, and the settings offer no "tickets" switch (D146).
   const notifications = createNotificationService({
     store: notificationStore,
     now: options.now,
+    categories: ['bookings', 'announcements'],
+    hide: 'ticket.',
   });
   // Uploaded files: the configured adapter, behind the malware-scan gate.
   // Every module is handed this one object, so none can read a file that has
@@ -191,7 +186,9 @@ export function createApp(options = {}) {
     storage: options.storage ?? defaultStorage(config),
     scans:
       options.scanStore ??
-      (repo.companies ? createMemoryScanStore(repo) : createPrismaScanStore()),
+      (repo.companies
+        ? createMemoryScanStore()
+        : createPrismaScanStore(undefined, { supportTeams: false })),
     scanner: options.scanner ?? createScanner(config),
     notify,
     now: options.now,
@@ -220,19 +217,7 @@ export function createApp(options = {}) {
     now: options.now,
     notify,
   });
-  const ticketStore =
-    options.ticketStore ??
-    (repo.companies ? createMemoryTicketStore(repo) : createPrismaTicketStore());
-  const tickets = createTicketService({
-    store: ticketStore,
-    storage: files,
-    now: options.now,
-    notify,
-  });
-  const helpdeskAdmin = createHelpdeskAdminService({ store: ticketStore });
-  const reports = createReportService({ store: ticketStore, tickets, now: options.now });
   app.locals.sessionStore = store;
-  app.locals.tickets = tickets;
   app.locals.announcements = announcements;
   app.locals.notify = notify;
   app.locals.mailOutbox = mailOutbox;
@@ -267,9 +252,8 @@ export function createApp(options = {}) {
 
   options.routes?.(app);
 
-  // The session, its lifetime and the CSRF check on /api and /auth. One
-  // instance, shared with the IT Helpdesk's page gate below.
-  const sessions = sessionRoutes(app, { config, store });
+  // The session, its lifetime and the CSRF check on /api and /auth.
+  sessionRoutes(app, { config, store });
 
   mount(
     '',
@@ -282,9 +266,8 @@ export function createApp(options = {}) {
     })
   );
 
-  // The guard. Below this line every /api route has a req.user. IT team
-  // members are kept to the Helpdesk's part of it (D135).
-  app.use('/api', loadUser(repo, config), requireAuth, helpdeskOnly);
+  // The guard. Below this line every /api route has a req.user.
+  app.use('/api', loadUser(repo, config), requireAuth);
 
   mount('', meRoutes({ config, repo }));
 
@@ -302,13 +285,6 @@ export function createApp(options = {}) {
   mount('/api/rooms', roomRoutes(rooms));
   mount('/api/bookings', bookingRoutes(rooms));
 
-  // The IT Helpdesk (D135): its settings for IT Leads, its reports and people
-  // search for the IT team, and who is on the team for the HoldingAdmin.
-  mount('/api/helpdesk/settings', helpdeskSettingsRoutes(helpdeskAdmin));
-  mount('/api/helpdesk', helpdeskRoutes({ reports, directory }));
-  mount('/api/admin/it-team', itTeamRoutes(helpdeskAdmin));
-  mount('/api/tickets', ticketRoutes(tickets));
-
   mount('/api/notifications', notificationRoutes(notifications));
   // What the mocked Graph "sent": for developers, never in production.
   if (!isProduction && !app.locals.production) mount('/api/dev', devOutboxRoutes(getGraph));
@@ -318,14 +294,9 @@ export function createApp(options = {}) {
 
   app.use(apiNotFound);
 
-  // The IT Helpdesk's page is for the IT team (D135): anyone else asking for
-  // /helpdesk is shown that it is not theirs. The API enforces it as well.
-  app.use(
-    helpdeskPages({
-      frontendDir: FRONTEND_DIR,
-      session: [sessions, sessionLifetime(config), loadUser(repo, config)],
-    })
-  );
+  // The old IT workspace (/helpdesk) lives in the IT Helpdesk app now: send
+  // anyone who still has the address, or a link in an old email, there (D146).
+  app.use(helpdeskRedirects({ helpdeskUrl: config.HELPDESK_URL }));
 
   // Before the static files, so the template with its placeholders is never
   // served as it is on disk.

@@ -6,7 +6,7 @@ import { cairoWallToUtc } from '@mg/shared/server/lib/time.js';
 import { createMemoryUserRepo } from '@mg/shared/server/modules/auth/repo-memory.js';
 import { runAuthzMatrix } from '@mg/shared/server/testing/authz-matrix.js';
 import { client } from '@mg/shared/server/testing/clients.js';
-import { sharedRows, ticketFixture } from '@mg/shared/server/testing/matrix-rows.js';
+import { commonRows } from '@mg/shared/server/testing/matrix-rows.js';
 
 /**
  * The authorisation matrix: every route the app answers, asked by every kind
@@ -20,16 +20,12 @@ import { sharedRows, ticketFixture } from '@mg/shared/server/testing/matrix-rows
  * Who asks (the records they ask about belong to Genesis, GEN):
  *   userGen   User, Genesis                 userMsr   User, Masar
  *   caGen     CompanyAdmin, Genesis         caMsr     CompanyAdmin, Masar
- *   agent     IT agent (MG Holding)         lead      IT lead (MG Holding)
+ *   itAgent   User, MG Holding              itLead    User, MG Holding
  *   ha        HoldingAdmin (MG Holding)     nobody    not signed in
  * Users and company admins come from two companies, which is what shows a
- * Masar person refused on Genesis records. The IT team and the holding admins
- * exist once, at the holding, and serve every company.
- *
- * The IT team works in the IT Helpdesk and nowhere else (D135): an agent or a
- * lead is refused every main-portal route, and every IT route refuses
- * everyone who is not on the team, the HoldingAdmin and CompanyAdmins
- * included. Who is on the team is the HoldingAdmin's, with no ticket contents.
+ * Masar person refused on Genesis records. The two IT people are plain Users
+ * of the holding here: IT staff use the portal like everyone else (D146); the
+ * helpdesk's routes and their matrix are apps/helpdesk's.
  *
  * What counts:
  *   allowed  2xx (or a 4xx about the content of the request: 400, 409, 415 —
@@ -54,8 +50,8 @@ const PNG = Buffer.concat([
 const PEOPLE = {
   userGen: 'salma.ibrahim@genesismining-eg.com',
   userMsr: 'yasmine.nabil@masar.eg',
-  agent: 'sherif.awad@mgholding.example',
-  lead: 'omar.fahmy@mgholding.example',
+  itAgent: 'sherif.awad@mgholding.example',
+  itLead: 'omar.fahmy@mgholding.example',
   caGen: 'hany.soliman@genesismining-eg.com',
   caMsr: 'tarek.elmasry@masar.eg',
   ha: 'nadia.elsayed@mgholding.example',
@@ -63,14 +59,11 @@ const PEOPLE = {
 const ACTORS = Object.keys(PEOPLE);
 
 const ALL = ACTORS;
-/** Everyone with the main portal: not the IT team (D135). */
-const PORTAL = ['userGen', 'userMsr', 'caGen', 'caMsr', 'ha'];
+/** Everyone with the portal: IT staff too (D146). */
+const PORTAL = ACTORS;
 const ADMINS = ['caGen', 'caMsr', 'ha'];
 const GEN_ADMINS = ['caGen', 'ha'];
 const HA = ['ha'];
-/** The IT team: the IT Helpdesk and its API. */
-const STAFF = ['agent', 'lead'];
-const LEADS = ['lead'];
 const GEN_PEOPLE = ['userGen', 'caGen', 'ha'];
 const GEN_READERS = ['userGen', 'caGen'];
 
@@ -78,7 +71,7 @@ const GEN_READERS = ['userGen', 'caGen'];
 
 /** A fresh app with lazily made fixtures, all belonging to Genesis. */
 function world() {
-  const repo = createMemoryUserRepo();
+  const repo = createMemoryUserRepo({ supportTeams: false });
   const app = createApp({
     config: DEV,
     userRepo: repo,
@@ -106,11 +99,6 @@ function world() {
     repo,
     person,
     gen: repo.companies.find((c) => c.code === 'GEN'),
-    team: repo.helpdesk.team[0],
-    category: repo.helpdesk.category.find((c) => c.nameEn === 'Laptop / PC'),
-    location: repo.helpdesk.location[0],
-    holiday: repo.helpdesk.holiday[0],
-    canned: repo.helpdesk.canned[0],
     genDept: null,
     /** A session of their own for whoever sets the scene (never the person asking). */
     as: (key) => once(`as:${key}`, () => client(app, person(key)).signIn()),
@@ -246,7 +234,6 @@ function world() {
       }),
   };
   Object.assign(f, { once, ok });
-  f.ticket = ticketFixture(f);
   return f;
 }
 
@@ -256,7 +243,17 @@ const stamp = (row) => `updatedAt=${encodeURIComponent(row.updatedAt)}`;
 
 /** "METHOD /path" → [who is allowed, the request]. */
 const MATRIX = {
-  ...sharedRows({ ALL, STAFF, LEADS, HA }),
+  ...commonRows({
+    ALL,
+    // Any mail will do: a booking cancelled by an administrator tells its organiser.
+    mail: (f) =>
+      f.app.locals.notify([f.person('userGen').id], 'booking.cancelled', {
+        link: '#rooms',
+        room: 'Boardroom',
+        subject: 'Budget review',
+        start: NOW.toISOString(),
+      }),
+  }),
 
   /* ---- company administration */
   'GET /api/admin/scope': [ADMINS, (a) => a.get('/api/admin/scope')],
@@ -582,7 +579,7 @@ runAuthzMatrix({
   world,
   matrix: MATRIX,
   actors: ACTORS,
-  minRoutes: 100,
+  minRoutes: 75,
   entraApp: () =>
     createApp({
       config: {

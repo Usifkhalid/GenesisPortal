@@ -14,8 +14,6 @@ const EMPLOYEE = [
   'announcements',
   'rooms',
   'rooms/mine',
-  'tickets',
-  'tickets/new',
   'directory',
   'notifications',
   'help',
@@ -24,12 +22,9 @@ const ADMIN = [
   'admin/companies',
   'admin/bookings',
   'admin/sync',
-  'admin/it-team',
   'audit-log',
   'announcements/new',
 ];
-/** The IT Helpdesk's pages (D135), under /helpdesk. */
-const IT = ['queue', 'assigned', 'reports', 'settings'];
 
 async function visit(page, lang, scheme, who, routes, base = '/') {
   for (const route of routes) {
@@ -53,9 +48,6 @@ for (const lang of LANGUAGES) {
       await shot(page, `login-${lang}-${scheme}`);
       await signIn(page, { company: 'HLD', role: 'HoldingAdmin', lang });
       await visit(page, lang, scheme, 'adm', ADMIN);
-      await signOut(page);
-      await signIn(page, { company: 'HLD', name: 'Omar Fahmy', lang });
-      await visit(page, lang, scheme, 'it', IT, '/helpdesk');
     });
   }
 }

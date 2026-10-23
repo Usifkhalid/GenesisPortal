@@ -47,7 +47,7 @@ export function homeSkeleton() {
         <div class="banner__strip">${STRIP}</div>
       </div>
     </div>
-    ${['waiting', 'rooms', 'tickets', 'people', 'news'].map((key) => card(`home__${key}`)).join('')}
+    ${['rooms', 'itsupport', 'people', 'news'].map((key) => card(`home__${key}`)).join('')}
   </div>`;
 }
 

@@ -1,15 +1,16 @@
 /**
  * pages/home.js — the Home page.
  *
- * A welcome banner over a bento grid of the four jobs: tickets, rooms,
- * announcements and the directory. Loaded on demand by router.js.
+ * A welcome banner over a bento grid of the jobs: rooms, IT support (a link to
+ * the IT Helpdesk app), the directory and announcements. Loaded on demand by
+ * router.js.
  *
  * Real: the person, the company and the Cairo date and time, all from the
  * session (GET /api/me). They are on screen at once.
  *
- * Real: the news card (announcements), the bookings card (room booking) and
- * the two ticket cards (the helpdesk: the person's own tickets, never anyone
- * else's). DEMO: the directory card's recent people, which has no API yet.
+ * Real: the news card (announcements) and the bookings card (room booking).
+ * The IT Support card is static: it opens HELPDESK_URL in a new tab, and is
+ * left out when the portal has none (D146). DEMO: the directory card's recent people, which has no API yet.
  * Everything around `load` is already the real thing: a card shows a skeleton
  * while its list loads, then its rows, its own one-line empty state, or its own
  * failure with a retry. Replacing a `load` with an api() call is the whole of
@@ -17,7 +18,7 @@
  */
 
 import { api } from '../api.js';
-import { cairoYmd, formatDate, formatDay, formatTime, formatTimeRange } from '../format.js';
+import { cairoYmd, formatDate, formatDay, formatTimeRange } from '../format.js';
 import { t, getLocale, localized } from '../i18n.js';
 import { audienceLabel, dirOf, shownLanguage, textOf } from './announcements/shared.js';
 import { esc } from '../html.js';
@@ -31,15 +32,6 @@ const CAIRO = 'Africa/Cairo';
 
 /** Home shows the head of each list; the module's own page shows the rest. */
 const MAX_ROWS = 4;
-
-/** Each ticket status has its own badge tone and its own icon silhouette. */
-const STATUS = {
-  New: { tone: '', icon: 'statusOpen' },
-  Open: { tone: 'badge--info', icon: 'statusProgress' },
-  Pending: { tone: 'badge--warning', icon: 'statusWaiting' },
-  Resolved: { tone: 'badge--success', icon: 'statusResolved' },
-  Closed: { tone: '', icon: 'statusResolved' },
-};
 
 /* ------------------------------------------------------------- Cairo time */
 
@@ -84,21 +76,6 @@ function greetingKey(hour) {
   if (hour >= 5 && hour < 12) return 'home.greetingMorning';
   if (hour >= 12 && hour < 17) return 'home.greetingAfternoon';
   return 'home.greetingEvening';
-}
-
-/**
- * When a ticket is due: "14:30" today, "Thu, 15 Oct 16:00" on another day. A
- * ticket that is waiting on its requester, or done, has no clock running; a
- * resolved one is waiting on the person reading, so it names no date.
- */
-function dueLabel(ticket) {
-  if (ticket.status === 'Resolved') return '—';
-  if (!['on_track', 'at_risk', 'breached'].includes(ticket.sla.state)) return '—';
-  const ymd = cairoYmd(ticket.sla.dueAt);
-  const time = formatTime(ticket.sla.dueAt);
-  return ymd === cairoYmd(new Date())
-    ? time
-    : `${formatDay(ymd, { weekday: 'short' })} ${time}`;
 }
 
 /* ---------------------------------------------------------------- pieces */
@@ -169,33 +146,6 @@ function recordList(rows, href, max = MAX_ROWS, total = rows.length) {
     }`;
 }
 
-/** One of my own tickets (GET /api/tickets/mine). Late ones say so. */
-function ticketRow(_ctx, ticket) {
-  // A ticket IT has resolved waits for its requester, so it is never "overdue" to them.
-  const late = ticket.sla.state === 'breached' && ticket.status !== 'Resolved';
-  const status = late
-    ? { tone: 'badge--danger', icon: 'statusOverdue' }
-    : STATUS[ticket.status];
-  return `<li class="record">
-    <dl class="labelstrip labelstrip--compact">
-      ${pair(t('ticket.one'), `<bdi dir="ltr" class="ticket-no">${esc(ticket.number)}</bdi>`)}
-      ${pair(t('field.priority'), esc(t(`ticket.priority.${ticket.priority}`)))}
-      ${pair(t('ticket.due'), esc(dueLabel(ticket)))}
-    </dl>
-    <div class="record__head">
-      <h3 class="record__title">
-        <a href="#tickets/${esc(ticket.id)}"><bdi>${esc(ticket.subject)}</bdi></a>
-      </h3>
-      <span class="record__aside">
-        <span class="badge ${status.tone}">
-          ${icon(status.icon, 'badge__icon')}
-          <span>${esc(t(late ? 'status.overdue' : `ticket.status.${ticket.status}`))}</span>
-        </span>
-      </span>
-    </div>
-  </li>`;
-}
-
 /** One of my upcoming bookings (GET /api/bookings/mine). */
 function bookingRow(_ctx, booking) {
   const ymd = cairoYmd(booking.start);
@@ -255,7 +205,7 @@ function personRow(_ctx, person) {
 
 /* ---------------------------------------------------------------- banner */
 
-function banner({ company, user, admin }, now) {
+function banner({ company, user, admin, helpdeskUrl }, now) {
   const greeting = t(greetingKey(cairoHour(now)), { name: user.firstName });
 
   return `<section class="banner" aria-labelledby="homeGreeting">
@@ -269,10 +219,15 @@ function banner({ company, user, admin }, now) {
           ${icon('calendar', 'btn__icon')}
           <span class="btn__label">${esc(t('action.bookRoom'))}</span>
         </a>
-        <a class="btn btn--primary" href="#tickets/new">
-          ${icon('plus', 'btn__icon')}
-          <span class="btn__label">${esc(t('action.newTicket'))}</span>
-        </a>
+        ${
+          helpdeskUrl
+            ? `<a class="btn btn--primary" href="${esc(helpdeskUrl)}/#tickets/new" target="_blank" rel="noopener">
+                 ${icon('plus', 'btn__icon')}
+                 <span class="btn__label">${esc(t('action.getItSupport'))}</span>
+                 <span class="u-visually-hidden">${esc(t('a11y.opensNewTab'))}</span>
+               </a>`
+            : ''
+        }
         ${
           admin
             ? `<a class="btn btn--secondary" href="#announcements/new">
@@ -307,9 +262,9 @@ function peopleSearch() {
 }
 
 /**
- * Home's cards, in reading order: what is waiting on the person, where they
- * have to be next, what they have open, then the two things they come to look
- * up. On a phone that is the order down the page. For each:
+ * Home's cards, in reading order: where the person has to be next, where to
+ * get IT support (a static card, itSupportCard below), then the two things
+ * they come to look up. On a phone that is the order down the page. For each:
  *   load(ctx)  → a promise of the card's records, or of { items, total }
  *                when the server holds more than it sent
  *   row        → one record's markup
@@ -317,22 +272,6 @@ function peopleSearch() {
  *                has something else to offer, as the directory has its search
  */
 const CARDS = [
-  {
-    key: 'waiting',
-    tag: 'nav.tickets',
-    title: 'home.waiting.title',
-    more: '#tickets',
-    // My tickets that wait on me: IT asked me something (Pending), or says it
-    // is solved and wants my word (Resolved).
-    load: () => api('/api/tickets/mine?status=attention&pageSize=5', { quiet: true }),
-    row: ticketRow,
-    skeletonRows: 1,
-    empty: {
-      title: 'home.waiting.emptyTitle',
-      text: 'home.waiting.emptyText',
-      mark: 'statusResolved',
-    },
-  },
   {
     key: 'rooms',
     tag: 'nav.rooms',
@@ -346,18 +285,6 @@ const CARDS = [
     more: '#rooms/mine',
     skeletonRows: 2,
     empty: { title: 'home.rooms.emptyTitle', text: 'home.rooms.emptyText' },
-  },
-  {
-    key: 'tickets',
-    tag: 'nav.tickets',
-    title: 'home.tickets.title',
-    count: 'home.tickets.count',
-    href: '#tickets',
-    openLabel: 'home.tickets.openAll',
-    // Mine and still open (new, open, pending or resolved and unconfirmed), newest first.
-    load: () => api('/api/tickets/mine?pageSize=5', { quiet: true }),
-    row: ticketRow,
-    empty: { title: 'home.tickets.emptyTitle', text: 'home.tickets.emptyText' },
   },
   {
     key: 'people',
@@ -384,6 +311,27 @@ const CARDS = [
     empty: { title: 'home.news.emptyTitle', text: 'home.news.emptyText' },
   },
 ];
+
+/**
+ * The IT Support card: not a list, a way in. It leads to the IT Helpdesk app,
+ * in a new tab, where tickets are raised and followed (D146).
+ */
+function itSupportCard(helpdeskUrl) {
+  return `<section class="card home__itsupport" data-card="itsupport"
+      aria-labelledby="home-itsupport-title">
+    ${cardHead({ id: 'home-itsupport-title', tag: t('nav.itSupport'), title: t('home.itSupport.title') })}
+    <div class="home__body">
+      <p>${esc(t('home.itSupport.text'))}</p>
+      <div class="btn-row">
+        <a class="btn btn--secondary" href="${esc(helpdeskUrl)}/" target="_blank" rel="noopener">
+          ${icon('tickets', 'btn__icon')}
+          <span class="btn__label">${esc(t('home.itSupport.open'))}</span>
+          <span class="u-visually-hidden">${esc(t('a11y.opensNewTab'))}</span>
+        </a>
+      </div>
+    </div>
+  </section>`;
+}
 
 /**
  * @typedef {{ status: 'loading' } | { status: 'failed' }
@@ -473,7 +421,8 @@ async function fillCard(home, card, ctx) {
  * company simply renders the page afresh.
  *
  * @param {HTMLElement} root
- * @param {{ company: object, user: { name: string, firstName: string }, admin: boolean }} ctx
+ * @param {{ company: object, user: { name: string, firstName: string }, admin: boolean,
+ *   helpdeskUrl: string | null }} ctx
  *   company is the API's record; the user's names are already in the language in use
  * @returns {() => void} stops the clock when the page is left
  */
@@ -481,8 +430,10 @@ export function render(root, ctx) {
   const now = new Date();
   const home = document.createElement('div');
   home.className = 'bento home';
-  home.innerHTML =
-    banner(ctx, now) + CARDS.map((card) => cardHtml(card, ctx, { status: 'loading' })).join('');
+  const cards = CARDS.map((card) => cardHtml(card, ctx, { status: 'loading' }));
+  // After the bookings (the first card), where the person is looking for help.
+  if (ctx.helpdeskUrl) cards.splice(1, 0, itSupportCard(ctx.helpdeskUrl));
+  home.innerHTML = banner(ctx, now) + cards.join('');
   root.replaceChildren(home);
 
   home.addEventListener('submit', (event) => {

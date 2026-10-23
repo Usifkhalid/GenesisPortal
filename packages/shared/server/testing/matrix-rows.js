@@ -1,13 +1,16 @@
 /**
  * matrix-rows.js — the authorisation matrix's rows that both apps answer the
- * same way: sign-in, the person's own notifications, the mocked mail, tickets
+ * same way: sign-in, the person's own notifications and the mocked mail
+ * (commonRows, the portal's and the helpdesk's), and the helpdesk's: tickets
  * (D99, D118, D122, D143), the IT team's routes and settings (D135) and who is
- * on the IT team. Each app's backend/tests/authz-matrix.test.js spreads them
- * into its MATRIX with its own groups of people, and adds its own routes.
+ * on the IT team (helpdeskRows; sharedRows is both). Each app's
+ * backend/tests/authz-matrix.test.js spreads them into its MATRIX with its
+ * own groups of people, and adds its own routes.
  *
  * The world (authz-matrix.js) has the people userGen (the requester), agent,
  * lead and ha, and these fixtures: team, category, location, holiday, canned,
- * person(key), as(key) and ticket() (ticketFixture below).
+ * person(key), as(key) and ticket() (ticketFixture below). The portal's world
+ * has no tickets: commonRows needs only person(key), as(key) and `mail`.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -51,13 +54,13 @@ export function ticketFixture(f) {
 }
 
 /**
+ * Sign-in, the person's own notifications, the mocked mail.
  * @param {object} groups
  * @param {string[]} groups.ALL  everyone signed in
- * @param {string[]} groups.STAFF  the IT team
- * @param {string[]} groups.LEADS  IT leads
- * @param {string[]} groups.HA  who decides who is on the IT team
+ * @param {(f: object) => Promise<unknown>} groups.mail  makes sure the mocked
+ *   Graph has "sent" one mail (the helpdesk: raising a ticket mails its lead)
  */
-export function sharedRows({ ALL, STAFF, LEADS, HA }) {
+export function commonRows({ ALL, mail }) {
   return {
     /* ---- public: no session needed */
     'GET /api/health': [PUBLIC, (a) => a.get('/api/health')],
@@ -85,7 +88,7 @@ export function sharedRows({ ALL, STAFF, LEADS, HA }) {
       ALL,
       (a) =>
         a.put('/api/notifications/preferences', {
-          items: [{ category: 'tickets', channel: 'email', enabled: false }],
+          items: [{ category: 'bookings', channel: 'email', enabled: false }],
         }),
     ],
     // Development only (never mounted in production): the mocked mail.
@@ -93,13 +96,25 @@ export function sharedRows({ ALL, STAFF, LEADS, HA }) {
     'GET /api/dev/outbox/:id/html': [
       ALL,
       async (a, f) => {
-        // Any mail will do: raising a ticket sends one to the IT lead.
-        await f.ticket();
+        await mail(f);
         const { items } = (await (await f.as('ha')).get('/api/dev/outbox')).body;
         return a.get(`/api/dev/outbox/${items[0].id}/html`);
       },
     ],
+  };
+}
 
+/**
+ * The helpdesk's own: tickets, the IT team's reports, people search, settings
+ * and who is on the IT team.
+ * @param {object} groups
+ * @param {string[]} groups.ALL  everyone signed in
+ * @param {string[]} groups.STAFF  the IT team
+ * @param {string[]} groups.LEADS  IT leads
+ * @param {string[]} groups.HA  who decides who is on the IT team
+ */
+export function helpdeskRows({ ALL, STAFF, LEADS, HA }) {
+  return {
     /* ---- helpdesk: a ticket is its requester's and the IT team's (D99) */
     'GET /api/tickets/options': [ALL, (a) => a.get('/api/tickets/options')],
     'GET /api/tickets/mine': [ALL, (a) => a.get('/api/tickets/mine')],
@@ -116,6 +131,10 @@ export function sharedRows({ ALL, STAFF, LEADS, HA }) {
     'GET /api/tickets/queue': [STAFF, (a) => a.get('/api/tickets/queue')],
     'GET /api/tickets/queue/options': [STAFF, (a) => a.get('/api/tickets/queue/options')],
     'GET /api/tickets/canned-replies': [STAFF, (a) => a.get('/api/tickets/canned-replies')],
+    'GET /api/tickets/by-number/:number': [
+      ['userGen', ...STAFF],
+      async (a, f) => a.get(`/api/tickets/by-number/${(await f.ticket()).number}`),
+    ],
     'GET /api/tickets/:id': [
       ['userGen', ...STAFF],
       async (a, f) => a.get(`/api/tickets/${(await f.ticket()).id}`),
@@ -286,5 +305,17 @@ export function sharedRows({ ALL, STAFF, LEADS, HA }) {
       HA,
       (a, f) => a.del(`/api/admin/it-team/teams/${f.team.id}/members/${f.person('agent').id}`),
     ],
+  };
+}
+
+/** Everything the IT Helpdesk answers that both apps' tests share. */
+export function sharedRows({ ALL, STAFF, LEADS, HA }) {
+  return {
+    ...commonRows({
+      ALL,
+      // Any mail will do: raising a ticket sends one to the IT lead.
+      mail: (f) => f.ticket(),
+    }),
+    ...helpdeskRows({ ALL, STAFF, LEADS, HA }),
   };
 }

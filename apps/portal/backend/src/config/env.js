@@ -31,7 +31,7 @@ export const APP_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** The portal's own static files. */
 export const FRONTEND_DIR = fileURLToPath(new URL('../../../frontend/', import.meta.url));
 
-/** The design system, shared components and ticket pages both apps serve. */
+/** The design system and shared components both apps serve. */
 export const SHARED_WEB_DIR = fileURLToPath(
   new URL('../../../../../packages/shared/web/', import.meta.url)
 );
@@ -60,12 +60,18 @@ export const loadEnv = createEnvLoader({
   defaultContainer: 'portal-files',
   extraShape: {
     /**
-     * The portal's own helpdesk jobs: the SLA watch (75%/100% alerts) and the
-     * 24-hour "is your problem solved?" reminders. off once the tickets have
-     * moved to the IT Helpdesk app (D145), which runs the same jobs on its own
-     * copy, so nobody hears twice. Removed with the portal's helpdesk (2b).
+     * Where the IT Helpdesk app lives (https://helpdesk.<domain>). The portal
+     * links to it from its menu and Home, and sends old ticket links there
+     * (D146). Absent: the link is hidden and the server logs a warning.
      */
-    PORTAL_HELPDESK_JOBS: z.enum(['on', 'off']).default('on'),
+    HELPDESK_URL: z.url().optional(),
+  },
+  extraRules(value, refuse) {
+    if (value.NODE_ENV === 'production' && value.HELPDESK_URL) {
+      if (!value.HELPDESK_URL.startsWith('https://')) {
+        refuse('HELPDESK_URL', 'must be an https:// address in production');
+      }
+    }
   },
 });
 

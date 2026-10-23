@@ -73,6 +73,9 @@ export const DEFAULT_SLA = {
 export const ticketNumber = (prefix, year, sequence) =>
   `${prefix}-${year}-${String(sequence).padStart(5, '0')}`;
 
+/** A ticket number as typed in a link: "it-2026-42" is not one, "IT-2026-00042" is. */
+export const TICKET_NUMBER = /^[A-Za-z]{1,10}-\d{4}-\d{5}$/;
+
 /** Does this team take tickets from this company? */
 export function serves(team, servedCompanyIds, companyId) {
   if (!team?.isActive) return false;

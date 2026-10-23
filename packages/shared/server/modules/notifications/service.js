@@ -10,7 +10,10 @@
  * on; the screen shows it on and saving writes only what was changed.
  */
 
-import { CATEGORIES, CHANNELS } from '../../../web/assets/js/notification-text.js';
+import {
+  CATEGORIES as ALL_CATEGORIES,
+  CHANNELS,
+} from '../../../web/assets/js/notification-text.js';
 import { requireUser } from '../../lib/scope.js';
 
 /** A row as the bell and the centre need it. */
@@ -35,8 +38,18 @@ function view(row) {
  * @param {object} deps
  * @param {object} deps.store  see store-prisma.js
  * @param {() => Date} [deps.now]
+ * @param {readonly string[]} [deps.categories]  the categories this app's
+ *   people can switch (the portal has no "tickets", D146)
+ * @param {string | null} [deps.hide]  a template-key prefix this app does not
+ *   show: the portal hides the old "ticket." notifications, which belong to
+ *   the IT Helpdesk now and whose links lead nowhere here
  */
-export function createNotificationService({ store, now = () => new Date() }) {
+export function createNotificationService({
+  store,
+  now = () => new Date(),
+  categories: CATEGORIES = ALL_CATEGORIES,
+  hide = null,
+}) {
   async function list(req, { unread, page, pageSize }) {
     const user = requireUser(req);
     const { total, items } = await store.list({
@@ -44,30 +57,31 @@ export function createNotificationService({ store, now = () => new Date() }) {
       unread,
       skip: (page - 1) * pageSize,
       take: pageSize,
+      hide,
     });
     return {
       total,
       page,
       pageSize,
-      unread: await store.countUnread(user.id),
+      unread: await store.countUnread(user.id, hide),
       items: items.map(view),
     };
   }
 
   async function unreadCount(req) {
     const user = requireUser(req);
-    return { unread: await store.countUnread(user.id) };
+    return { unread: await store.countUnread(user.id, hide) };
   }
 
   async function markRead(req, ids) {
     const user = requireUser(req);
     const marked = await store.markRead(user.id, ids, now());
-    return { marked, unread: await store.countUnread(user.id) };
+    return { marked, unread: await store.countUnread(user.id, hide) };
   }
 
   async function markAllRead(req) {
     const user = requireUser(req);
-    const marked = await store.markAllRead(user.id, now());
+    const marked = await store.markAllRead(user.id, now(), hide);
     return { marked, unread: 0 };
   }
 
@@ -96,5 +110,13 @@ export function createNotificationService({ store, now = () => new Date() }) {
     return preferences(req);
   }
 
-  return { list, unreadCount, markRead, markAllRead, preferences, setPreferences };
+  return {
+    categories: CATEGORIES,
+    list,
+    unreadCount,
+    markRead,
+    markAllRead,
+    preferences,
+    setPreferences,
+  };
 }

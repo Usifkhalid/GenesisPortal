@@ -2,22 +2,23 @@
  * setup-live-db.js — the portal's `npm run db:live:setup` and the helpdesk's
  * `npm run db:setup-live`: makes the app's live database (PORTAL_DATA=live
  * or HELPDESK_DATA=live: "<name>_live", e.g. mgportal_live, mghelpdesk_live)
- * ready for the real
- * tenant: created when missing, migrated, given the companies with their
- * mail domains, and given the IT helpdesk's reference data (the IT team, its
- * hours, SLA targets, categories, canned replies, locations, holidays: the same
- * as the demo seed, see modules/tickets/defaults.js). Nothing else: no
- * departments, no fake people or tickets, no rooms, no announcements. People
- * arrive only through the directory sync and Entra sign-in. Safe to run again:
- * it adds what is missing and never deletes or edits.
+ * ready for the real tenant: created when missing, migrated, given the
+ * companies with their mail domains. Nothing else: no departments, no fake
+ * people, no rooms, no announcements. People arrive only through the
+ * directory sync and Entra sign-in. Safe to run again: it adds what is
+ * missing and never deletes or edits.
  *
  *   npm run db:live:setup
  *   npm run db:live:setup -- --domain HLD=example.com   a company's real domain
- *   npm run db:live:setup -- --it-leads a@x.com,b@x.com --it-members c@x.com
  *
- * `--it-leads` / `--it-members` put existing active users on the IT team (it
- * adds or changes a role, never removes). An email that is not an active user
- * refuses the whole run before anything is written. Output is counts only.
+ * The IT Helpdesk's script passes `hooks.ensureDefaults` and so also gets the
+ * IT team with its hours, SLA targets, categories, canned replies, locations
+ * and holidays (modules/tickets/defaults.js), and
+ * `--it-leads a@x.com,b@x.com --it-members c@x.com`, which put existing active
+ * users on the team (add or change a role, never remove; an email that is not
+ * an active user refuses the whole run before anything is written). The
+ * portal has no IT team since D146 and refuses those options. Output is
+ * counts only.
  *
  * Refuses unless the app's data is live, NODE_ENV is development and the server is
  * on this machine. Prints the database name, never the connection string.
@@ -68,7 +69,7 @@ export function liveCompanies(companies, args) {
  *   companiesFromPortal(db) → true: companies already here keep their names and
  *     domains (only missing ones are added; --domain still sets one)
  *   settingsFromPortal(db) → true: say so; ensureDefaults then adds none
- *   ensureDefaults(db)  replaces ensureHelpdeskDefaults
+ *   ensureDefaults(db)  the IT team and its settings; without it, none are made
  */
 async function main(args, hooks = {}) {
   const { env, dataVar } = runtime();
@@ -86,11 +87,16 @@ async function main(args, hooks = {}) {
 
   const { COMPANIES } = await import('../demo/seed-data.js');
   const { list, overridden, placeholders } = liveCompanies(COMPANIES, args);
-  const [{ ensureHelpdeskDefaults }, { parseTeamArgs, setItMembers }] = await Promise.all([
-    import('../modules/tickets/defaults.js'),
-    import('../modules/tickets/team-members.js'),
-  ]);
-  const team = parseTeamArgs(args);
+  const helpdeskApp = Boolean(hooks.ensureDefaults);
+  if (!helpdeskApp && args.some((a) => /^--it-(leads|members)\b/.test(a))) {
+    throw new Error(
+      'the IT team moved to the IT Helpdesk (D146): use "npm run helpdesk:db:setup-live -- --it-leads ...".'
+    );
+  }
+  const { setItMembers, parseTeamArgs } = helpdeskApp
+    ? await import('../modules/tickets/team-members.js')
+    : {};
+  const team = helpdeskApp ? parseTeamArgs(args) : {};
 
   const created = await ensureDatabase(url);
   migrateDeploy(url);
@@ -112,37 +118,43 @@ async function main(args, hooks = {}) {
       });
     }
     const fromPortal = Boolean(await hooks.settingsFromPortal?.(db));
-    const helpdesk = await (hooks.ensureDefaults ?? ensureHelpdeskDefaults)(db);
+    const helpdesk = helpdeskApp ? await hooks.ensureDefaults(db) : null;
     const members =
-      team.leads || team.members
+      helpdesk && (team.leads || team.members)
         ? await setItMembers(db, { teamId: helpdesk.teamId, ...team })
         : null;
     const [companies, departments, people, itLeads, itAgents] = await Promise.all([
       db.company.findMany({ select: { code: true, domains: { select: { domain: true } } } }),
       db.department.count(),
       db.userProfile.count(),
-      db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Lead' } }),
-      db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Agent' } }),
+      helpdesk
+        ? db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Lead' } })
+        : 0,
+      helpdesk
+        ? db.supportTeamMember.count({ where: { teamId: helpdesk.teamId, role: 'Agent' } })
+        : 0,
     ]);
     console.log(`Live database "${name}": ${created ? 'created, ' : ''}migrated.`);
     for (const c of companies) {
       console.log(`  ${c.code.padEnd(5)} ${c.domains.map((d) => d.domain).join(', ')}`);
     }
     console.log(`  ${departments} departments, ${people} people.`);
-    const added = Object.values(helpdesk.created).reduce((a, b) => a + b, 0);
-    console.log(
-      fromPortal
-        ? '  IT helpdesk: team and settings came from the portal; no defaults added.'
-        : `  IT helpdesk: ${added} default rows added (${helpdesk.created.team ? 'team created' : 'team existed'}).`
-    );
+    if (helpdesk) {
+      const added = Object.values(helpdesk.created).reduce((a, b) => a + b, 0);
+      console.log(
+        fromPortal
+          ? '  IT helpdesk: team and settings came from the portal; no defaults added.'
+          : `  IT helpdesk: ${added} default rows added (${helpdesk.created.team ? 'team created' : 'team existed'}).`
+      );
+    }
     if (keepCompanies) console.log('  Companies came from the portal: kept as they are.');
     if (members) {
       console.log(
         `  IT team members: ${members.added} added, ${members.changed} role changed, ${members.unchanged} unchanged.`
       );
     }
-    console.log(`  IT team now: ${itLeads} leads, ${itAgents} agents.`);
-    if (!itLeads) {
+    if (helpdesk) console.log(`  IT team now: ${itLeads} leads, ${itAgents} agents.`);
+    if (helpdesk && !itLeads) {
       console.log('Note: the IT team has no lead yet. Run again with --it-leads <email>.');
     }
     for (const c of placeholders) {

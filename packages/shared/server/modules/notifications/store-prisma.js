@@ -13,6 +13,9 @@ const RECIPIENT = { id: true, email: true, companyId: true, language: true, isAc
 const COMPANY = { id: true, code: true, nameEn: true, nameAr: true, accentColor: true };
 
 /** @param {import('@prisma/client').PrismaClient} db */
+/** A where-clause that leaves out the templates starting with `prefix` (service.js `hide`). */
+const hiding = (prefix) => (prefix ? { NOT: { templateKey: { startsWith: prefix } } } : {});
+
 function operations(db) {
   return {
     async getRecipients(ids) {
@@ -43,8 +46,13 @@ function operations(db) {
       return db.notification.create({ data });
     },
 
-    async list({ userId, unread, skip, take }) {
-      const where = { userId, channel: 'inApp', ...(unread ? { readAt: null } : {}) };
+    async list({ userId, unread, skip, take, hide = null }) {
+      const where = {
+        userId,
+        channel: 'inApp',
+        ...(unread ? { readAt: null } : {}),
+        ...hiding(hide),
+      };
       const [total, items] = await Promise.all([
         db.notification.count({ where }),
         db.notification.findMany({
@@ -57,8 +65,10 @@ function operations(db) {
       return { total, items };
     },
 
-    async countUnread(userId) {
-      return db.notification.count({ where: { userId, channel: 'inApp', readAt: null } });
+    async countUnread(userId, hide = null) {
+      return db.notification.count({
+        where: { userId, channel: 'inApp', readAt: null, ...hiding(hide) },
+      });
     },
 
     async markRead(userId, ids, at) {
@@ -69,9 +79,9 @@ function operations(db) {
       return count;
     },
 
-    async markAllRead(userId, at) {
+    async markAllRead(userId, at, hide = null) {
       const { count } = await db.notification.updateMany({
-        where: { userId, channel: 'inApp', readAt: null },
+        where: { userId, channel: 'inApp', readAt: null, ...hiding(hide) },
         data: { readAt: at },
       });
       return count;

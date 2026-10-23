@@ -62,10 +62,10 @@ email domain and **Company name**.
 Check: the company is in the list as **Active**; open it and confirm the code, the two
 names, the domain and the accent.
 
-The IT helpdesk needs nothing more: creating the company also makes sure the IT team and
-its categories, SLA targets, locations and canned replies exist (nothing is changed if they
-do), so the company's people can file tickets at once. The one IT team serves every company.
-Only if an admin narrowed the team to chosen companies is the new one added to it.
+The portal has no tickets (D146). The IT Helpdesk is another app with its own companies:
+add the company there too (see above); creating it in the helpdesk's Administration makes
+sure the IT team and its categories, SLA targets, locations and canned replies exist, so the
+company's people can file tickets at once. The one IT team serves every company.
 
 ## 4. Add its departments
 

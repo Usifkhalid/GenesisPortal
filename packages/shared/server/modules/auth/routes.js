@@ -33,7 +33,7 @@ import { describeMe, listMockUsers, startSession } from './service.js';
  * @param {{ hit: (account: string) => void }} [deps.accounts]  the per-account
  *   sign-in cap (middleware/rate-limit.js)
  * @param {(person: { itRole?: string | null }) => string} [deps.landing]  where a
- *   mock sign-in lands: the portal sends IT team members to /helpdesk (D135)
+ *   mock sign-in lands (the portal: always its home page)
  */
 export function publicAuthRoutes({
   config,
@@ -41,7 +41,7 @@ export function publicAuthRoutes({
   msalClient,
   accounts,
   profileGraph,
-  landing = (person) => (person.itRole ? '/helpdesk' : '/'),
+  landing = () => '/',
 }) {
   const router = Router();
   const cookie = sessionCookie(config);

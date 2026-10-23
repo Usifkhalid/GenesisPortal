@@ -110,7 +110,7 @@ test('the worker is versioned and saves the shell', async ({ page, context }) =>
     expect(saved, `${url} is saved`).toContain(url);
   }
   // Page modules are fetched when asked for, not up front.
-  expect(saved).not.toContain('/assets/js/pages/tickets.js');
+  expect(saved).not.toContain('/assets/js/pages/announcements.js');
 
   const names = await cacheKeys(page);
   expect(names.filter((n) => n.startsWith('portal-static-'))).toHaveLength(1);
@@ -125,7 +125,7 @@ for (const lang of LANGUAGES) {
       await signIn(page, { company: 'GEN', role: 'User', lang });
       await controlled(page);
       // Visit a page so its module and answers are saved on the way.
-      await page.goto('/#tickets');
+      await page.goto('/#announcements');
       await expect(page.locator('#page h1').first()).toBeVisible();
       await page.waitForLoadState('networkidle');
       await page.goto('/');
@@ -145,7 +145,7 @@ for (const lang of LANGUAGES) {
 
       // A page that was visited still opens, from what was saved.
       await page.evaluate(() => {
-        location.hash = '#tickets';
+        location.hash = '#announcements';
       });
       await expect(page.locator('#page h1').first()).toBeVisible();
 

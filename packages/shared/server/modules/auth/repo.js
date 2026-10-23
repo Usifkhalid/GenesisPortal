@@ -49,8 +49,14 @@ const REFRESH_PERSON = {
 /** Memberships of active support teams: what makes someone IT staff (D135). */
 const IT_MEMBERSHIPS = { where: { team: { isActive: true } }, select: { role: true } };
 
-/** @param {() => Promise<import('@prisma/client').PrismaClient>} [getDb] */
-export function createPrismaUserRepo(getDb = getPrisma) {
+/**
+ * @param {() => Promise<import('@prisma/client').PrismaClient>} [getDb]
+ * @param {object} [options]
+ * @param {boolean} [options.supportTeams]  read the person's support-team
+ *   memberships into `itRole`. The IT Helpdesk does; the portal does not (its
+ *   own copy of those tables is deprecated, D146).
+ */
+export function createPrismaUserRepo(getDb = getPrisma, { supportTeams = true } = {}) {
   return {
     /** Active companies, each with its active users and their roles. */
     async listCompaniesWithUsers() {
@@ -100,11 +106,11 @@ export function createPrismaUserRepo(getDb = getPrisma) {
           company: { select: COMPANY },
           department: { select: { nameEn: true, nameAr: true } },
           roleAssignments: ROLES,
-          teamMemberships: IT_MEMBERSHIPS,
+          ...(supportTeams ? { teamMemberships: IT_MEMBERSHIPS } : {}),
         },
       });
       if (!row) return null;
-      const { roleAssignments, teamMemberships, ...user } = row;
+      const { roleAssignments, teamMemberships = [], ...user } = row;
       return { ...user, roles: roleAssignments, itRole: itRoleOf(teamMemberships) };
     },
 

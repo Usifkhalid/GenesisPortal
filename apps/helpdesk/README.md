@@ -63,7 +63,7 @@ The portal's live tickets, IT team and settings are copied once into `mghelpdesk
 The script creates and migrates that database itself; `db:setup-live` is not needed first.
 
 ```bash
-# apps/portal/.env:   PORTAL_HELPDESK_JOBS=off, then restart the portal
+# the portal no longer runs helpdesk jobs (D146); one that still has the old code must be stopped first
 # apps/helpdesk/.env: HELPDESK_DATA=live, PORTAL_SOURCE_DATABASE_URL=<mgportal_live, read-only login>
 # stop the helpdesk server while it runs
 npm run helpdesk:migrate:from-portal -- --as <you> --dry-run   # counts per table and company; nothing written
@@ -97,6 +97,17 @@ npm run helpdesk:migrate:from-portal -- --as <you> --verify    # the check again
   every ticket number, every file's size and SHA-256). Exit code 1 if the check fails. The run
   is audited (`helpdesk.migrate_from_portal`).
 
+### After it ran: the portal links here (D146)
+
+The portal has no helpdesk code any more. Its menu and Home open this app (its `HELPDESK_URL`),
+and the addresses of the old portal lead here: `<portal>/#tickets/<number or id>` and
+`<portal>/helpdesk#tickets/...` (earlier emails) arrive as `<helpdesk>/#tickets/<number or id>`.
+`GET /api/tickets/by-number/:number` turns a number into the ticket's id for the people allowed
+to see it, and the ticket page replaces the number in the address with the id. The migration
+reads the portal's old tables, which stay in `mgportal_live` until the cleanup migration
+(`apps/portal/backend/prisma/pending-cleanup`, docs/DEPLOY.md) is applied: `--verify` stops
+working after that, so run it a last time before.
+
 ## Runs on its own
 
 The helpdesk needs nothing from the portal at runtime. Its process runs its own jobs, each
@@ -125,6 +136,7 @@ backend/src/         server.js, app.js, config/env.js, modules/me, modules/admin
 backend/prisma/      schema.prisma (generated into backend/generated/client), migrations/, seed.js
 backend/scripts/     thin wrappers over packages/shared/server/cli
 backend/tests/       app, authorisation matrix, SQL Server, strings, the migration,
-                     the helpdesk with the portal switched off
-tests/e2e/           Playwright specs
+                     the helpdesk with the portal switched off, and the ticket rules
+                     (tickets, SLA, notifications, attachments, seed: moved here from the portal)
+tests/e2e/           Playwright specs (tickets story, notifications, a11y, the app)
 ```
