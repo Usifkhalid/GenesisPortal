@@ -192,6 +192,7 @@ export async function render(root, ctx) {
         ? `<p class="provenance">${esc(
             t('tk.detail.loggedBy', {
               name: whoIs(tk.createdBy),
+              requester: whoIs(tk.requester),
               source: t(`tk.source.${tk.source}`),
             })
           )}</p>`

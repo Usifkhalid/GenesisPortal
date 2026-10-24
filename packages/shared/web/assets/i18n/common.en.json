@@ -652,7 +652,7 @@
       "conversation": "Conversation",
       "files": "Files",
       "openedBy": "Opened by {who}",
-      "loggedBy": "Logged by {name} ({source})",
+      "loggedBy": "Raised by {name} on behalf of {requester} ({source})",
       "missingTitle": "This ticket is not available",
       "missingText": "It may belong to someone else, or the link is wrong."
     },

@@ -389,6 +389,80 @@ describe('notifications', () => {
   });
 });
 
+describe('raised on behalf of someone', () => {
+  const FIELDS = (w) => ({
+    subject: 'Cannot print',
+    description: 'Phoned the desk.',
+    categoryId: w.category('Printer / scanner').id,
+  });
+
+  test('an IT agent raises it for an employee: theirs to follow, theirs to be told, audited', async () => {
+    const w = await world();
+    const ticket = await w.raise(w.agent, { requesterId: w.gen.user.id, source: 'phone' });
+
+    // The employee is the requester; the agent is only who typed it in.
+    assert.equal(ticket.requester.id, w.gen.user.id);
+    assert.equal(ticket.createdBy.id, w.agent.user.id);
+    assert.equal(ticket.source, 'phone');
+    assert.equal((await w.agent.get('/api/tickets/mine')).body.total, 0);
+    const theirs = (await w.gen.get('/api/tickets/mine')).body;
+    assert.deepEqual(
+      theirs.items.map((row) => row.number),
+      [ticket.number]
+    );
+
+    // Their bell and, with an account, their mail say so; the agent gets neither.
+    assert.equal(bell(w, w.gen).at(-1).templateKey, 'ticket.created');
+    const mail = (await w.app.locals.mailOutbox.list()).filter((m) =>
+      m.to.includes(w.gen.user.email)
+    );
+    assert.equal(mail.length, 1);
+    assert.equal(bell(w, w.agent).filter((n) => n.templateKey === 'ticket.created').length, 0);
+
+    // One audit row names the agent, the ticket and the employee.
+    const rows = w.repo.auditLogs.filter((row) => row.action === 'ticket.create_on_behalf');
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].actorId, w.agent.user.id);
+    assert.equal(rows[0].entity, 'Ticket');
+    assert.equal(rows[0].entityId, ticket.id);
+    assert.equal(rows[0].companyId, w.gen.user.companyId);
+    const after = JSON.parse(rows[0].after);
+    assert.equal(after.requesterId, w.gen.user.id);
+    assert.equal(after.createdById, w.agent.user.id);
+    assert.equal(after.number, ticket.number);
+  });
+
+  test('a ticket people raise for themselves writes no such row, and an employee cannot raise for others', async () => {
+    const w = await world();
+    await w.raise(w.gen);
+    await w.raise(w.agent);
+    // An agent naming themselves is not "on behalf of" anyone.
+    await w.raise(w.agent, { requesterId: w.agent.user.id });
+    assert.equal(
+      w.repo.auditLogs.filter((row) => row.action === 'ticket.create_on_behalf').length,
+      0
+    );
+
+    const refused = await w.gen.post('/api/tickets', {
+      ...FIELDS(w),
+      requesterId: w.gen2.user.id,
+    });
+    assert.equal(refused.status, 403);
+    assert.equal(
+      w.repo.auditLogs.filter((row) => row.action === 'ticket.create_on_behalf').length,
+      0
+    );
+  });
+
+  test('the people picker is the helpdesk’s own directory and is for the IT team only', async () => {
+    const w = await world();
+    const found = await w.agent.get('/api/helpdesk/people?q=sal');
+    assert.equal(found.status, 200);
+    assert.ok(JSON.stringify(found.body).includes('Salma'));
+    assert.equal((await w.gen.get('/api/helpdesk/people?q=sal')).status, 403);
+  });
+});
+
 describe('Administration: companies and their mail domains', () => {
   test('the administrator lists, adds and changes companies, every change audited', async () => {
     const w = await world();

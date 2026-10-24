@@ -58,7 +58,6 @@ async function pasteScreenshot(page, selector) {
 /** Opens an address inside the signed-in app. */
 async function open(page, hash) {
   await page.goto(`/${hash}`);
-  await page.reload();
   await expect(page.locator('#page')).not.toBeEmpty();
 }
 const openHd = open;

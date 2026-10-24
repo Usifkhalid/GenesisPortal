@@ -23,6 +23,17 @@ const LOGIN_PAGE = 'login.html';
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
 const RETRY_AFTER_MS = 600;
 
+/**
+ * The login page, remembering the link that was open: after sign-in the person
+ * comes back to it (the server checks it, return-path.js). The bare address
+ * needs no memory.
+ */
+function loginUrl() {
+  const here = `${location.pathname}${location.search}${location.hash}`;
+  if (here === '/' || here === '/index.html') return LOGIN_PAGE;
+  return `${LOGIN_PAGE}?next=${encodeURIComponent(here)}`;
+}
+
 let csrfToken = null;
 
 /** A failed request. `code` is the server's stable token, to pick a string by. */
@@ -158,7 +169,7 @@ async function request(path, { method, body, redirectOn401, signal }) {
   }
 
   if (res.status === 401 && redirectOn401) {
-    location.replace(LOGIN_PAGE);
+    location.replace(loginUrl());
     // The page is leaving; nothing after this call should run.
     return new Promise(() => {});
   }
@@ -222,7 +233,7 @@ export async function upload(path, blob, { onProgress } = {}) {
     res = await attempt();
   }
   if (res.status === 401) {
-    location.replace(LOGIN_PAGE);
+    location.replace(loginUrl());
     return new Promise(() => {});
   }
   if (res.status < 200 || res.status > 299) {

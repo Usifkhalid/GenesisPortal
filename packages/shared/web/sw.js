@@ -115,9 +115,14 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-/** Which saved page an address is: the shell is one file for "/" and "/index.html". */
+/**
+ * Which saved page an address is: the shell is one file for "/" and "/index.html",
+ * and for the helpdesk's published links /new and /queue (the server answers
+ * them with that same page).
+ */
 function shellKey(path) {
-  if (path === '/' || path === '/index.html') return '/';
+  if (path === '/' || path === '/index.html' || path === '/new' || path === '/queue')
+    return '/';
   if (path === '/login' || path === '/login.html') return '/login.html';
   return path;
 }

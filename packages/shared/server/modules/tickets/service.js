@@ -715,6 +715,26 @@ export function createTicketService({
         isInternal: false,
         createdAt: at,
       });
+      // An agent raising a ticket for someone who phoned or has no computer is
+      // an action on another person's behalf: the log names both.
+      if (row.createdById !== row.requesterId) {
+        await writeAudit(
+          req,
+          'ticket.create_on_behalf',
+          'Ticket',
+          null,
+          {
+            id: row.id,
+            number: row.number,
+            requesterId: row.requesterId,
+            createdById: row.createdById,
+            source: row.source,
+            teamId: row.teamId,
+            categoryId: row.categoryId,
+          },
+          { tx, companyId: row.companyId }
+        );
+      }
       return row;
     });
 

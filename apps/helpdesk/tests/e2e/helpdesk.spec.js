@@ -33,9 +33,10 @@ for (const lang of LANGUAGES) {
       await expectLanguage(page, lang);
       await expect(page).toHaveTitle(new RegExp(t(lang, 'hd.name')));
 
-      // My tickets and New ticket, nothing of the IT team's.
+      // My tickets and New ticket, nothing of the IT team's; the bare address
+      // opens New ticket for an employee.
       await expect(navLinks(page)).toHaveCount(2);
-      await expect(page.locator('.page__heading h1')).toHaveText(t(lang, 'hdApp.nav.mine'));
+      await expect(page.locator('.page__heading h1')).toHaveText(t(lang, 'hdApp.nav.new'));
       await expect(page.locator('#portalLink')).toHaveAttribute(
         'href',
         'http://localhost:3100'

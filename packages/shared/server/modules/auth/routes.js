@@ -18,10 +18,11 @@ import { Router } from 'express';
 
 import { destroySession, sessionCookie } from '../../lib/session.js';
 import { workerEnabledFor } from '../../lib/service-worker.js';
+import { safeReturnPath } from '../../lib/return-path.js';
 import { csrfToken } from '../../middleware/csrf.js';
 import { HttpError } from '../../middleware/errors.js';
 import { createEntraHandlers, entraLogoutUrl } from './entra.js';
-import { mockLoginBody } from './schema.js';
+import { mockLoginBody, returnQuery } from './schema.js';
 import { describeMe, listMockUsers, startSession } from './service.js';
 
 /**
@@ -63,6 +64,8 @@ export function publicAuthRoutes({
       csrfToken: csrfToken(req),
       // Whether the page should install the offline worker (frontend/sw.js).
       serviceWorker: workerEnabledFor(req, config),
+      // The link the person opened before signing in, when it is one of ours.
+      next: safeReturnPath(returnQuery.safeParse(req.query).data?.next),
     });
   });
 
@@ -71,7 +74,7 @@ export function publicAuthRoutes({
   });
 
   router.post('/api/auth/mock-login', mockOnly, async (req, res) => {
-    const { userId } = mockLoginBody.parse(req.body);
+    const { userId, next } = mockLoginBody.parse(req.body);
     accounts?.hit(userId);
 
     const person = await repo.getSessionUser(userId);
@@ -81,7 +84,7 @@ export function publicAuthRoutes({
 
     const token = await startSession(req, person.id);
     req.log?.info({ userId: person.id }, 'mock sign-in');
-    res.json({ redirectTo: landing(person), csrfToken: token });
+    res.json({ redirectTo: safeReturnPath(next) ?? landing(person), csrfToken: token });
   });
 
   /** Ends the session here and says where the browser should go next. */

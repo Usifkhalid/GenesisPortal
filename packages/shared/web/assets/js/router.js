@@ -94,6 +94,8 @@ export function createRouter({
   /** Counts renders, so a slow page that lands late cannot overwrite a newer one. */
   let turn = 0;
   let cleanup = null;
+  /** The container of the page on screen. */
+  let current = null;
 
   /** @returns {Match} */
   function resolve() {
@@ -131,7 +133,17 @@ export function createRouter({
     cleanup?.();
     cleanup = null;
     onNavigate?.(match);
-    if (!keep || !root.firstElementChild) root.innerHTML = match.skeleton();
+
+    // Every render draws into a container of its own. A page still working
+    // when the address changes (it awaits its data or its modules) then
+    // finishes into a container that has left the document, not over the page
+    // that replaced it: that left "My tickets" on "Loading".
+    const host = document.createElement('div');
+    host.className = 'page__render';
+    if (keep && current?.firstElementChild) host.append(...current.childNodes);
+    else host.innerHTML = match.skeleton();
+    root.replaceChildren(host);
+    current = host;
 
     try {
       const url = new URL(`${match.page}.js`, PAGES);
@@ -140,14 +152,14 @@ export function createRouter({
       const page = await import(url.href);
       if (mine !== turn) return;
 
-      const leave = await page.render(root, { ...context(), route: match });
+      const leave = await page.render(host, { ...context(), route: match });
       if (typeof leave !== 'function') return;
       if (mine === turn) cleanup = leave;
       else leave();
     } catch {
       if (mine !== turn) return;
-      root.innerHTML = loadFailedNotice();
-      root
+      host.innerHTML = loadFailedNotice();
+      host
         .querySelector('[data-retry]')
         .addEventListener('click', () => render({ attempt: attempt + 1 }));
     }

@@ -652,7 +652,7 @@
       "conversation": "المحادثة",
       "files": "الملفات",
       "openedBy": "فتحه {who}",
-      "loggedBy": "سجّله {name} ({source})",
+      "loggedBy": "رفعه {name} نيابةً عن {requester} ({source})",
       "missingTitle": "هذا الطلب غير متاح",
       "missingText": "قد يكون يخص شخصًا آخر، أو أن الرابط غير صحيح."
     },

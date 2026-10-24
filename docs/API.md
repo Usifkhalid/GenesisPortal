@@ -111,8 +111,12 @@ session's token in `X-CSRF-Token`, or gets `403 csrf_invalid`. The token comes f
 #### `GET /api/auth/config` (public)
 
 ```json
-{ "mode": "mock", "signedIn": false, "csrfToken": "…" }
+{ "mode": "mock", "signedIn": false, "csrfToken": "…", "next": null }
 ```
+
+Query `?next=<path>`: the link the person opened before signing in. `next` echoes it when it
+is a path on this site (not `//host`, a backslash, a scheme, `/api`, `/auth` or the login
+page), else `null`.
 
 #### `GET /api/auth/mock-users` (public; `AUTH_MODE=mock` and `NODE_ENV=development` only)
 
@@ -127,8 +131,9 @@ The seeded users grouped by company, each under their highest role. Anywhere els
 
 #### `POST /api/auth/mock-login` (public; same condition)
 
-Body `{ "userId": "<uuid>" }`. Starts a session under a new session id.
-`200 { "redirectTo": "/", "csrfToken": "…" }`; `404` for an unknown or inactive user.
+Body `{ "userId": "<uuid>", "next"?: "<path>" }`. Starts a session under a new session id.
+`200 { "redirectTo": "/", "csrfToken": "…" }`; `redirectTo` is `next` when it is a path on this
+site (see `/api/auth/config`); `404` for an unknown or inactive user.
 
 #### `POST /api/auth/logout` (and `POST /auth/logout` in Entra mode)
 
@@ -140,9 +145,9 @@ not keep anyone signed in), is not rate-limited, and destroys the session when t
 #### `GET /auth/login`, `GET /auth/callback` (`AUTH_MODE=entra` only)
 
 Authorization-code flow with PKCE, state and nonce, run on the server. `/auth/login`
-redirects to Entra; `/auth/callback` redeems the code, finds the `UserProfile` by
+redirects to Entra (`?next=<path>` is kept in the session when it is a path on this site); `/auth/callback` redeems the code, finds the `UserProfile` by
 `entraObjectId` and then by email (tying the profile to the object id when found that way),
-starts the session and redirects to `/`. Someone with no profile gets one from the ID token
+starts the session and redirects to the kept `next`, else `/`. Someone with no profile gets one from the ID token
 (object id, name, email; role User) in the company owning their email domain
 (`Company.domain` or `CompanyDomain`), audited `user.jit_create`; an address in
 `INITIAL_HOLDING_ADMINS` also becomes HoldingAdmin while no active HoldingAdmin with a

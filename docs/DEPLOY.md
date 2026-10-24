@@ -588,6 +588,23 @@ Application Insights and the Entra app registration. Names below: `HD_APP` (for 
    `apps/helpdesk/backend/generated/client` (its Prisma client, made by `npm ci` on Linux) must
    be in the zip. Check `/api/health`, `/api/ready`, then sign in.
 
+### The two links to publish
+
+Tell staff these two addresses (and put them where staff look: the intranet, the email
+signature, the portal's own "IT Support" button is already `HELPDESK_URL`):
+
+| Link | For | What it opens |
+| --- | --- | --- |
+| `https://<helpdesk host>/new` | every employee | the **New ticket** form, with **My tickets** beside it |
+| `https://<helpdesk host>/queue` | the IT team | the **Queue** |
+
+- Signed out, the link goes to the Microsoft sign-in and **comes back to the link** afterwards.
+- Someone who is not on the IT team opening `/queue` is sent to `/new` (no error page).
+- The bare address `https://<helpdesk host>/` sends employees to `/new` and the IT team to `/queue`.
+- Tickets raised by phone: the IT team uses **Log a ticket for someone** on the Queue
+  (needs no setting).
+- Nothing to configure: `APP_BASE_URL` and the Entra redirect URI of step 4 are all it needs.
+
 The portal links to it with its `HELPDESK_URL` setting (step 8), and sends old ticket links
 there. The portal's old helpdesk tables stay in its database for now: see "Retiring the
 portal's helpdesk tables".

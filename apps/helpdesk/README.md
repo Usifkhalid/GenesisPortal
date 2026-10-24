@@ -22,6 +22,32 @@ The first administrator comes from `INITIAL_HELPDESK_ADMINS` at their first Micr
 sign-in (only while no real one exists, audited). A person is placed in a company by their
 email's domain; a domain no company owns gets no account.
 
+## The two links to publish
+
+| Link | For | Opens |
+| --- | --- | --- |
+| `<helpdesk host>/new` | every employee | the New ticket form, with My tickets beside it |
+| `<helpdesk host>/queue` | the IT team | the Queue |
+
+- Opened signed out, the link goes through the Microsoft sign-in (mock sign-in in development)
+  and returns to the link. The address is carried as `login.html?next=<path>`, then through
+  `/auth/login?next=<path>` and the session; only a path on this site is accepted
+  (`packages/shared/server/lib/return-path.js`: no other site, no `//`, no backslash, nothing
+  under `/api`, `/auth` or the sign-in page), anything else lands on the bare address.
+- Someone not on the IT team who opens `/queue` is sent to `/new`, with no error page.
+- The bare address sends employees to `/new` and the IT team to `/queue`. An address that
+  already names a page (`/#tickets/<id>`, an emailed link) is left alone.
+- The server answers both links with the one page (`/new/` redirects to `/new`);
+  `frontend/assets/js/app.js` (`settleEntryAddress`) picks the screen once it knows who is signed in.
+
+## Raising a ticket for someone else
+
+An IT agent or lead opens the Queue, **Log a ticket for someone**, searches the helpdesk's
+people, chooses how it came in (phone or walk-in) and fills the usual fields. The employee is
+the requester: it is under their My tickets, they are told by bell and email, and the ticket
+says "Raised by <agent> on behalf of <employee>". Each one writes an audit row
+(`ticket.create_on_behalf`, naming both people).
+
 ## Run it
 
 ```bash

@@ -6,6 +6,13 @@ import { z } from 'zod';
 
 export const mockLoginBody = z.strictObject({
   userId: z.guid(),
+  /** The link the person opened before signing in; checked by safeReturnPath. */
+  next: z.string().max(500).optional(),
+});
+
+/** GET /api/auth/config and /auth/login: where to go back to after sign-in. */
+export const returnQuery = z.object({
+  next: z.string().max(500).optional(),
 });
 
 /**

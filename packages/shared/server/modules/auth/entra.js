@@ -25,7 +25,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createDelegatedGraph } from '../../integrations/graph/delegated.js';
 import { bootstrapHoldingAdmin, createProfileFromToken } from './provision.js';
 import { createProfileRefresher } from './refresh.js';
-import { entraCallbackQuery } from './schema.js';
+import { safeReturnPath } from '../../lib/return-path.js';
+import { entraCallbackQuery, returnQuery } from './schema.js';
 import { startSession } from './service.js';
 
 // User.Read: the profile refresh at sign-in reads /me with this token (refresh.js).
@@ -120,7 +121,9 @@ export function createEntraHandlers({ config, repo, msalClient, accounts, profil
     const verifier = random();
     const state = random();
     const nonce = random();
-    req.session.entra = { verifier, state, nonce };
+    // `next` is the link the person opened before signing in (return-path.js).
+    const next = safeReturnPath(returnQuery.safeParse(req.query).data?.next);
+    req.session.entra = { verifier, state, nonce, ...(next ? { next } : {}) };
 
     const url = await (
       await getClient()
@@ -227,7 +230,8 @@ export function createEntraHandlers({ config, repo, msalClient, accounts, profil
     await bootstrapHoldingAdmin(req, repo, config, person, email);
 
     await startSession(req, person.id);
-    res.redirect('/');
+    // Checked again on the way out; the session is ours but a path is cheap to verify.
+    res.redirect(safeReturnPath(pending.next) ?? '/');
   }
 
   return { login, callback };

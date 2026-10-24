@@ -25,6 +25,8 @@
  * backend/tests/authz-matrix.test.js checks its table against.
  */
 
+import { join } from 'node:path';
+
 import express from 'express';
 import session from 'express-session';
 
@@ -253,6 +255,20 @@ export function createApp(options = {}) {
       fixed: isProduction,
     })
   );
+
+  // The two links to publish (docs/DEPLOY.md): /new for every employee, /queue
+  // for the IT team. Both are the one page; its script settles which screen
+  // (frontend/assets/js/app.js) once it knows who is signed in, and a person who
+  // is not signed in comes back to the link after sign-in (lib/return-path.js).
+  app.get(['/new', '/queue'], (req, res) => {
+    // "/new/" would resolve the page's relative assets under /new/.
+    if (req.path.endsWith('/')) {
+      const query = req.url.slice(req.path.length);
+      return res.redirect(301, `${req.path.replace(/\/+$/, '')}${query}`);
+    }
+    res.set('Cache-Control', 'no-cache');
+    return res.sendFile(join(FRONTEND_DIRS[0], 'index.html'));
+  });
 
   serveFrontend(app, { frontendDirs: FRONTEND_DIRS, config, isProduction, isTest });
 

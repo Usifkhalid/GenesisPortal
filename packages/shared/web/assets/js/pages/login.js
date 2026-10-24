@@ -41,6 +41,8 @@ const state = {
   notice: null,
   /** The id of the person being signed in, while the request is out. */
   signingIn: null,
+  /** The link opened before signing in, as the server accepts it (return-path.js), or null. */
+  next: null,
 };
 
 const el = (id) => document.getElementById(id);
@@ -144,6 +146,11 @@ function companyCard(company, index) {
   </section>`;
 }
 
+/** The Microsoft sign-in link, carrying the link the person came for. */
+function entraHref() {
+  return state.next ? `/auth/login?next=${encodeURIComponent(state.next)}` : '/auth/login';
+}
+
 /* ---------------------------------------------------------------- render */
 
 const LEADS = { mock: 'login.mock.lead', entra: 'login.entra.lead' };
@@ -181,7 +188,7 @@ function render() {
     });
   } else if (state.view === 'entra') {
     body.innerHTML = `<div class="login__entra">
-      <a class="btn btn--primary btn--lg btn--block" href="/auth/login">
+      <a class="btn btn--primary btn--lg btn--block" href="${esc(entraHref())}">
         <span class="btn__label">${esc(t('login.entra.button'))}</span>
       </a>
       <p class="login__note">${esc(t('login.entra.note'))}</p>
@@ -219,7 +226,7 @@ async function signInAs(userId) {
   try {
     const { redirectTo } = await api('/api/auth/mock-login', {
       method: 'POST',
-      body: { userId },
+      body: { userId, ...(state.next ? { next: state.next } : {}) },
       redirectOn401: false,
       quiet: true,
     });
@@ -240,12 +247,18 @@ async function load() {
   render();
 
   try {
-    const config = await api('/api/auth/config', { redirectOn401: false, quiet: true });
+    // The server decides whether the link we were sent here from is one of ours.
+    const asked = new URLSearchParams(location.search).get('next');
+    const config = await api(
+      `/api/auth/config${asked ? `?next=${encodeURIComponent(asked)}` : ''}`,
+      { redirectOn401: false, quiet: true }
+    );
     setCsrfToken(config.csrfToken);
+    state.next = config.next ?? null;
     startServiceWorker({ enabled: config.serviceWorker === true });
 
     if (config.signedIn) {
-      location.replace('./');
+      location.replace(state.next ?? './');
       return;
     }
 

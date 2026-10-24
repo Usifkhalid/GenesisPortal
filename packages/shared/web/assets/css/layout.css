@@ -584,6 +584,11 @@
   container: page / inline-size;
 }
 
+/* The router's container for one render (router.js): no box of its own. */
+.page__render {
+  display: contents;
+}
+
 .page__header {
   display: flex;
   flex-wrap: wrap;

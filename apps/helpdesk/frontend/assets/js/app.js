@@ -12,6 +12,10 @@
  *   #admin[/<section>]   Administration      the helpdesk's HoldingAdmins
  *   #notifications       the bell's page     everyone
  *
+ * Two plain links are published (docs/DEPLOY.md): /new for every employee and
+ * /queue for the IT team. The server answers both with this page and
+ * settleEntryAddress() turns them into the addresses above.
+ *
  * Who is signed in, and which of these they may open, comes from GET /api/me;
  * every API route behind a page checks for itself. The design system, the
  * strings and the ticket pages are shared with the portal (packages/shared/
@@ -186,6 +190,31 @@ function markLocation(match) {
 
 /* -------------------------------------------------------------------- boot */
 
+/**
+ * The published links and the bare address, settled before the first page is
+ * drawn (replaceState, so Back does not return to the link):
+ *
+ *   /new                 the New ticket form, for everyone
+ *   /queue               the Queue for the IT team; anyone else gets /new, quietly
+ *   / with no #address   the IT team's Queue, everyone else's New ticket form
+ *
+ * Any other address, an old #tickets/<id> link included, is left as it is.
+ */
+function settleEntryAddress() {
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const own = state.it ? '#queue' : '#tickets/new';
+  let hash = null;
+  if (path === '/new') hash = '#tickets/new';
+  else if (path === '/queue') hash = own;
+  else if (
+    (path === '/' || path === '/index.html') &&
+    (location.hash === '' || location.hash === '#')
+  ) {
+    hash = own;
+  }
+  if (hash) history.replaceState(null, '', `/${hash}`);
+}
+
 function initSkipLink() {
   document.querySelector('.u-skip-link').addEventListener('click', (event) => {
     event.preventDefault();
@@ -249,6 +278,7 @@ async function init() {
   state.admin = me.admin === true;
   state.portalUrl = me.portalUrl ?? null;
 
+  settleEntryAddress();
   router = createRouter({
     root: document.getElementById('page'),
     routes: ROUTES,
